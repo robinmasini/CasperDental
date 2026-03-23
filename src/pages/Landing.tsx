@@ -49,10 +49,10 @@ const Landing = () => {
                 <div className="container">
                     <div className="hero-content">
                         <h1>
-                            Casper Dental : l'IA au service de votre cabinet
+                            Casper Dental : l'innovation au service de votre cabinet
                         </h1>
                         <p className="hero-subtitle">
-                            Gagnez en sérénité et optimisez votre pratique avec notre assistant intelligent
+                            Gagnez en sérénité et optimisez votre pratique avec notre assistant expert
                             conçu exclusivement pour les professionnels de santé dentaire.
                         </p>
                         <div className="hero-cta">
@@ -88,7 +88,7 @@ const Landing = () => {
                             <div className="advantage-icon">💡</div>
                             <h3>Innovation</h3>
                             <p>
-                                Une intelligence artificielle de pointe qui apprend et s'adapte à votre flux
+                                Une solution de pointe qui apprend et s'adapte à votre flux
                                 de travail pour une assistance personnalisée au quotidien.
                             </p>
                         </div>
