@@ -1,0 +1,412 @@
+.calls-page {
+    padding: 24px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    color: #444;
+}
+
+.calls-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.calls-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1a237e;
+}
+
+.calls-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.mute-btn {
+    background: white;
+    border: 1px solid #e0e0e0;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 4px 12px;
+    width: 280px;
+}
+
+.search-box input {
+    border: none;
+    padding: 8px;
+    width: 100%;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.calls-table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.calls-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.calls-table th {
+    background: #f8f9fa;
+    padding: 12px 16px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    border-bottom: 1px solid #eee;
+}
+
+.calls-table td {
+    padding: 16px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+}
+
+.date-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.date-cell .time {
+    font-weight: 600;
+    color: #333;
+}
+
+.date-cell .date {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.patient-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.patient-avatar-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.patient-cell .phone {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 4px;
+}
+
+.badge-classification {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.cls-annul {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.cls-autre {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.cls-rappeler {
+    background: #fef9c3;
+    color: #ca8a04;
+}
+
+.cls-rdv {
+    background: #ffedd5;
+    color: #ea580c;
+}
+
+.icon-group {
+    display: flex;
+    gap: 8px;
+    color: #3b82f6;
+    font-size: 1.1rem;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 20px;
+}
+
+.toggle-switch input {
+    display: none;
+}
+
+.toggle-switch label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #e0e0e0;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.toggle-switch label:before {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 2px;
+    bottom: 2px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.toggle-switch input:checked+label {
+    background: #3b82f6;
+}
+
+.toggle-switch input:checked+label:before {
+    transform: translateX(20px);
+}
+
+.voir-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.voir-btn:hover {
+    background: #2563eb;
+}
+
+/* Detail View */
+.call-detail-view {
+    padding: 24px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.detail-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+}
+
+.back-btn {
+    background: none;
+    border: 1px solid #ddd;
+    padding: 8px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: #666;
+    font-weight: 500;
+}
+
+.call-info-main h2 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: #333;
+}
+
+.call-info-main h3 {
+    margin: 4px 0 0;
+    font-size: 1.1rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.detail-content-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr 400px;
+    gap: 24px;
+    flex: 1;
+    min-height: 0;
+}
+
+.detail-left-panel,
+.detail-center-panel,
+.detail-right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.info-extracted,
+.patient-file-link,
+.summary-box,
+.activity-section,
+.transcript-container {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #f0f0f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.info-extracted h4,
+.patient-file-link h4,
+.activity-section h4 {
+    margin: 0 0 16px;
+    font-size: 0.9rem;
+    color: #3b82f6;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-item {
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-item label {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.info-item span {
+    font-weight: 500;
+}
+
+.highlight-date {
+    color: #3b82f6;
+    background: #eff6ff;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.empty-file-box {
+    padding: 20px;
+    background: #f8f9fa;
+    border: 1px dashed #ddd;
+    border-radius: 8px;
+    text-align: center;
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.summary-box {
+    background: #fffdf0;
+    border-color: #fef08a;
+    line-height: 1.6;
+}
+
+.summary-box p {
+    margin: 0 0 12px;
+}
+
+.summary-box p:last-child {
+    margin: 0;
+}
+
+.activity-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.activity-buttons button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    background: white;
+    border: 1px solid #3b82f6;
+    color: #3b82f6;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.activity-buttons button:hover {
+    background: #eff6ff;
+}
+
+.note-input textarea {
+    width: 100%;
+    height: 100px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: inherit;
+    resize: none;
+    margin-bottom: 12px;
+}
+
+.add-note-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.transcript-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: #fcfcfc;
+}
+
+.msg {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.msg.ai {
+    background: white;
+    border: 1px solid #eee;
+    align-self: flex-start;
+}
+
+.msg.user {
+    background: #eff6ff;
+    color: #1e40af;
+    align-self: flex-end;
+}

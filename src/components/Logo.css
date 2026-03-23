@@ -1,0 +1,50 @@
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.logo-image {
+    display: block;
+    margin: 0 auto;
+    object-fit: contain;
+}
+
+.logo-small .logo-image {
+    max-width: 100px;
+    height: auto;
+}
+
+.logo-medium .logo-image {
+    max-width: 150px;
+    height: auto;
+}
+
+.logo-large .logo-image {
+    max-width: 200px;
+    height: auto;
+}
+
+.logo-text {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a2e);
+}
+
+.logo-accent {
+    background: linear-gradient(135deg, #1E88E5, #1565C0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.logo-small .logo-text {
+    font-size: 1rem;
+}
+
+.logo-large .logo-text {
+    font-size: 1.5rem;
+}

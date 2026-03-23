@@ -1,0 +1,271 @@
+.planning-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #f6f7fb;
+}
+
+/* Header */
+.planning-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: white;
+    border-bottom: 1px solid #e6e9ef;
+}
+
+.planning-title h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #323338;
+    font-weight: 600;
+}
+
+.planning-subtitle {
+    font-size: 0.8rem;
+    color: #676879;
+    margin-left: 1rem;
+}
+
+.planning-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-add-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #0073ea;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-add-item:hover {
+    background: #0060b9;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #f6f7fb;
+    border: 1px solid #e6e9ef;
+    border-radius: 4px;
+}
+
+.search-box svg {
+    color: #676879;
+}
+
+.search-box input {
+    border: none;
+    background: none;
+    font-size: 0.875rem;
+    color: #323338;
+    outline: none;
+    width: 150px;
+}
+
+/* Tabs */
+.planning-tabs {
+    display: flex;
+    padding: 0 1.5rem;
+    background: white;
+    border-bottom: 1px solid #e6e9ef;
+}
+
+.planning-tab {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #676879;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.planning-tab:hover {
+    color: #323338;
+}
+
+.planning-tab.active {
+    color: #0073ea;
+    border-bottom-color: #0073ea;
+}
+
+/* Table Wrapper */
+.planning-table-wrapper {
+    flex: 1;
+    overflow: auto;
+    padding: 1rem 1.5rem;
+}
+
+/* Table */
+.planning-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.planning-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    background: #f6f7fb;
+    color: #676879;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-bottom: 1px solid #e6e9ef;
+    white-space: nowrap;
+}
+
+.planning-table td {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #e6e9ef;
+    font-size: 0.875rem;
+    color: #323338;
+}
+
+.planning-table tr:hover {
+    background: #f6f7fb;
+}
+
+/* Column Widths */
+.col-patient {
+    min-width: 160px;
+}
+
+.col-travail {
+    min-width: 120px;
+}
+
+.col-etape {
+    min-width: 130px;
+}
+
+.col-commentaires {
+    min-width: 100px;
+}
+
+.col-prochaines {
+    min-width: 90px;
+}
+
+.col-bib {
+    min-width: 100px;
+}
+
+.col-facture {
+    min-width: 70px;
+    text-align: center;
+}
+
+.col-echeance {
+    min-width: 100px;
+}
+
+.col-praticien {
+    min-width: 80px;
+}
+
+.col-imprime {
+    min-width: 70px;
+    text-align: center;
+}
+
+.patient-name {
+    font-weight: 500;
+    color: #323338;
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Date Badge */
+.date-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: #cce5ff;
+    color: #0056b3;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Bib Badge */
+.bib-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.bib-badge.bambilab {
+    background: #ff9f43;
+    color: white;
+}
+
+.bib-badge.elegoo-j {
+    background: #0abf53;
+    color: white;
+}
+
+/* Facture Badge */
+.facture-badge,
+.imprime-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.facture-badge.oui,
+.imprime-badge.oui {
+    background: #00c875;
+    color: white;
+}
+
+.facture-badge.non,
+.imprime-badge.non {
+    background: #e6e9ef;
+    color: #676879;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .planning-table {
+        font-size: 0.8rem;
+    }
+
+    .planning-table th,
+    .planning-table td {
+        padding: 0.5rem 0.75rem;
+    }
+}
