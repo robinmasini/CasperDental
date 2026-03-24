@@ -188,8 +188,8 @@ const Chatbot = () => {
                 </Link>
                 <div className="expert-title">
                     <span className="blue-gradient-text">ASSISTANT EXPERT</span>
-                    <span className="medical-text"> MEDICAL</span>
-                    <span className="flow-text">FLOW</span>
+                    <span className="medical-text"> CASPER</span>
+                    <span className="flow-text"> DENTAL</span>
                 </div>
                 <div className="header-actions">
                     <button
