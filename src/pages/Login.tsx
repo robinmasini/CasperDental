@@ -19,11 +19,11 @@ const Login = () => {
         setIsLoading(true);
 
         try {
-            const success = await login(email, password);
-            if (success) {
+            const result = await login(email, password);
+            if (result.success) {
                 navigate('/dashboard');
             } else {
-                setError('Identifiants incorrects. Veuillez réessayer.');
+                setError(result.error || 'Identifiants incorrects. Veuillez réessayer.');
             }
         } catch {
             setError('Une erreur est survenue. Veuillez réessayer.');

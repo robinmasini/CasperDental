@@ -15,7 +15,7 @@ interface Practitioner {
 interface AuthContextType {
     isAuthenticated: boolean;
     user: Practitioner | null;
-    login: (email: string, password: string) => Promise<boolean>;
+    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
     loading: boolean;
 }
@@ -67,13 +67,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return () => subscription.unsubscribe();
     }, []);
 
-    const login = async (email: string, password: string): Promise<boolean> => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            console.error('Login error:', error.message);
-            return false;
+    const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                console.error('Login error:', error.message);
+                let message = 'Identifiants incorrects.';
+                if (error.message.includes('Email not confirmed')) {
+                    message = 'Veuillez confirmer votre email avant de vous connecter.';
+                } else if (error.message.includes('Invalid login credentials')) {
+                    message = 'Email ou mot de passe incorrect.';
+                }
+                return { success: false, error: message };
+            }
+            return { success: true };
+        } catch (err: any) {
+            return { success: false, error: err.message || 'Une erreur est survenue.' };
         }
-        return true;
     };
 
     const logout = async () => {

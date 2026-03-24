@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import Logo from '../components/Logo';
+import Popup from '../components/Popup';
 import './Landing.css';
 
 const Landing = () => {
@@ -21,6 +22,7 @@ const Landing = () => {
 
     return (
         <div className="landing">
+            <Popup />
             {/* Header */}
             <header className="landing-header">
                 <div className="container">
