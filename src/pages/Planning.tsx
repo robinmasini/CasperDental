@@ -61,7 +61,7 @@ const Planning = () => {
                 </div>
                 <EmptyState
                     title="Aucun rendez-vous planifié"
-                    message="Votre planning est vide. Les rendez-vous pris via l'IA ou créés manuellement apparaîtront ici."
+                    message="Votre planning est vide. Les rendez-vous pris par l'assistant ou créés manuellement apparaîtront ici."
                     icon="📅"
                 />
             </div>

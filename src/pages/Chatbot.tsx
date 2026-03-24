@@ -103,7 +103,7 @@ const Chatbot = () => {
                             duration_minutes: 30,
                             type: 'Consultation Chatbot',
                             status: 'planifié',
-                            notes: `Motif identifié par l'IA: ${updatedMessages.filter(m => m.role === 'user').map(m => m.content).join(' ')}`
+                            notes: `Motif identifié : ${updatedMessages.filter(m => m.role === 'user').map(m => m.content).join(' ')}`
                         });
                     }
 
@@ -187,7 +187,7 @@ const Chatbot = () => {
                     </svg>
                 </Link>
                 <div className="expert-title">
-                    <span className="blue-gradient-text">EXPERT ASSISTANT IA</span>
+                    <span className="blue-gradient-text">ASSISTANT EXPERT</span>
                     <span className="medical-text"> MEDICAL</span>
                     <span className="flow-text">FLOW</span>
                 </div>

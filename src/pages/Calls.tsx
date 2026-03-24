@@ -104,7 +104,7 @@ const Calls = () => {
 
                     <div className="detail-center-panel">
                         <div className="summary-box">
-                            <h4>Synthèse IA</h4>
+                            <h4>Synthèse</h4>
                             <p>{selectedCall.summary || "Synthèse en cours de génération ou non disponible pour cet appel."}</p>
                         </div>
 

@@ -204,7 +204,7 @@ const Dashboard = () => {
                             <circle cx="15" cy="13" r="1" />
                             <path d="M9 17h6" />
                         </svg>
-                        <span>Assistant IA</span>
+                        <span>Assistant Expert</span>
                     </button>
                 </nav>
 
@@ -265,7 +265,7 @@ const Dashboard = () => {
                     <div className="dashboard-content ai-view">
                         <div className="expert-assistant-header">
                             <div className="expert-title">
-                                <span className="blue-gradient-text">EXPERT ASSISTANT IA</span>
+                                <span className="blue-gradient-text">ASSISTANT EXPERT</span>
                                 <span className="medical-text"> CASPER</span>
                                 <span className="flow-text"> DENTAL</span>
                             </div>
