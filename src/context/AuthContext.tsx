@@ -15,6 +15,7 @@ interface Practitioner {
 interface AuthContextType {
     isAuthenticated: boolean;
     user: Practitioner | null;
+    supabaseUser: User | null;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
     loading: boolean;
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<Practitioner | null>(null);
+    const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchProfile = async (userId: string) => {
@@ -45,6 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const initializeAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
+                setSupabaseUser(session.user);
                 const profile = await fetchProfile(session.user.id);
                 setUser(profile);
             }
@@ -56,9 +59,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Listen for changes on auth state (sign in, sign out, etc.)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session?.user) {
+                setSupabaseUser(session.user);
                 const profile = await fetchProfile(session.user.id);
                 setUser(profile);
             } else {
+                setSupabaseUser(null);
                 setUser(null);
             }
             setLoading(false);
@@ -88,11 +93,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const logout = async () => {
         await supabase.auth.signOut();
+        setSupabaseUser(null);
         setUser(null);
     };
 
+    // isAuthenticated is based on Supabase session, not on practitioners profile
+    const isAuthenticated = !!supabaseUser;
+
     return (
-        <AuthContext.Provider value={{ isAuthenticated: !!user, user, login, logout, loading }}>
+        <AuthContext.Provider value={{ isAuthenticated, user, supabaseUser, login, logout, loading }}>
             {children}
         </AuthContext.Provider>
     );
@@ -107,3 +116,4 @@ export const useAuth = () => {
 };
 
 export type { Practitioner };
+
