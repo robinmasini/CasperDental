@@ -116,3 +116,49 @@ CREATE TABLE IF NOT EXISTS follow_ups (
 CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id);
 CREATE INDEX IF NOT EXISTS idx_calls_patient ON calls(patient_id);
 CREATE INDEX IF NOT EXISTS idx_follow_ups_patient ON follow_ups(patient_id);
+
+-- Tables pour la base de connaissances orthodontique et analyses Casper
+
+-- 1. Documents (livres de référence)
+CREATE TABLE IF NOT EXISTS orthodontic_documents (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    title TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    file_size INTEGER,
+    total_pages INTEGER,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- 2. Chunks (fragments de texte pour le RAG)
+CREATE TABLE IF NOT EXISTS orthodontic_knowledge (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    document_id UUID REFERENCES orthodontic_documents(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    page_number INTEGER,
+    chunk_index INTEGER
+);
+
+-- Index pour recherche textuelle (FTS)
+CREATE INDEX IF NOT EXISTS idx_knowledge_content_fts 
+ON orthodontic_knowledge USING gin(to_tsvector('french', content));
+
+-- Index pour jointure rapide
+CREATE INDEX IF NOT EXISTS idx_knowledge_document ON orthodontic_knowledge(document_id);
+
+-- 3. Analyses dentaires stockées
+CREATE TABLE IF NOT EXISTS dental_analyses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    patient_name TEXT NOT NULL,
+    images TEXT[], -- Array de photos (base64 ou URL)
+    diagnostic_text TEXT NOT NULL,
+    traitement_text TEXT NOT NULL,
+    status TEXT DEFAULT 'completed'
+);
+
+-- Index pour analyses
+CREATE INDEX IF NOT EXISTS idx_analyses_user ON dental_analyses(user_id);
+

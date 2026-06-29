@@ -1,442 +1,941 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
-import { EmptyState } from '../components/EmptyState';
-import Patients from './Patients';
-import Planning from './Planning';
-import Calls from './Calls';
-import FollowUps from './FollowUps';
-import { getUpcomingAppointments, Appointment } from '../services/appointmentService';
-import { createInitialState, getNextStep, createMessage } from '../services/conversation';
-import { speechService } from '../services/speech';
-import { ConversationState, Message } from '../types';
-import avatarDesouches from '../assets/avatar-desouches.png';
-import assistantAvatar from '../assets/assistant-avatar.png';
-import welcomeBannerImg from '../assets/welcomecard.png';
-import casperLogo from '../assets/casper-logo.png';
-import casperLogoWelcome from '../assets/casper-logo-welcome.png';
+import { supabase } from '../lib/supabase';
+import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
+import { analyzeDentition, getGeminiApiKey } from '../services/geminiService';
 import './Dashboard.css';
+
+interface BookDocument {
+    id: string;
+    title: string;
+    file_name: string;
+    file_size: number;
+    total_pages: number;
+    created_at: string;
+}
+
+interface DentalAnalysis {
+    id: string;
+    patient_name: string;
+    created_at: string;
+    images: string[];
+    diagnostic_text: string;
+    traitement_text: string;
+}
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [aiInput, setAiInput] = useState('');
-    const [activeMenu, setActiveMenu] = useState('dashboard');
-    const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [convState, setConvState] = useState<ConversationState>(createInitialState());
-    const [isListening, setIsListening] = useState(false);
+    const { user, logout, supabaseUser } = useAuth();
+    
+    // Tabs state
+    const [activeTab, setActiveTab] = useState<'analyse' | 'knowledge' | 'history' | 'config'>('analyse');
+    
+    // API Configuration key
+    const [geminiKey, setGeminiKey] = useState('');
+    const [showKey, setShowKey] = useState(false);
+    const [dbConnected, setDbConnected] = useState<boolean | null>(null);
 
+    // Patients & Images Upload State
+    const [patientName, setPatientName] = useState('');
+    const [imageFiles, setImageFiles] = useState<File[]>([]);
+    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+    
+    // Scanner HUD simulation & API call states
+    const [isScanning, setIsScanning] = useState(false);
+    const [consoleLogs, setConsoleLogs] = useState<Array<{ time: string; msg: string }>>([]);
+    const [scanStatusText, setScanStatusText] = useState('');
+    const [analysisResult, setAnalysisResult] = useState<{ diagnostic: string; traitement: string } | null>(null);
+    const [activeResultTab, setActiveResultTab] = useState<'diag' | 'treat'>('diag');
+
+    // PDF Knowledge Base States
+    const [books, setBooks] = useState<BookDocument[]>([]);
+    const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+    const [pdfProgress, setPdfProgress] = useState(0);
+    const [pdfStatusText, setPdfStatusText] = useState('');
+    
+    // History states
+    const [history, setHistory] = useState<DentalAnalysis[]>([]);
+    const [selectedHistoryItem, setSelectedHistoryItem] = useState<DentalAnalysis | null>(null);
+
+    // Refs for logging interval
+    const logIntervalRef = useRef<any>(null);
+
+    // Check database connection and load API Key
     useEffect(() => {
-        const fetchDashboardData = async () => {
-            setIsLoading(true);
+        const pingDb = async () => {
             try {
-                const appointments = await getUpcomingAppointments(5);
-                setUpcomingAppointments(appointments);
-            } catch (error) {
-                console.error("Failed to fetch appointments:", error);
-            } finally {
-                setIsLoading(false);
+                const { count, error } = await supabase
+                    .from('orthodontic_documents')
+                    .select('*', { count: 'exact', head: true });
+                if (error) throw error;
+                setDbConnected(true);
+            } catch (err) {
+                console.error('Supabase connection failed:', err);
+                setDbConnected(false);
             }
         };
-        fetchDashboardData();
+        
+        pingDb();
+        setGeminiKey(getGeminiApiKey());
+        loadBooks();
+        loadHistory();
     }, []);
 
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
+    // Load indexed orthodontic books
+    const loadBooks = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('orthodontic_documents')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (!error && data) {
+                setBooks(data);
+            }
+        } catch (e) {
+            console.error('Failed to load books:', e);
+        }
     };
 
-    const handleAISubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (aiInput.trim()) {
-            const userMessage = createMessage('user', aiInput);
-            const { nextStep, response } = getNextStep(convState.step, aiInput, convState);
-            const assistantMessage = createMessage('assistant', response);
+    // Load past orthodontic analyses
+    const loadHistory = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('dental_analyses')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (!error && data) {
+                setHistory(data);
+            }
+        } catch (e) {
+            console.error('Failed to load analyses history:', e);
+        }
+    };
 
-            setConvState(prev => ({
-                ...prev,
-                step: nextStep,
-                messages: [...prev.messages, userMessage, assistantMessage]
-            }));
+    // Handle logout
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
-            setAiInput('');
+    // Save API key
+    const saveApiKey = () => {
+        if (geminiKey.trim()) {
+            localStorage.setItem('casper_gemini_api_key', geminiKey.trim());
+            alert('Clé API enregistrée localement de façon sécurisée !');
+        } else {
+            localStorage.removeItem('casper_gemini_api_key');
+            alert('Clé API effacée du stockage local.');
+        }
+    };
 
-            // Speak response if possible
-            if (speechService.isSupported) {
-                speechService.speak(response);
+    // Handle images selection
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const filesArray = Array.from(e.target.files);
+            
+            // Limit to 6 photos max
+            const updatedFiles = [...imageFiles, ...filesArray].slice(0, 6);
+            setImageFiles(updatedFiles);
+
+            // Generate preview URLs
+            const newPreviews = filesArray.map(file => URL.createObjectURL(file));
+            setPreviewUrls(prev => [...prev, ...newPreviews].slice(0, 6));
+        }
+    };
+
+    const removeImage = (index: number) => {
+        // Revoke URL to prevent memory leaks
+        URL.revokeObjectURL(previewUrls[index]);
+        
+        setImageFiles(prev => prev.filter((_, i) => i !== index));
+        setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // Add log entries to the scanning HUD console
+    const addLog = (msg: string) => {
+        const time = new Date().toLocaleTimeString('fr-FR', { hour12: false });
+        setConsoleLogs(prev => [...prev, { time, msg }]);
+    };
+
+    // Launch optical scanning and orthodontics analysis
+    const handleStartAnalysis = async () => {
+        if (imageFiles.length === 0) {
+            alert('Veuillez déposer au moins 1 photo de dentition (recommandé: 5-6).');
+            return;
+        }
+
+        const currentPatient = patientName.trim() || 'Patient Anonyme';
+        const apiKey = getGeminiApiKey();
+
+        if (!apiKey) {
+            alert('Veuillez d\'abord configurer votre clé d\'API Gemini dans l\'onglet Configuration.');
+            setActiveTab('config');
+            return;
+        }
+
+        // Initialize scanning console and state
+        setIsScanning(true);
+        setConsoleLogs([]);
+        setAnalysisResult(null);
+        
+        addLog('[SYSTEM] Initialisation du scanner optique...');
+        addLog(`[SYSTEM] Chargement des clichés cliniques (${imageFiles.length} images)...`);
+        
+        // Loop premium visual log statements
+        let logStep = 0;
+        const fakeLogs = [
+            '[SYSTEM] Analyse et calibrage tridimensionnel...',
+            '[SYSTEM] Normalisation de la luminosité et détection osseuse...',
+            '[RAG] Interrogation de la base de connaissances Supabase (PDF)...',
+            '[RAG] Extraction des chapitres scientifiques orthodontiques...',
+            '[IA] Transmission au chirurgien expert Casper...',
+            '[IA] Analyse clinique en cours (évaluation des arcs et d\'occlusion)...'
+        ];
+
+        logIntervalRef.current = setInterval(() => {
+            if (logStep < fakeLogs.length) {
+                addLog(fakeLogs[logStep]);
+                logStep++;
+            }
+        }, 1200);
+
+        try {
+            // Call Gemini RAG Service
+            const result = await analyzeDentition(imageFiles, (status) => {
+                setScanStatusText(status);
+                addLog(`[INFO] ${status}`);
+            });
+
+            clearInterval(logIntervalRef.current);
+            addLog('[SUCCESS] Rapport de diagnostic finalisé avec succès.');
+            
+            setAnalysisResult(result);
+            setIsScanning(false);
+
+            // Save to Supabase History
+            if (supabaseUser) {
+                // Convert images to base64 array for local persistence if needed
+                const base64Images: string[] = [];
+                for (const file of imageFiles) {
+                    const reader = new FileReader();
+                    const b64Promise = new Promise<string>((resolve) => {
+                        reader.onloadend = () => resolve(reader.result as string);
+                    });
+                    reader.readAsDataURL(file);
+                    base64Images.push(await b64Promise);
+                }
+
+                await supabase.from('dental_analyses').insert({
+                    user_id: supabaseUser.id,
+                    patient_name: currentPatient,
+                    images: base64Images,
+                    diagnostic_text: result.diagnostic,
+                    traitement_text: result.traitement
+                });
+                
+                // Refresh history
+                loadHistory();
+            }
+
+        } catch (err: any) {
+            clearInterval(logIntervalRef.current);
+            addLog(`[ERROR] Échec de l'analyse : ${err.message || err}`);
+            alert(`Erreur d'analyse : ${err.message || 'Une erreur est survenue.'}`);
+            setIsScanning(false);
+        }
+    };
+
+    // Index orthodontic book PDF in Supabase
+    const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        if (!supabaseUser) {
+            alert('Veuillez vous authentifier.');
+            return;
+        }
+
+        const file = e.target.files[0];
+        if (file.type !== 'application/pdf') {
+            alert('Veuillez fournir un fichier PDF valide.');
+            return;
+        }
+
+        setIsUploadingPdf(true);
+        setPdfProgress(0);
+        setPdfStatusText('Lecture et extraction du PDF en cours...');
+
+        try {
+            // Step 1: Extract text from PDF page by page
+            const parsedPages = await extractTextFromPdf(file, (current, total) => {
+                const percent = Math.round((current / total) * 40); // PDF parsing is 40% of overall process
+                setPdfProgress(percent);
+                setPdfStatusText(`Lecture du document : page ${current}/${total}...`);
+            });
+
+            setPdfStatusText('Création de la référence du livre...');
+            
+            // Step 2: Save document record in Supabase
+            const { data: docData, error: docError } = await supabase
+                .from('orthodontic_documents')
+                .insert({
+                    title: file.name.replace('.pdf', ''),
+                    file_name: file.name,
+                    file_size: file.size,
+                    total_pages: parsedPages.length,
+                    user_id: supabaseUser.id
+                })
+                .select()
+                .single();
+
+            if (docError) throw docError;
+
+            // Step 3: Chunk extracted text
+            setPdfStatusText('Découpage scientifique du texte...');
+            const chunks = chunkParsedPages(parsedPages, 1000, 200);
+
+            // Step 4: Write chunks in batches of 50 to Supabase
+            const batchSize = 50;
+            const totalChunks = chunks.length;
+
+            for (let i = 0; i < totalChunks; i += batchSize) {
+                const batch = chunks.slice(i, i + batchSize).map(chunk => ({
+                    document_id: docData.id,
+                    content: chunk.content,
+                    page_number: chunk.pageNumber,
+                    chunk_index: chunk.chunkIndex
+                }));
+
+                setPdfStatusText(`Indexation scientifique : fragment ${i + batch.length}/${totalChunks}...`);
+                
+                const { error: chunkError } = await supabase
+                    .from('orthodontic_knowledge')
+                    .insert(batch);
+
+                if (chunkError) throw chunkError;
+
+                // Indexation goes from 40% to 100%
+                const batchPercent = 40 + Math.round((Math.min(i + batchSize, totalChunks) / totalChunks) * 60);
+                setPdfProgress(batchPercent);
+            }
+
+            setPdfStatusText('Indexation finalisée ! Livre enregistré dans la base de connaissances.');
+            setTimeout(() => {
+                setIsUploadingPdf(false);
+                setPdfProgress(0);
+                setPdfStatusText('');
+            }, 2000);
+
+            // Reload books list
+            loadBooks();
+
+        } catch (err: any) {
+            console.error('Failed to upload and index PDF:', err);
+            alert(`Erreur d'indexation : ${err.message || err}`);
+            setIsUploadingPdf(false);
+        }
+    };
+
+    // Delete indexed book
+    const handleDeleteBook = async (bookId: string) => {
+        if (confirm('Voulez-vous supprimer ce livre et toutes ses connaissances indexées ?')) {
+            try {
+                const { error } = await supabase
+                    .from('orthodontic_documents')
+                    .delete()
+                    .eq('id', bookId);
+                if (error) throw error;
+                
+                // Refresh list
+                loadBooks();
+            } catch (err) {
+                alert('Erreur lors de la suppression du livre.');
             }
         }
     };
 
-    const handleVoiceCommand = () => {
-        if (!speechService.isSupported) return;
-
-        if (isListening) {
-            speechService.stopListening();
-            setIsListening(false);
-        } else {
-            speechService.startListening(
-                (text) => {
-                    setAiInput(text);
-                    setIsListening(false);
-                    // Automatically submit voice result
-                    const userMessage = createMessage('user', text);
-                    const { nextStep, response } = getNextStep(convState.step, text, convState);
-                    const assistantMessage = createMessage('assistant', response);
-
-                    setConvState(prev => ({
-                        ...prev,
-                        step: nextStep,
-                        messages: [...prev.messages, userMessage, assistantMessage]
-                    }));
-
-                    setAiInput('');
-                    speechService.speak(response);
-                },
-                (error) => {
-                    console.error('Speech recognition error:', error);
-                    setIsListening(false);
-                }
-            );
-            setIsListening(true);
-        }
+    // Formatter for custom markdown diagnostic output
+    const formatReportText = (text: string) => {
+        if (!text) return '';
+        // Basic Markdown-to-HTML parser for clinical display
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/^-\s+(.*)$/gm, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+            .replace(/\n/g, '<br/>');
     };
-
-    const currentDate = new Date().toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-
-    const isToday = (dateStr: string) => {
-        const d = new Date(dateStr);
-        const today = new Date();
-        return d.getDate() === today.getDate() &&
-            d.getMonth() === today.getMonth() &&
-            d.getFullYear() === today.getFullYear();
-    };
-
-    const stats = {
-        totalUpcoming: upcomingAppointments.length,
-        todayCount: upcomingAppointments.filter(apt => isToday(apt.date)).length,
-        totalMinutes: upcomingAppointments.reduce((acc, apt) => acc + (apt.duration_minutes || 0), 0)
-    };
-
 
     return (
-        <div className="dashboard-page">
-            {/* Sidebar */}
-            <aside className="dashboard-sidebar">
-                <div className="sidebar-header">
-                    <Logo />
+        <div className="dashboard-container">
+            {/* Sidebar navigation */}
+            <aside className="sidebar-glass">
+                <div className="sidebar-brand">
+                    <Logo size="small" />
+                    <span className="brand-text gradient-text-cyan-blue">Casper Dental</span>
                 </div>
 
-                <nav className="sidebar-nav">
-                    <button
-                        className={`nav-item ${activeMenu === 'dashboard' ? 'active' : ''}`}
-                        onClick={() => setActiveMenu('dashboard')}
+                <nav className="sidebar-menu">
+                    <button 
+                        className={`sidebar-nav-btn ${activeTab === 'analyse' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('analyse')}
                     >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                            <polyline points="9 22 9 12 15 12 15 22" />
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                         </svg>
-                        <span>Tableau de bord</span>
+                        Analyse Clinique
+                    </button>
+                    
+                    <button 
+                        className={`sidebar-nav-btn ${activeTab === 'knowledge' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('knowledge')}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                        </svg>
+                        Connaissances PDF
                     </button>
 
-                    <button
-                        className={`nav-item ${activeMenu === 'calls' ? 'active' : ''}`}
-                        onClick={() => setActiveMenu('calls')}
+                    <button 
+                        className={`sidebar-nav-btn ${activeTab === 'history' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('history')}
                     >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l2.27-2.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
                         </svg>
-                        <span>Appels</span>
+                        Historique Scans
                     </button>
 
-                    <button
-                        className={`nav-item ${activeMenu === 'relances' ? 'active' : ''}`}
-                        onClick={() => setActiveMenu('relances')}
+                    <button 
+                        className={`sidebar-nav-btn ${activeTab === 'config' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('config')}
                     >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                         </svg>
-                        <span>Relances</span>
-                    </button>
-
-                    <button
-                        className={`nav-item ${activeMenu === 'patients' ? 'active' : ''}`}
-                        onClick={() => setActiveMenu('patients')}
-                    >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                        </svg>
-                        <span>Patients</span>
-                    </button>
-
-                    <button
-                        className={`nav-item ${activeMenu === 'planning' ? 'active' : ''}`}
-                        onClick={() => setActiveMenu('planning')}
-                    >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                            <line x1="16" y1="2" x2="16" y2="6" />
-                            <line x1="8" y1="2" x2="8" y2="6" />
-                            <line x1="3" y1="10" x2="21" y2="10" />
-                        </svg>
-                        <span>Planning</span>
-                    </button>
-
-                    <button
-                        className={`nav-item ${activeMenu === 'ai' ? 'active' : ''}`}
-                        onClick={() => setActiveMenu('ai')}
-                    >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z" />
-                            <circle cx="9" cy="13" r="1" />
-                            <circle cx="15" cy="13" r="1" />
-                            <path d="M9 17h6" />
-                        </svg>
-                        <span>Assistant Expert</span>
+                        Configuration / API
                     </button>
                 </nav>
 
-                {/* Practitioner Card */}
-                <div className="sidebar-practitioner">
-                    <div className="practitioner-avatar">
-                        {user?.photo && user.name !== 'Docteur' ? (
-                            <img src={user.photo} alt={user.name} />
-                        ) : (
-                            <div className="avatar-placeholder">
-                                {user?.name?.[0] || 'D'}
-                            </div>
-                        )}
+                <div className="sidebar-profile">
+                    <div className="profile-avatar-glow">
+                        {user?.name?.[0] || 'D'}
                     </div>
-                    <div className="practitioner-info">
-                        <h4>{user?.name || 'Dr. Praticien'}</h4>
-                        <p className="practitioner-rpps">RPPS: {user?.rpps || '00000000000'}</p>
-                        <p className="practitioner-profession">{user?.profession || 'Praticien'}</p>
-                        <p className="practitioner-specialty">{user?.specialty || 'Spécialité'}</p>
+                    <div className="profile-info">
+                        <h4>{user?.name || 'Dr. Dentiste'}</h4>
+                        <p>{user?.specialty || 'Chirurgien Orthodontiste'}</p>
                     </div>
-                    <button className="logout-btn" onClick={handleLogout} title="Déconnexion">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                            <polyline points="16 17 21 12 16 7" />
-                            <line x1="21" y1="12" x2="9" y2="12" />
-                        </svg>
-                    </button>
                 </div>
+
+                <button className="sidebar-logout" onClick={handleLogout}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    Se déconnecter
+                </button>
             </aside>
 
-            {/* Main Content */}
-            <main className="dashboard-main">
-                {/* Search Bar */}
-                <div className="dashboard-search">
-                    <div className="search-wrapper">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="M21 21l-4.35-4.35" />
-                        </svg>
-                        <input
-                            type="text"
-                            placeholder="Nom du patient, Diagnostics, Synthèse, RDV, Suivi, Administratif, Commentaires..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                </div>
-                {/* Dashboard Content */}
-                {activeMenu === 'patients' ? (
-                    <Patients />
-                ) : activeMenu === 'planning' ? (
-                    <Planning />
-                ) : activeMenu === 'calls' ? (
-                    <Calls />
-                ) : activeMenu === 'relances' ? (
-                    <FollowUps />
-                ) : activeMenu === 'ai' ? (
-                    <div className="dashboard-content ai-view">
-                        <div className="expert-assistant-header">
-                            <div className="expert-title">
-                                <span className="blue-gradient-text">ASSISTANT EXPERT</span>
-                                <span className="medical-text"> CASPER</span>
-                                <span className="flow-text"> DENTAL</span>
-                            </div>
-                            <p className="expert-subtitle">Posez vos questions, dictez vos notes, gérez vos tâches</p>
+            {/* Dashboard content */}
+            <main className="dashboard-content-area">
+                
+                {/* TAB 1: CLINICAL ANALYSIS */}
+                {activeTab === 'analyse' && (
+                    <>
+                        <div className="dashboard-header">
+                            <h1>Diagnostic Casper Expert</h1>
+                            <p>Déposez les photographies intra-buccales de votre patient pour initier l'analyse clinique par RAG.</p>
                         </div>
 
-                        <div className="assistant-messages-wrapper">
-                            <div className="ai-messages-container">
-                                {convState.messages.map((msg) => (
-                                    <div key={msg.id} className={`message-item message-${msg.role}`}>
-                                        {msg.content}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        <div className="analyse-grid">
+                            {/* Drag and Drop Zone Card */}
+                            <div className="glass-panel upload-panel">
+                                <h2>Nouveau Diagnostic</h2>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '25px' }}>
+                                    Glissez vos fichiers ou sélectionnez-les pour commencer.
+                                </p>
 
-                        {/* New Expert Input Design in Dashboard */}
-                        <div className="dashboard-expert-input">
-                            <div className="input-upper">
-                                <form className="expert-input-wrapper" onSubmit={handleAISubmit}>
-                                    <div className="expert-avatar-icon">
-                                        <img src={assistantAvatar} alt="AI" />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        placeholder="Décrivez vos besoins, prises de RDV, Suivis Patients,..."
-                                        value={aiInput}
-                                        onChange={(e) => setAiInput(e.target.value)}
-                                        disabled={isListening}
+                                <div className="patient-input-group">
+                                    <label htmlFor="patient-name">Nom ou Référence du Patient</label>
+                                    <input 
+                                        type="text" 
+                                        id="patient-name"
+                                        className="glass-input" 
+                                        value={patientName}
+                                        onChange={(e) => setPatientName(e.target.value)}
+                                        placeholder="Ex: Jean Dupont (N° 4015)"
+                                        disabled={isScanning}
                                     />
-                                    <button type="submit" className="expert-send-btn" disabled={!aiInput.trim()}>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                            <path d="M5 12h14M12 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
-                                </form>
-                            </div>
-
-                            <div className="input-lower">
-                                <button className="expert-plus-btn">+</button>
-                                <div className="specialty-selector">
-                                    <span className="specialty-icon">🦷</span>
-                                    <select defaultValue="orthodontisme">
-                                        <option value="orthodontisme">Orthodontie</option>
-                                        <option value="implantologie">Implantologie</option>
-                                        <option value="chirurgie">Chirurgie</option>
-                                    </select>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z" />
-                                    </svg>
                                 </div>
-                                <button
-                                    className={`expert-mic-btn ${isListening ? 'active' : ''}`}
-                                    onClick={handleVoiceCommand}
+
+                                <div className="patient-input-group">
+                                    <label>Clichés dentaires (Recommandé : 5-6 photos)</label>
+                                    <input 
+                                        type="file" 
+                                        id="dental-photos-input"
+                                        multiple 
+                                        accept="image/*" 
+                                        onChange={handleImageChange}
+                                        style={{ display: 'none' }}
+                                        disabled={isScanning}
+                                    />
+                                    
+                                    <label 
+                                        htmlFor="dental-photos-input" 
+                                        className="dropzone-container"
+                                    >
+                                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                            <circle cx="8.5" cy="8.5" r="1.5" />
+                                            <polyline points="21 15 16 10 5 21" />
+                                        </svg>
+                                        <span className="dropzone-title">Sélectionner les clichés dentaires</span>
+                                        <span className="dropzone-subtitle">Formats JPEG, PNG supportés. Maximum 6 images.</span>
+                                    </label>
+                                </div>
+
+                                {/* Preview Grid */}
+                                {previewUrls.length > 0 && (
+                                    <div className="previews-grid">
+                                        {previewUrls.map((url, idx) => (
+                                            <div key={idx} className="preview-item">
+                                                <img src={url} alt={`Preview ${idx + 1}`} />
+                                                {!isScanning && (
+                                                    <button 
+                                                        className="preview-remove-btn"
+                                                        onClick={() => removeImage(idx)}
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <button 
+                                    className="glass-btn glass-btn-primary start-scan-btn"
+                                    onClick={handleStartAnalysis}
+                                    disabled={isScanning || imageFiles.length === 0}
                                 >
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                        <line x1="12" y1="19" x2="12" y2="23" />
-                                        <line x1="8" y1="23" x2="16" y2="23" />
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                                        <path d="M2 12h20" />
                                     </svg>
+                                    Lancer l'analyse Casper
                                 </button>
                             </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="dashboard-content stats-view">
-                        <div className="stats-header">
-                            <h2>Bonjour Cabinet {user?.name || 'Casper Dental'}</h2>
-                        </div>
 
-                        <div className="dashboard-top-row">
-                            <div className="welcome-banner-container">
-                                <div className="welcome-banner" style={{ '--banner-bg': `url(${welcomeBannerImg})` } as React.CSSProperties}>
-                                    <div className="banner-overlay"></div>
-                                    <div className="banner-content">
-                                        <div className="banner-text-side">
-                                            <h1 className="banner-greeting">Bienvenue,</h1>
-                                            <a href="https://casperdental.fr/" target="_blank" rel="noopener noreferrer" className="banner-logo-wrapper">
-                                                <img src={casperLogoWelcome} alt="Casper Dental" className="banner-casper-logo" />
-                                            </a>
-                                            <div className="banner-subtext">
-                                                <p>Ravi de vous revoir !</p>
-                                                <p>Consultez votre Espace Praticien</p>
+                            {/* Scanner HUD Overlay */}
+                            <div className="glass-panel hud-panel">
+                                {isScanning ? (
+                                    <>
+                                        <div className="scan-animation-wrapper">
+                                            <div className="hud-circular-radar">
+                                                <div className="hud-radar-rotor"></div>
+                                                <div className="hud-radar-center">🦷</div>
                                             </div>
-                                            <div className="banner-date-section">
-                                                <p className="date-caption">Date d'aujourd'hui</p>
-                                                <p className="date-display">{currentDate}</p>
+                                            
+                                            <div className="hud-images-grid">
+                                                {previewUrls.slice(0, 3).map((url, i) => (
+                                                    <div key={i} className="hud-image-cell">
+                                                        <img src={url} alt="scanning" />
+                                                        <div className="scan-laser-line"></div>
+                                                    </div>
+                                                ))}
                                             </div>
+                                            
+                                            <div className="hud-grid-overlay"></div>
                                         </div>
+
+                                        <div>
+                                            <div className="hud-console-logs">
+                                                {consoleLogs.map((log, idx) => (
+                                                    <div key={idx} className="console-line">
+                                                        <span className="console-timestamp">[{log.time}]</span>
+                                                        <span>{log.msg}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <p className="console-status-text">{scanStatusText}</p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)', textAlign: 'center', padding: '30px' }}>
+                                        <span style={{ fontSize: '3rem', marginBottom: '15px' }}>🔮</span>
+                                        <h3 style={{ marginBottom: '8px' }}>Console Optique Clinique</h3>
+                                        <p style={{ fontSize: '0.9rem' }}>Veuillez soumettre des photos et démarrer Casper pour observer la télémétrie de scan et les diagnostics RAG.</p>
                                     </div>
-                                </div>
+                                )}
                             </div>
 
-                            {upcomingAppointments.length === 0 && !isLoading ? (
-                                <div className="empty-state-card-wrapper">
-                                    <EmptyState
-                                        title="Bienvenue dans votre cabinet"
-                                        message="Vous n'avez pas encore de données réelles. Commencez par créer votre premier patient pour activer toutes les fonctionnalités."
-                                        actionLabel="Créer un patient"
-                                        onAction={() => setActiveMenu('patients')}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="stats-side-panel">
-                                    <div className="forfait-card">
-                                        <h4>Forfait en cours</h4>
-                                        <p className="forfait-period">Suivi de consommation réel</p>
-                                        <div className="forfait-metrics">
-                                            <div className="metric">
-                                                <span className="label">UTILISÉ</span>
-                                                <span className="value used">{stats.totalMinutes} min</span>
-                                            </div>
+                            {/* Diagnostic & Traitement split outputs */}
+                            {analysisResult && (
+                                <div className="glass-panel results-panel">
+                                    <div className="results-header-row">
+                                        <div className="results-patient-tag">
+                                            <h2>Rapport Casper Clinique</h2>
+                                            <div className="patient-badge">Patient: {patientName || 'Anonyme'}</div>
                                         </div>
+
+                                        <div className="results-tabs">
+                                            <button 
+                                                className={`results-tab-btn ${activeResultTab === 'diag' ? 'active' : ''}`}
+                                                onClick={() => setActiveResultTab('diag')}
+                                            >
+                                                Diagnostic
+                                            </button>
+                                            <button 
+                                                className={`results-tab-btn ${activeResultTab === 'treat' ? 'active' : ''}`}
+                                                onClick={() => setActiveResultTab('treat')}
+                                            >
+                                                Plan de Traitement
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="results-split-container">
+                                        {activeResultTab === 'diag' ? (
+                                            <div className="results-content-box" style={{ gridColumn: '1 / -1' }}>
+                                                <h3>
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-cyan)" strokeWidth="2.5">
+                                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                                        <polyline points="14 2 14 8 20 8" />
+                                                    </svg>
+                                                    Diagnostic & Observations Cliniques
+                                                </h3>
+                                                <div 
+                                                    className="markdown-renderer"
+                                                    dangerouslySetInnerHTML={{ __html: formatReportText(analysisResult.diagnostic) }}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="results-content-box" style={{ gridColumn: '1 / -1' }}>
+                                                <h3>
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" strokeWidth="2.5">
+                                                        <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                                                        <polyline points="2 17 12 22 22 17" />
+                                                        <polyline points="2 12 12 17 22 12" />
+                                                    </svg>
+                                                    Stratégie Thérapeutique Conseillée
+                                                </h3>
+                                                <div 
+                                                    className="markdown-renderer"
+                                                    dangerouslySetInnerHTML={{ __html: formatReportText(analysisResult.traitement) }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {/* TAB 2: KNOWLEDGE BASE PDF UPLOAD */}
+                {activeTab === 'knowledge' && (
+                    <div className="kb-layout">
+                        <div className="dashboard-header">
+                            <h1>Base de Connaissances Orthodontiques</h1>
+                            <p>Enseignez à Casper la connaissance des plus grands livres scientifiques. Chargez les fichiers PDF pour en faire ses repères diagnostics.</p>
+                        </div>
+
+                        {/* Upload Card */}
+                        <div className="glass-panel kb-upload-card">
+                            <input 
+                                type="file" 
+                                id="pdf-doc-input" 
+                                accept="application/pdf"
+                                onChange={handlePdfUpload}
+                                style={{ display: 'none' }}
+                                disabled={isUploadingPdf}
+                            />
+                            
+                            <label htmlFor="pdf-doc-input" className="pdf-upload-zone">
+                                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <line x1="12" y1="18" x2="12" y2="12" />
+                                    <polyline points="9 15 12 12 15 15" />
+                                </svg>
+                                <span className="dropzone-title">Sélectionner un livre ou cours d'orthodontie (PDF)</span>
+                                <span className="dropzone-subtitle">Le fichier sera converti en blocs textuels indexés dans Supabase.</span>
+                            </label>
+
+                            {isUploadingPdf && (
+                                <div className="indexing-progress-card">
+                                    <div className="progress-header">
+                                        <span>{pdfStatusText}</span>
+                                        <span>{pdfProgress}%</span>
+                                    </div>
+                                    <div className="progress-bar-bg">
+                                        <div className="progress-bar-fill" style={{ width: `${pdfProgress}%` }}></div>
+                                    </div>
+                                    <div className="progress-details">
+                                        Ne fermez pas l'onglet. Extraction de texte sémantique et écriture Supabase en cours...
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {upcomingAppointments.length > 0 && (
-                            <div className="stats-grid" style={{ marginTop: '24px' }}>
-                                <div className="stats-main-card">
-                                    <div className="card-top">
-                                        <h3>Statistiques globales (30 jours)</h3>
-                                        <div className="legend">
-                                            <span className="dot hours-in"></span> Rendez-vous
-                                        </div>
-                                    </div>
-                                    <div className="mock-chart">
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '40px', width: '100%', padding: '20px' }}>
-                                            <div className="stat-big-number">
-                                                <span className="label">Aujourd'hui</span>
-                                                <span className="value">{stats.todayCount}</span>
-                                            </div>
-                                            <div className="stat-big-number">
-                                                <span className="label">À venir</span>
-                                                <span className="value">{stats.totalUpcoming}</span>
-                                            </div>
-                                            <div className="stat-big-number">
-                                                <span className="label">Temps prévu</span>
-                                                <span className="value">{Math.round(stats.totalMinutes / 60)}h {stats.totalMinutes % 60}m</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                        {/* Books catalog table */}
+                        <div className="glass-panel kb-books-card">
+                            <h2>Bibliothèque Scientifique de Casper ({books.length} livres indexés)</h2>
+                            
+                            {books.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                    Aucun livre d'orthodontie n'est encore enregistré dans la base Supabase.
                                 </div>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="glass-table-container">
+                                    <table className="glass-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Titre du Livre</th>
+                                                <th>Nom de fichier</th>
+                                                <th>Taille</th>
+                                                <th>Pages</th>
+                                                <th>Date d'ajout</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {books.map((book) => (
+                                                <tr key={book.id}>
+                                                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{book.title}</td>
+                                                    <td>{book.file_name}</td>
+                                                    <td>{(book.file_size / (1024 * 1024)).toFixed(2)} MB</td>
+                                                    <td>{book.total_pages} pages</td>
+                                                    <td>{new Date(book.created_at).toLocaleDateString('fr-FR')}</td>
+                                                    <td>
+                                                        <button 
+                                                            className="delete-table-btn"
+                                                            onClick={() => handleDeleteBook(book.id)}
+                                                            title="Supprimer ce livre"
+                                                        >
+                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <polyline points="3 6 5 6 21 6" />
+                                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                            </svg>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
-                        {upcomingAppointments.length > 0 && (
-                            <div className="dashboard-card appointments-card" style={{ marginTop: '24px' }}>
-                                <div className="card-header">
-                                    <h3>Mes prochains rendez-vous</h3>
+                {/* TAB 3: SCAN HISTORY */}
+                {activeTab === 'history' && (
+                    <div className="history-layout">
+                        <div className="dashboard-header">
+                            <h1>Historique des Diagnostics Cabinet</h1>
+                            <p>Consultez la liste des diagnostics et des stratégies de traitement générées par Casper.</p>
+                        </div>
+
+                        <div className="glass-panel history-card">
+                            {history.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                    Aucune analyse n'a été enregistrée pour le moment.
                                 </div>
-                                <div className="appointments-list">
-                                    {upcomingAppointments.map((apt) => (
-                                        <div key={apt.id} className="appointment-item">
-                                            <div className="appointment-time">
-                                                {new Date(apt.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                            </div>
-                                            <div className="appointment-details">
-                                                <span className="patient-name">{apt.patient?.prenom} {apt.patient?.nom}</span>
-                                                <span className="appointment-type">{apt.type}</span>
-                                            </div>
-                                        </div>
-                                    ))}
+                            ) : (
+                                <div className="glass-table-container">
+                                    <table className="glass-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Patient</th>
+                                                <th>Date du Diagnostic</th>
+                                                <th>Nombre de clichés</th>
+                                                <th>Résumé Clinique</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {history.map((item) => (
+                                                <tr key={item.id}>
+                                                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.patient_name}</td>
+                                                    <td>{new Date(item.created_at).toLocaleDateString('fr-FR')} à {new Date(item.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td>
+                                                    <td>{item.images?.length || 0} clichés</td>
+                                                    <td style={{ maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {item.diagnostic_text.slice(0, 70)}...
+                                                    </td>
+                                                    <td>
+                                                        <button 
+                                                            className="view-analysis-btn"
+                                                            onClick={() => setSelectedHistoryItem(item)}
+                                                        >
+                                                            Ouvrir le Dossier
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 4: CONFIGURATION / API */}
+                {activeTab === 'config' && (
+                    <div className="settings-layout">
+                        <div className="dashboard-header">
+                            <h1>Configuration & Statut</h1>
+                            <p>Gérez vos clés d'API IA et surveillez l'état de synchronisation de vos bases de stockage en ligne.</p>
+                        </div>
+
+                        <div className="glass-panel settings-card">
+                            <h2>Clé d'API Gemini</h2>
+                            
+                            <div className="settings-row">
+                                <label htmlFor="gemini-api-key">Clé d'API Google Gemini (Studio AI)</label>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <input 
+                                        type={showKey ? 'text' : 'password'}
+                                        id="gemini-api-key"
+                                        className="glass-input"
+                                        value={geminiKey}
+                                        onChange={(e) => setGeminiKey(e.target.value)}
+                                        placeholder="AIzaSy..."
+                                    />
+                                    <button 
+                                        className="glass-btn glass-btn-secondary"
+                                        style={{ padding: '12px' }}
+                                        onClick={() => setShowKey(!showKey)}
+                                    >
+                                        {showKey ? 'Masquer' : 'Afficher'}
+                                    </button>
+                                </div>
+                                <div className="settings-row-help">
+                                    Vous pouvez obtenir une clé d'API gratuite sur le site <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.
                                 </div>
                             </div>
-                        )}
+
+                            <button 
+                                className="glass-btn glass-btn-primary save-settings-btn"
+                                onClick={saveApiKey}
+                            >
+                                Enregistrer la clé
+                            </button>
+                        </div>
+
+                        <div className="glass-panel settings-card">
+                            <h2>Statuts d'infrastructure</h2>
+                            
+                            <div className="settings-row">
+                                <div>Statut de la base Supabase :</div>
+                                <div className="status-badge-container">
+                                    {dbConnected === true && (
+                                        <span className="status-badge active">
+                                            <span className="badge-dot"></span>
+                                            Connecté (En ligne)
+                                        </span>
+                                    )}
+                                    {dbConnected === false && (
+                                        <span className="status-badge inactive">
+                                            <span className="badge-dot"></span>
+                                            Erreur de connexion
+                                        </span>
+                                    )}
+                                    {dbConnected === null && (
+                                        <span className="status-badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }}>
+                                            Vérification...
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="settings-row">
+                                <div>Authentification Praticien :</div>
+                                <div className="status-badge-container">
+                                    <span className="status-badge active">
+                                        <span className="badge-dot"></span>
+                                        Dr. {user?.name || 'Praticien'} (RPPS: {user?.rpps || 'Habilité'})
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
             </main>
+
+            {/* Modal popup for history items */}
+            {selectedHistoryItem && (
+                <div className="glass-modal-overlay" onClick={() => setSelectedHistoryItem(null)}>
+                    <div className="glass-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <button className="modal-close-btn" onClick={() => setSelectedHistoryItem(null)}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                        
+                        <div className="results-header-row">
+                            <div className="results-patient-tag">
+                                <h2>Rapport Archivé Casper</h2>
+                                <div className="patient-badge">Patient: {selectedHistoryItem.patient_name}</div>
+                            </div>
+                            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                                Diagnostic du {new Date(selectedHistoryItem.created_at).toLocaleDateString('fr-FR')}
+                            </span>
+                        </div>
+
+                        {selectedHistoryItem.images && selectedHistoryItem.images.length > 0 && (
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', overflowX: 'auto', paddingBottom: '10px' }}>
+                                {selectedHistoryItem.images.map((img, i) => (
+                                    <img 
+                                        key={i} 
+                                        src={img} 
+                                        alt="dentition" 
+                                        style={{ height: '90px', width: '120px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }} 
+                                    />
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="results-split-container">
+                            <div className="results-content-box">
+                                <h3>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-cyan)" strokeWidth="2.5">
+                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                    </svg>
+                                    Diagnostic Clinique
+                                </h3>
+                                <div 
+                                    className="markdown-renderer"
+                                    dangerouslySetInnerHTML={{ __html: formatReportText(selectedHistoryItem.diagnostic_text) }}
+                                />
+                            </div>
+                            
+                            <div className="results-content-box">
+                                <h3>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" strokeWidth="2.5">
+                                        <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                                        <polyline points="2 17 12 22 22 17" />
+                                        <polyline points="2 12 12 17 22 12" />
+                                    </svg>
+                                    Stratégie Thérapeutique
+                                </h3>
+                                <div 
+                                    className="markdown-renderer"
+                                    dangerouslySetInnerHTML={{ __html: formatReportText(selectedHistoryItem.traitement_text) }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
