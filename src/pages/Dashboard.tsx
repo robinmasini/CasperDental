@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import { analyzeDentition, getGeminiApiKey } from '../services/geminiService';
 import defaultBookData from '../assets/cgs_volume_61.json';
+import heic2any from 'heic2any';
 import './Dashboard.css';
 
 interface BookDocument {
@@ -185,8 +186,6 @@ const Dashboard = () => {
                 const nameLower = file.name.toLowerCase();
                 if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
                     try {
-                        const heic2anyModule = await import('heic2any');
-                        const heic2any = heic2anyModule.default || heic2anyModule;
                         const resultBlob = await heic2any({
                             blob: file,
                             toType: 'image/jpeg',
@@ -661,8 +660,8 @@ const Dashboard = () => {
                                             <circle cx="8.5" cy="8.5" r="1.5" />
                                             <polyline points="21 15 16 10 5 21" />
                                         </svg>
-                                        <span className="dropzone-title">Sélectionner les clichés dentaires</span>
-                                        <span className="dropzone-subtitle">Formats JPEG, PNG, HEIC supportés. Maximum 6 images.</span>
+                                        <div className="dropzone-title">Sélectionner les clichés dentaires</div>
+                                        <div className="dropzone-subtitle">Formats JPEG, PNG, HEIC supportés. Maximum 6 images.</div>
                                     </label>
                                 </div>
 
@@ -831,8 +830,8 @@ const Dashboard = () => {
                                     <line x1="12" y1="18" x2="12" y2="12" />
                                     <polyline points="9 15 12 12 15 15" />
                                 </svg>
-                                <span className="dropzone-title">Sélectionner un livre ou cours d'orthodontie (PDF)</span>
-                                <span className="dropzone-subtitle">Le fichier sera converti en blocs textuels indexés dans Supabase.</span>
+                                <div className="dropzone-title">Sélectionner un livre ou cours d'orthodontie (PDF)</div>
+                                <div className="dropzone-subtitle">Le fichier sera converti en blocs textuels indexés dans Supabase.</div>
                             </label>
 
                             {isUploadingPdf && (
