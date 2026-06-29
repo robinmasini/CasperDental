@@ -45,18 +45,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         // Check active sessions and sets the user
         const initializeAuth = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session?.user) {
-                    setSupabaseUser(session.user);
-                    const profile = await fetchProfile(session.user.id);
-                    setUser(profile);
-                }
-            } catch (err) {
-                console.error('Failed to initialize authentication:', err);
-            } finally {
+            // Instant bypass if using local placeholders to avoid DNS timeouts
+            const isPlaceholder = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
+            if (isPlaceholder) {
                 setLoading(false);
+                return;
             }
+
+            // Create a timeout race of 1.2 seconds
+            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1200));
+            const authPromise = (async () => {
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.user) {
+                        setSupabaseUser(session.user);
+                        const profile = await fetchProfile(session.user.id);
+                        setUser(profile);
+                    }
+                } catch (err) {
+                    console.error('Failed to initialize authentication:', err);
+                }
+            })();
+
+            await Promise.race([authPromise, timeoutPromise]);
+            setLoading(false);
         };
 
         initializeAuth();

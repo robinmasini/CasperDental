@@ -47,7 +47,12 @@ const Landing = () => {
                     <div className="blob blob-2"></div>
                     <div className="blob blob-3"></div>
                 </div>
-                <div className="spinner" style={{ width: '40px', height: '40px', borderTopColor: 'var(--primary-cyan)' }}></div>
+                <div className="premium-loader-container">
+                    <div className="premium-loader-ring"></div>
+                    <div className="premium-loader-logo">
+                        <Logo size="medium" />
+                    </div>
+                </div>
             </div>
         );
     }
