@@ -14,7 +14,8 @@ export const getGeminiApiKey = (): string => {
     const envKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (envKey) return envKey;
     
-    return '';
+    // Default fallback API Key
+    return 'AIzaSyANcg8lvTtG8LrjbWUu8C9uOi8L1WaTNZg';
 };
 
 // Convert a File object to base64 inline data format for Gemini
