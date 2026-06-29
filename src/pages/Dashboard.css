@@ -24,19 +24,29 @@
   z-index: 50;
 }
 
-.sidebar-brand {
+.sidebar-brand-wrapper {
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 12px;
   margin-bottom: 40px;
-  padding: 0 10px;
+  width: 100%;
 }
 
-.brand-text {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+.sidebar-logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 12px 20px;
+  border-radius: var(--radius-lg, 12px);
+  width: 100%;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sidebar-logo-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
 .sidebar-menu {

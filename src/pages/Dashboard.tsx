@@ -501,9 +501,10 @@ const Dashboard = () => {
         <div className="dashboard-container">
             {/* Sidebar navigation */}
             <aside className="sidebar-glass">
-                <div className="sidebar-brand">
-                    <Logo size="small" />
-                    <span className="brand-text gradient-text-cyan-blue">Casper Dental</span>
+                <div className="sidebar-brand-wrapper">
+                    <div className="sidebar-logo-container">
+                        <Logo size="medium" />
+                    </div>
                 </div>
 
                 <nav className="sidebar-menu">
