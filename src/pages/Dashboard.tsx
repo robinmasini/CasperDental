@@ -183,10 +183,10 @@ const Dashboard = () => {
 
             for (const file of filesArray) {
                 const nameLower = file.name.toLowerCase();
-                if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic') {
+                if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
                     try {
                         const heic2anyModule = await import('heic2any');
-                        const heic2any = heic2anyModule.default;
+                        const heic2any = heic2anyModule.default || heic2anyModule;
                         const resultBlob = await heic2any({
                             blob: file,
                             toType: 'image/jpeg',
@@ -646,7 +646,7 @@ const Dashboard = () => {
                                         type="file" 
                                         id="dental-photos-input"
                                         multiple 
-                                        accept="image/*" 
+                                        accept="image/*,.heic,.HEIC,.heif,.HEIF" 
                                         onChange={handleImageChange}
                                         style={{ display: 'none' }}
                                         disabled={isScanning}
@@ -662,7 +662,7 @@ const Dashboard = () => {
                                             <polyline points="21 15 16 10 5 21" />
                                         </svg>
                                         <span className="dropzone-title">Sélectionner les clichés dentaires</span>
-                                        <span className="dropzone-subtitle">Formats JPEG, PNG supportés. Maximum 6 images.</span>
+                                        <span className="dropzone-subtitle">Formats JPEG, PNG, HEIC supportés. Maximum 6 images.</span>
                                     </label>
                                 </div>
 
