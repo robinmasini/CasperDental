@@ -51,6 +51,34 @@ export const searchKnowledgeBase = async (keywords: string[]): Promise<string> =
     if (!keywords || keywords.length === 0) return '';
     
     try {
+        const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
+        if (isMockAuth) {
+            const localKnowledge = localStorage.getItem('casper_mock_knowledge');
+            if (!localKnowledge) return '';
+            
+            const chunks: any[] = JSON.parse(localKnowledge);
+            let matchingChunks: any[] = [];
+            
+            for (const kw of keywords.slice(0, 5)) {
+                const kwLower = kw.toLowerCase();
+                const matched = chunks.filter(c => c.content?.toLowerCase().includes(kwLower)).slice(0, 3);
+                matchingChunks = [...matchingChunks, ...matched];
+            }
+            
+            if (matchingChunks.length === 0) {
+                return '';
+            }
+            
+            const uniqueChunks = Array.from(new Map(matchingChunks.map(item => [item.content, item])).values());
+            
+            return uniqueChunks
+                .map((chunk: any) => {
+                    const bookTitle = chunk.book_title || 'Livre de Référence';
+                    return `[Source: ${bookTitle}, Page: ${chunk.page_number}]\n${chunk.content}`;
+                })
+                .join('\n\n---\n\n');
+        }
+
         // Construct query filter
         // We will perform searches for the top keywords
         let allChunks: any[] = [];

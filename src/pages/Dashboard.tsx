@@ -65,6 +65,11 @@ const Dashboard = () => {
     // Check database connection and load API Key
     useEffect(() => {
         const pingDb = async () => {
+            const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
+            if (isMockAuth) {
+                setDbConnected(true);
+                return;
+            }
             try {
                 const { count, error } = await supabase
                     .from('orthodontic_documents')
@@ -85,6 +90,15 @@ const Dashboard = () => {
 
     // Load indexed orthodontic books
     const loadBooks = async () => {
+        const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
+        if (isMockAuth) {
+            const localBooks = localStorage.getItem('casper_mock_books');
+            if (localBooks) {
+                setBooks(JSON.parse(localBooks));
+            }
+            return;
+        }
+
         try {
             const { data, error } = await supabase
                 .from('orthodontic_documents')
@@ -92,14 +106,30 @@ const Dashboard = () => {
                 .order('created_at', { ascending: false });
             if (!error && data) {
                 setBooks(data);
+            } else {
+                const localBooks = localStorage.getItem('casper_mock_books');
+                if (localBooks) setBooks(JSON.parse(localBooks));
             }
         } catch (e) {
-            console.error('Failed to load books:', e);
+            console.error('Failed to load books from Supabase, loading local:', e);
+            const localBooks = localStorage.getItem('casper_mock_books');
+            if (localBooks) {
+                setBooks(JSON.parse(localBooks));
+            }
         }
     };
 
     // Load past orthodontic analyses
     const loadHistory = async () => {
+        const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
+        if (isMockAuth) {
+            const localHistory = localStorage.getItem('casper_mock_history');
+            if (localHistory) {
+                setHistory(JSON.parse(localHistory));
+            }
+            return;
+        }
+
         try {
             const { data, error } = await supabase
                 .from('dental_analyses')
@@ -107,9 +137,16 @@ const Dashboard = () => {
                 .order('created_at', { ascending: false });
             if (!error && data) {
                 setHistory(data);
+            } else {
+                const localHistory = localStorage.getItem('casper_mock_history');
+                if (localHistory) setHistory(JSON.parse(localHistory));
             }
         } catch (e) {
-            console.error('Failed to load analyses history:', e);
+            console.error('Failed to load analyses history from Supabase, loading local:', e);
+            const localHistory = localStorage.getItem('casper_mock_history');
+            if (localHistory) {
+                setHistory(JSON.parse(localHistory));
+            }
         }
     };
 
@@ -214,8 +251,8 @@ const Dashboard = () => {
             setAnalysisResult(result);
             setIsScanning(false);
 
-            // Save to Supabase History
-            if (supabaseUser) {
+            // Save to History (Supabase or Local fallback)
+            try {
                 // Convert images to base64 array for local persistence if needed
                 const base64Images: string[] = [];
                 for (const file of imageFiles) {
@@ -227,16 +264,44 @@ const Dashboard = () => {
                     base64Images.push(await b64Promise);
                 }
 
-                await supabase.from('dental_analyses').insert({
-                    user_id: supabaseUser.id,
-                    patient_name: currentPatient,
-                    images: base64Images,
-                    diagnostic_text: result.diagnostic,
-                    traitement_text: result.traitement
-                });
+                const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
+                let savedToSupabase = false;
+
+                if (supabaseUser && !isMockAuth) {
+                    const { error } = await supabase.from('dental_analyses').insert({
+                        user_id: supabaseUser.id,
+                        patient_name: currentPatient,
+                        images: base64Images,
+                        diagnostic_text: result.diagnostic,
+                        traitement_text: result.traitement
+                    });
+                    if (!error) {
+                        savedToSupabase = true;
+                    } else {
+                        console.warn('Failed to save to Supabase, falling back to local history:', error.message);
+                    }
+                }
+
+                if (!savedToSupabase) {
+                    const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
+                    const localHistory = JSON.parse(localHistoryStr);
+                    const newAnalysis = {
+                        id: 'mock-analysis-' + Date.now(),
+                        patient_name: currentPatient,
+                        created_at: new Date().toISOString(),
+                        images: base64Images,
+                        diagnostic_text: result.diagnostic,
+                        traitement_text: result.traitement
+                    };
+                    localHistory.unshift(newAnalysis);
+                    localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
+                    console.log('Saved analysis locally.');
+                }
                 
                 // Refresh history
                 loadHistory();
+            } catch (saveErr) {
+                console.error('Failed to save history:', saveErr);
             }
 
         } catch (err: any) {
@@ -272,6 +337,52 @@ const Dashboard = () => {
                 setPdfProgress(percent);
                 setPdfStatusText(`Lecture du document : page ${current}/${total}...`);
             });
+
+            const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
+            if (isMockAuth) {
+                setPdfStatusText('Création de la référence du livre...');
+                const bookId = 'mock-book-' + Date.now();
+                const newBook = {
+                    id: bookId,
+                    title: file.name.replace('.pdf', ''),
+                    file_name: file.name,
+                    file_size: file.size,
+                    total_pages: parsedPages.length,
+                    created_at: new Date().toISOString()
+                };
+
+                const localBooksStr = localStorage.getItem('casper_mock_books') || '[]';
+                const localBooks = JSON.parse(localBooksStr);
+                localBooks.unshift(newBook);
+                localStorage.setItem('casper_mock_books', JSON.stringify(localBooks));
+
+                setPdfStatusText('Découpage scientifique du texte...');
+                const chunks = chunkParsedPages(parsedPages, 1000, 200);
+
+                const mockChunks = chunks.map((chunk, index) => ({
+                    id: `mock-chunk-${bookId}-${index}`,
+                    document_id: bookId,
+                    book_title: file.name.replace('.pdf', ''),
+                    content: chunk.content,
+                    page_number: chunk.pageNumber,
+                    chunk_index: chunk.chunkIndex
+                }));
+
+                const localKnowledgeStr = localStorage.getItem('casper_mock_knowledge') || '[]';
+                const localKnowledge = JSON.parse(localKnowledgeStr);
+                localStorage.setItem('casper_mock_knowledge', JSON.stringify([...localKnowledge, ...mockChunks]));
+
+                setPdfProgress(100);
+                setPdfStatusText('Indexation finalisée ! Livre enregistré dans la base de connaissances.');
+                setTimeout(() => {
+                    setIsUploadingPdf(false);
+                    setPdfProgress(0);
+                    setPdfStatusText('');
+                }, 2000);
+
+                loadBooks();
+                return;
+            }
 
             setPdfStatusText('Création de la référence du livre...');
             
@@ -340,6 +451,26 @@ const Dashboard = () => {
     const handleDeleteBook = async (bookId: string) => {
         if (confirm('Voulez-vous supprimer ce livre et toutes ses connaissances indexées ?')) {
             try {
+                const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
+                if (isMockAuth) {
+                    const localBooks = localStorage.getItem('casper_mock_books');
+                    if (localBooks) {
+                        const booksList = JSON.parse(localBooks);
+                        const updatedBooks = booksList.filter((b: any) => b.id !== bookId);
+                        localStorage.setItem('casper_mock_books', JSON.stringify(updatedBooks));
+                    }
+                    
+                    const localKnowledge = localStorage.getItem('casper_mock_knowledge');
+                    if (localKnowledge) {
+                        const chunks = JSON.parse(localKnowledge);
+                        const updatedChunks = chunks.filter((c: any) => c.document_id !== bookId);
+                        localStorage.setItem('casper_mock_knowledge', JSON.stringify(updatedChunks));
+                    }
+                    
+                    loadBooks();
+                    return;
+                }
+
                 const { error } = await supabase
                     .from('orthodontic_documents')
                     .delete()
