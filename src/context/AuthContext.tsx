@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 
                 const mockProfile = {
                     id: 'mock-user-id',
-                    name: 'Dr. Casper',
+                    name: 'Casper',
                     email: storedEmail,
                     rpps: '10001234567',
                     profession: 'Chirurgien-Dentiste',
@@ -175,7 +175,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             
             const mockProfile = {
                 id: 'mock-user-id',
-                name: 'Dr. Casper',
+                name: 'Casper',
                 email: email || 'dr.dentiste@cabinet.fr',
                 rpps: '10001234567',
                 profession: 'Chirurgien-Dentiste',
