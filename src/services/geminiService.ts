@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import defaultBookData from '../assets/cgs_volume_61.json';
 
 export interface AnalysisResult {
     diagnostic: string;
@@ -50,27 +51,25 @@ const base64ToGenerativePart = (base64String: string, mimeType: string = 'image/
 export const searchKnowledgeBase = async (keywords: string[]): Promise<string> => {
     if (!keywords || keywords.length === 0) return '';
     
+    const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
+    const isCgsDeleted = localStorage.getItem('casper_cgs_deleted') === 'true';
+
     try {
-        const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
         if (isMockAuth) {
             const localKnowledge = localStorage.getItem('casper_mock_knowledge');
-            if (!localKnowledge) return '';
+            const parsedLocal = localKnowledge ? JSON.parse(localKnowledge) : [];
+            const chunks = isCgsDeleted ? parsedLocal : [...defaultBookData.chunks, ...parsedLocal];
             
-            const chunks: any[] = JSON.parse(localKnowledge);
             let matchingChunks: any[] = [];
-            
             for (const kw of keywords.slice(0, 5)) {
                 const kwLower = kw.toLowerCase();
                 const matched = chunks.filter(c => c.content?.toLowerCase().includes(kwLower)).slice(0, 3);
                 matchingChunks = [...matchingChunks, ...matched];
             }
             
-            if (matchingChunks.length === 0) {
-                return '';
-            }
+            if (matchingChunks.length === 0) return '';
             
             const uniqueChunks = Array.from(new Map(matchingChunks.map(item => [item.content, item])).values());
-            
             return uniqueChunks
                 .map((chunk: any) => {
                     const bookTitle = chunk.book_title || 'Livre de Référence';
@@ -95,6 +94,28 @@ export const searchKnowledgeBase = async (keywords: string[]): Promise<string> =
             }
         }
         
+        // If Supabase has no results and the default CGS book is not deleted,
+        // we can merge the default book chunks as a fallback
+        if (allChunks.length === 0 && !isCgsDeleted) {
+            const defaultChunks = defaultBookData.chunks;
+            let matchingChunks: any[] = [];
+            for (const kw of keywords.slice(0, 5)) {
+                const kwLower = kw.toLowerCase();
+                const matched = defaultChunks.filter(c => c.content?.toLowerCase().includes(kwLower)).slice(0, 3);
+                matchingChunks = [...matchingChunks, ...matched];
+            }
+            if (matchingChunks.length > 0) {
+                const uniqueChunks = Array.from(new Map(matchingChunks.map(item => [item.content, item])).values());
+                return uniqueChunks
+                    .map((chunk: any) => {
+                        const bookTitle = chunk.book_title || 'Livre de Référence';
+                        return `[Source: ${bookTitle}, Page: ${chunk.page_number}]\n${chunk.content}`;
+                    })
+                    .join('\n\n---\n\n');
+            }
+            return '';
+        }
+
         if (allChunks.length === 0) {
             return '';
         }
@@ -110,8 +131,32 @@ export const searchKnowledgeBase = async (keywords: string[]): Promise<string> =
             .join('\n\n---\n\n');
             
     } catch (err) {
-        console.error('Error querying Supabase knowledge base:', err);
-        return '';
+        console.error('Error querying Supabase knowledge base, using local fallback:', err);
+        try {
+            const localKnowledge = localStorage.getItem('casper_mock_knowledge');
+            const parsedLocal = localKnowledge ? JSON.parse(localKnowledge) : [];
+            const chunks = isCgsDeleted ? parsedLocal : [...defaultBookData.chunks, ...parsedLocal];
+            
+            let matchingChunks: any[] = [];
+            for (const kw of keywords.slice(0, 5)) {
+                const kwLower = kw.toLowerCase();
+                const matched = chunks.filter(c => c.content?.toLowerCase().includes(kwLower)).slice(0, 3);
+                matchingChunks = [...matchingChunks, ...matched];
+            }
+            
+            if (matchingChunks.length === 0) return '';
+            
+            const uniqueChunks = Array.from(new Map(matchingChunks.map(item => [item.content, item])).values());
+            return uniqueChunks
+                .map((chunk: any) => {
+                    const bookTitle = chunk.book_title || 'Livre de Référence';
+                    return `[Source: ${bookTitle}, Page: ${chunk.page_number}]\n${chunk.content}`;
+                })
+                .join('\n\n---\n\n');
+        } catch (fallbackErr) {
+            console.error('Local fallback search failed:', fallbackErr);
+            return '';
+        }
     }
 };
 

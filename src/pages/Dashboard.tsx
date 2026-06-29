@@ -5,6 +5,7 @@ import Logo from '../components/Logo';
 import { supabase } from '../lib/supabase';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import { analyzeDentition, getGeminiApiKey } from '../services/geminiService';
+import defaultBookData from '../assets/cgs_volume_61.json';
 import './Dashboard.css';
 
 interface BookDocument {
@@ -91,11 +92,14 @@ const Dashboard = () => {
     // Load indexed orthodontic books
     const loadBooks = async () => {
         const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
+        const isCgsDeleted = localStorage.getItem('casper_cgs_deleted') === 'true';
+        
         if (isMockAuth) {
             const localBooks = localStorage.getItem('casper_mock_books');
-            if (localBooks) {
-                setBooks(JSON.parse(localBooks));
-            }
+            const parsedLocal = localBooks ? JSON.parse(localBooks) : [];
+            const hasDefault = parsedLocal.some((b: any) => b.id === defaultBookData.document.id);
+            const combinedBooks = (hasDefault || isCgsDeleted) ? parsedLocal : [defaultBookData.document, ...parsedLocal];
+            setBooks(combinedBooks);
             return;
         }
 
@@ -105,17 +109,21 @@ const Dashboard = () => {
                 .select('*')
                 .order('created_at', { ascending: false });
             if (!error && data) {
-                setBooks(data);
+                const hasDefault = data.some((b: any) => b.id === defaultBookData.document.id || b.title.includes('61st volume'));
+                const combined = (hasDefault || isCgsDeleted) ? data : [defaultBookData.document, ...data];
+                setBooks(combined);
             } else {
                 const localBooks = localStorage.getItem('casper_mock_books');
-                if (localBooks) setBooks(JSON.parse(localBooks));
+                const parsedLocal = localBooks ? JSON.parse(localBooks) : [];
+                const hasDefault = parsedLocal.some((b: any) => b.id === defaultBookData.document.id);
+                setBooks((hasDefault || isCgsDeleted) ? parsedLocal : [defaultBookData.document, ...parsedLocal]);
             }
         } catch (e) {
             console.error('Failed to load books from Supabase, loading local:', e);
             const localBooks = localStorage.getItem('casper_mock_books');
-            if (localBooks) {
-                setBooks(JSON.parse(localBooks));
-            }
+            const parsedLocal = localBooks ? JSON.parse(localBooks) : [];
+            const hasDefault = parsedLocal.some((b: any) => b.id === defaultBookData.document.id);
+            setBooks((hasDefault || isCgsDeleted) ? parsedLocal : [defaultBookData.document, ...parsedLocal]);
         }
     };
 
@@ -168,16 +176,41 @@ const Dashboard = () => {
     };
 
     // Handle images selection
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const filesArray = Array.from(e.target.files);
+            const processedFiles: File[] = [];
+
+            for (const file of filesArray) {
+                const nameLower = file.name.toLowerCase();
+                if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic') {
+                    try {
+                        const heic2anyModule = await import('heic2any');
+                        const heic2any = heic2anyModule.default;
+                        const resultBlob = await heic2any({
+                            blob: file,
+                            toType: 'image/jpeg',
+                            quality: 0.8
+                        });
+                        const blob = Array.isArray(resultBlob) ? resultBlob[0] : resultBlob;
+                        const convertedFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+                            type: 'image/jpeg'
+                        });
+                        processedFiles.push(convertedFile);
+                    } catch (err) {
+                        console.error('HEIC conversion error, using original file:', err);
+                        processedFiles.push(file);
+                    }
+                } else {
+                    processedFiles.push(file);
+                }
+            }
             
             // Limit to 6 photos max
-            const updatedFiles = [...imageFiles, ...filesArray].slice(0, 6);
-            setImageFiles(updatedFiles);
+            setImageFiles(prev => [...prev, ...processedFiles].slice(0, 6));
 
             // Generate preview URLs
-            const newPreviews = filesArray.map(file => URL.createObjectURL(file));
+            const newPreviews = processedFiles.map(file => URL.createObjectURL(file));
             setPreviewUrls(prev => [...prev, ...newPreviews].slice(0, 6));
         }
     };
@@ -451,6 +484,9 @@ const Dashboard = () => {
     const handleDeleteBook = async (bookId: string) => {
         if (confirm('Voulez-vous supprimer ce livre et toutes ses connaissances indexées ?')) {
             try {
+                if (bookId === 'cgs-volume-61') {
+                    localStorage.setItem('casper_cgs_deleted', 'true');
+                }
                 const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
                 if (isMockAuth) {
                     const localBooks = localStorage.getItem('casper_mock_books');
