@@ -48,9 +48,8 @@ const Landing = () => {
                     <div className="blob blob-3"></div>
                 </div>
                 <div className="premium-loader-container">
-                    <div className="premium-loader-ring"></div>
-                    <div className="premium-loader-logo">
-                        <Logo size="medium" />
+                    <div className="premium-loader-logo neon-glow-loader">
+                        <Logo size="large" />
                     </div>
                 </div>
             </div>
