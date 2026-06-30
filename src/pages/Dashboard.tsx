@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
-import { supabase } from '../lib/supabase';
+import { supabase, uploadDentalPhoto } from '../lib/supabase';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
-import { analyzeDentition, getGeminiApiKey } from '../services/geminiService';
+import { analyzeDentition, getGeminiApiKey, askOrthoMind } from '../services/geminiService';
+import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import defaultBookData from '../assets/cgs_volume_61.json';
 import heic2any from 'heic2any';
 import './Dashboard.css';
@@ -32,7 +33,102 @@ const Dashboard = () => {
     const { user, logout, supabaseUser } = useAuth();
     
     // Tabs state
-    const [activeTab, setActiveTab] = useState<'analyse' | 'knowledge' | 'history' | 'config'>('analyse');
+    const [activeTab, setActiveTab] = useState<'analyse' | 'orthomind' | 'knowledge' | 'history' | 'config'>('analyse');
+
+    // OrthoMind Chat States
+    const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
+        { 
+            role: 'assistant', 
+            content: 'Bonjour Dr. Desouches ! 👋\n\nJe suis **OrthoMind**, votre assistant clinique intelligent pour le cabinet YouSmile. Je suis connecté à votre base de connaissances.\n\nPosez-moi n\'importe quelle question sur vos cours, livres de référence en orthodontie indexés, ou cas cliniques.' 
+        }
+    ]);
+    const [chatInputValue, setChatInputValue] = useState('');
+    const [chatAvatarState, setChatAvatarState] = useState<OrthoMindState>('idle');
+    const [isChatTyping, setIsChatTyping] = useState(false);
+    const chatEndRef = useRef<HTMLDivElement>(null);
+
+    // Clinical Analysis Avatar State
+    const [analysisAvatarState, setAnalysisAvatarState] = useState<OrthoMindState>('idle');
+
+    // Sync Clinical Analysis Avatar State
+    useEffect(() => {
+        if (analysisAvatarState === 'speaking') return;
+        
+        if (isScanning) {
+            setAnalysisAvatarState('thinking');
+        } else if (imageFiles.length > 0) {
+            setAnalysisAvatarState('listening');
+        } else {
+            setAnalysisAvatarState('idle');
+        }
+    }, [imageFiles, isScanning]);
+
+    // Auto-scroll chat messages
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatMessages, isChatTyping]);
+
+    const handleSendChatMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!chatInputValue.trim() || isChatTyping) return;
+
+        const userText = chatInputValue.trim();
+        setChatInputValue('');
+        
+        // Append user message
+        const newHistory = [...chatMessages, { role: 'user' as const, content: userText }];
+        setChatMessages(newHistory);
+        
+        // Set avatar state to Thinking
+        setChatAvatarState('thinking');
+        setIsChatTyping(true);
+
+        try {
+            // Call AI service
+            const reply = await askOrthoMind(newHistory);
+            
+            // Set avatar state to Speaking
+            setChatAvatarState('speaking');
+            setIsChatTyping(false);
+
+            // Simulate typing stream effect
+            let currentText = '';
+            const replyWords = reply.split(' ');
+            let wordIndex = 0;
+            
+            // Add initial empty reply to edit
+            setChatMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+            const streamInterval = setInterval(() => {
+                if (wordIndex < replyWords.length) {
+                    currentText += (wordIndex === 0 ? '' : ' ') + replyWords[wordIndex];
+                    setChatMessages(prev => {
+                        const updated = [...prev];
+                        if (updated.length > 0) {
+                            updated[updated.length - 1] = { role: 'assistant', content: currentText };
+                        }
+                        return updated;
+                    });
+                    wordIndex++;
+                } else {
+                    clearInterval(streamInterval);
+                    // Return to idle after 600ms grace period once text completes
+                    setTimeout(() => {
+                        setChatAvatarState('idle');
+                    }, 600);
+                }
+            }, 30 + Math.random() * 20); // Quick simulation of words streaming
+
+        } catch (err: any) {
+            console.error('Failed to query OrthoMind:', err);
+            setIsChatTyping(false);
+            setChatMessages(prev => [...prev, { 
+                role: 'assistant', 
+                content: `⚠️ Désolé, je n'ai pas pu générer une réponse. Une erreur est survenue : ${err.message || err}` 
+            }]);
+            setChatAvatarState('idle');
+        }
+    };
     
     // API Configuration key
     const [geminiKey, setGeminiKey] = useState('');
@@ -282,39 +378,58 @@ const Dashboard = () => {
             
             setAnalysisResult(result);
             setIsScanning(false);
+            setAnalysisAvatarState('speaking');
+            setTimeout(() => {
+                setAnalysisAvatarState('idle');
+            }, 6000);
 
             // Save to History (Supabase or Local fallback)
             try {
-                // Convert images to base64 array for local persistence if needed
-                const base64Images: string[] = [];
-                for (const file of imageFiles) {
-                    const reader = new FileReader();
-                    const b64Promise = new Promise<string>((resolve) => {
-                        reader.onloadend = () => resolve(reader.result as string);
-                    });
-                    reader.readAsDataURL(file);
-                    base64Images.push(await b64Promise);
-                }
-
                 const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
                 let savedToSupabase = false;
+                let imageUrls: string[] = [];
 
                 if (supabaseUser && !isMockAuth) {
-                    const { error } = await supabase.from('dental_analyses').insert({
-                        user_id: supabaseUser.id,
-                        patient_name: currentPatient,
-                        images: base64Images,
-                        diagnostic_text: result.diagnostic,
-                        traitement_text: result.traitement
-                    });
-                    if (!error) {
-                        savedToSupabase = true;
-                    } else {
-                        console.warn('Failed to save to Supabase, falling back to local history:', error.message);
+                    try {
+                        addLog('[SYSTEM] Téléversement des clichés cliniques sur le stockage cloud Supabase...');
+                        imageUrls = await Promise.all(
+                            imageFiles.map(file => uploadDentalPhoto(supabaseUser.id, file))
+                        );
+                        
+                        addLog('[SYSTEM] Enregistrement du rapport dans la base de données Supabase...');
+                        const { error } = await supabase.from('dental_analyses').insert({
+                            user_id: supabaseUser.id,
+                            patient_name: currentPatient,
+                            images: imageUrls,
+                            diagnostic_text: result.diagnostic,
+                            traitement_text: result.traitement
+                        });
+                        
+                        if (!error) {
+                            savedToSupabase = true;
+                            addLog('[SYSTEM] Rapport et clichés enregistrés avec succès sur Supabase.');
+                        } else {
+                            console.warn('Failed to save to Supabase database, falling back to local history:', error.message);
+                            addLog('[WARNING] Échec de l\'écriture en base. Sauvegarde locale de secours.');
+                        }
+                    } catch (uploadErr: any) {
+                        console.error('Failed to upload to Supabase storage, falling back to local history:', uploadErr);
+                        addLog('[WARNING] Échec du téléversement en ligne. Sauvegarde locale de secours.');
                     }
                 }
 
                 if (!savedToSupabase) {
+                    // Convert images to base64 array for local persistence if needed
+                    const base64Images: string[] = [];
+                    for (const file of imageFiles) {
+                        const reader = new FileReader();
+                        const b64Promise = new Promise<string>((resolve) => {
+                            reader.onloadend = () => resolve(reader.result as string);
+                        });
+                        reader.readAsDataURL(file);
+                        base64Images.push(await b64Promise);
+                    }
+
                     const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
                     const localHistory = JSON.parse(localHistoryStr);
                     const newAnalysis = {
@@ -552,6 +667,20 @@ const Dashboard = () => {
                         </svg>
                         Analyse Clinique
                     </button>
+
+                    <button 
+                        className={`sidebar-nav-btn ${activeTab === 'orthomind' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('orthomind')}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <rect x="3" y="11" width="18" height="10" rx="2" />
+                            <circle cx="12" cy="5" r="2" />
+                            <path d="M12 7v4" />
+                            <line x1="8" y1="16" x2="8" y2="16" />
+                            <line x1="16" y1="16" x2="16" y2="16" />
+                        </svg>
+                        Assistant OrthoMind
+                    </button>
                     
                     <button 
                         className={`sidebar-nav-btn ${activeTab === 'knowledge' ? 'active' : ''}`}
@@ -700,28 +829,15 @@ const Dashboard = () => {
 
                             {/* Scanner HUD Overlay */}
                             <div className="glass-panel hud-panel">
-                                {isScanning ? (
-                                    <>
-                                        <div className="scan-animation-wrapper">
-                                            <div className="hud-circular-radar">
-                                                <div className="hud-radar-rotor"></div>
-                                                <div className="hud-radar-center">🦷</div>
-                                            </div>
-                                            
-                                            <div className="hud-images-grid">
-                                                {previewUrls.slice(0, 3).map((url, i) => (
-                                                    <div key={i} className="hud-image-cell">
-                                                        <img src={url} alt="scanning" />
-                                                        <div className="scan-laser-line"></div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            
-                                            <div className="hud-grid-overlay"></div>
-                                        </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                    {/* Embedded Robot Avatar */}
+                                    <div style={{ transform: 'scale(0.85)', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '10px 0' }}>
+                                        <OrthoMindAvatar state={analysisAvatarState} />
+                                    </div>
 
-                                        <div>
-                                            <div className="hud-console-logs">
+                                    {isScanning ? (
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                                            <div className="hud-console-logs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                                                 {consoleLogs.map((log, idx) => (
                                                     <div key={idx} className="console-line">
                                                         <span className="console-timestamp">[{log.time}]</span>
@@ -729,16 +845,28 @@ const Dashboard = () => {
                                                     </div>
                                                 ))}
                                             </div>
-                                            <p className="console-status-text">{scanStatusText}</p>
+                                            <p className="console-status-text" style={{ marginTop: '10px', fontWeight: 'bold' }}>{scanStatusText}</p>
                                         </div>
-                                    </>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)', textAlign: 'center', padding: '30px' }}>
-                                        <span style={{ fontSize: '3rem', marginBottom: '15px' }}>🔮</span>
-                                        <h3 style={{ marginBottom: '8px' }}>Console Optique Clinique</h3>
-                                        <p style={{ fontSize: '0.9rem' }}>Veuillez soumettre des photos et démarrer Casper pour observer la télémétrie de scan et les diagnostics RAG.</p>
-                                    </div>
-                                )}
+                                    ) : (
+                                        <div style={{ textAlign: 'center', padding: '10px 20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                            {imageFiles.length > 0 ? (
+                                                <>
+                                                    <h4 style={{ color: 'var(--primary-cyan)', marginBottom: '6px' }}>OrthoMind Prêt à l'Analyse</h4>
+                                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                        {imageFiles.length} cliché(s) chargé(s). Cliquez sur "Lancer l'analyse Casper" ci-dessus pour démarrer.
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <h4 style={{ color: 'var(--text-primary)', marginBottom: '6px' }}>OrthoMind en Attente</h4>
+                                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                                        Déposez des clichés cliniques dans la zone de gauche pour activer l'assistant.
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Diagnostic & Traitement split outputs */}
@@ -802,6 +930,136 @@ const Dashboard = () => {
                             )}
                         </div>
                     </>
+                )}
+
+                {/* TAB: ORTHOMIND IA ASSISTANT */}
+                {activeTab === 'orthomind' && (
+                    <div className="orthomind-tab-layout">
+                        <div className="dashboard-header">
+                            <h1>OrthoMind — Cabinet Dr. Desouches</h1>
+                            <p>Votre assistant clinique expert YouSmile connecté à votre base de connaissances en orthodontie.</p>
+                        </div>
+
+                        <div className="orthomind-grid">
+                            {/* Left panel: Avatar and Status info */}
+                            <div className="glass-panel avatar-hud-panel">
+                                <div className="avatar-status-badge">
+                                    <span className="pulse-indicator"></span>
+                                    <span>OrthoMind v2.5 (Actif)</span>
+                                </div>
+
+                                <div className="avatar-display-box">
+                                    <OrthoMindAvatar state={chatAvatarState} />
+                                </div>
+
+                                <div className="avatar-info-box">
+                                    <h3>Statut du Robot</h3>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                        {chatAvatarState === 'idle' && "En veille active. En attente d'une question clinique."}
+                                        {chatAvatarState === 'listening' && "À l'écoute du praticien..."}
+                                        {chatAvatarState === 'thinking' && "Recherche sémantique RAG dans le volume 61 et génération de la réponse clinique..."}
+                                        {chatAvatarState === 'speaking' && "Transmission des recommandations orthodontiques..."}
+                                    </p>
+
+                                    <div className="knowledge-source-badge">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                        </svg>
+                                        <span>61st volume CGS Indexé</span>
+                                    </div>
+                                </div>
+
+                                <div className="clinical-suggestions">
+                                    <h4>Suggestions Cliniques</h4>
+                                    <div className="suggestion-chips">
+                                        <button 
+                                            className="suggestion-chip"
+                                            onClick={() => setChatInputValue("Quelles sont les principales indications d'une force de traction extra-buccale ?")}
+                                        >
+                                            Indications force extra-buccale
+                                        </button>
+                                        <button 
+                                            className="suggestion-chip"
+                                            onClick={() => setChatInputValue("Explique la classification des malocclusions selon Angle.")}
+                                        >
+                                            Classification d'Angle
+                                        </button>
+                                        <button 
+                                            className="suggestion-chip"
+                                            onClick={() => setChatInputValue("Quels sont les effets cliniques d'un disjoncteur maxillaire ?")}
+                                        >
+                                            Disjoncteur maxillaire
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right panel: Chat UI */}
+                            <div className="glass-panel chat-interface-panel">
+                                <div className="chat-messages-container">
+                                    {chatMessages.map((msg, index) => (
+                                        <div 
+                                            key={index} 
+                                            className={`chat-bubble-wrapper ${msg.role === 'user' ? 'user-wrapper' : 'assistant-wrapper'}`}
+                                        >
+                                            {msg.role === 'assistant' && (
+                                                <div className="assistant-avatar-thumbnail">
+                                                    🤖
+                                                </div>
+                                            )}
+                                            <div 
+                                                className={`chat-bubble ${msg.role === 'user' ? 'user-bubble' : 'assistant-bubble'}`}
+                                                dangerouslySetInnerHTML={{ __html: formatReportText(msg.content) }}
+                                            />
+                                        </div>
+                                    ))}
+                                    
+                                    {/* Glassmorphic typing indicator */}
+                                    {isChatTyping && (
+                                        <div className="chat-bubble-wrapper assistant-wrapper">
+                                            <div className="assistant-avatar-thumbnail">
+                                                🤖
+                                            </div>
+                                            <div className="chat-bubble assistant-bubble typing-bubble">
+                                                <span className="dot"></span>
+                                                <span className="dot"></span>
+                                                <span className="dot"></span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={chatEndRef} />
+                                </div>
+
+                                <form className="chat-input-wrapper" onSubmit={handleSendChatMessage}>
+                                    <input 
+                                        type="text" 
+                                        className="glass-input chat-input-field" 
+                                        placeholder="Posez votre question clinique à OrthoMind..."
+                                        value={chatInputValue}
+                                        onChange={(e) => setChatInputValue(e.target.value)}
+                                        onFocus={() => {
+                                            if (chatAvatarState === 'idle') setChatAvatarState('listening');
+                                        }}
+                                        onBlur={() => {
+                                            if (chatAvatarState === 'listening') setChatAvatarState('idle');
+                                        }}
+                                        disabled={isChatTyping}
+                                    />
+                                    <button 
+                                        type="submit" 
+                                        className="glass-btn glass-btn-primary chat-send-btn"
+                                        disabled={!chatInputValue.trim() || isChatTyping}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <line x1="22" y1="2" x2="11" y2="13" />
+                                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* TAB 2: KNOWLEDGE BASE PDF UPLOAD */}

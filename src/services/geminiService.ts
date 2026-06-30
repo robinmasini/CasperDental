@@ -318,3 +318,74 @@ Sois technique, précis, et adopte le ton d'un éminent chirurgien-dentiste s'ad
 
     return { diagnostic, traitement };
 };
+
+// Ask a clinical question to OrthoMind (RAG from PDFs)
+export const askOrthoMind = async (
+    messageHistory: { role: 'user' | 'assistant'; content: string }[]
+): Promise<string> => {
+    const apiKey = getGeminiApiKey();
+    if (!apiKey) {
+        throw new Error('Clé API Gemini manquante. Veuillez la configurer dans l\'onglet Configuration.');
+    }
+
+    const userMessage = messageHistory[messageHistory.length - 1]?.content || '';
+    
+    // Extract keywords from user message for semantic search
+    const keywords = userMessage
+        .toLowerCase()
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
+        .split(/\s+/)
+        .filter(w => w.length > 3)
+        .slice(0, 5);
+
+    // Search the Supabase or local knowledge base for these terms
+    const searchContext = await searchKnowledgeBase(keywords.length > 0 ? keywords : ['orthodontie']);
+
+    // Format chat history for Gemini API
+    const formattedHistory = messageHistory.map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }]
+    }));
+
+    const systemInstruction = `Tu es "OrthoMind", l'assistant d'intelligence artificielle clinique expert du cabinet d'orthodontie du Dr. Desouches (YouSmile).
+Tu disposes d'un niveau d'expertise médicale orthodontique extrême. Ton rôle est de conseiller le praticien en répondant de façon précise, technique, rigoureuse et scientifique à ses questions cliniques ou sur la base de connaissances.
+Adopte un ton éminent, professionnel, et confraternel (de chirurgien-dentiste à chirurgien-dentiste).
+
+${searchContext ? `### CONTEXTE SCIENTIFIQUE D'ORTHODONTIE (extrait de la base de connaissances du cabinet) :
+${searchContext}
+
+Utilise en priorité ce contexte sémantique pour étayer tes réponses. Cite les sources (titre du livre et page) si approprié.` : 'Note : Aucune base de connaissances externe n\'est disponible. Fie-toi à tes connaissances internes approfondies pour guider le praticien.'}
+
+Réponds de façon structurée en français, en utilisant du formatage Markdown propre. Sois concis mais cliniquement exhaustif.`;
+
+    const apiBody = {
+        contents: formattedHistory,
+        systemInstruction: {
+            parts: [
+                { text: systemInstruction }
+            ]
+        },
+        generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 2048
+        }
+    };
+
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiBody)
+        }
+    );
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `Erreur API Gemini: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+};
+

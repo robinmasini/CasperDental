@@ -14,7 +14,7 @@ export const createMessage = (role: 'assistant' | 'user', content: string): Mess
 // Initial greeting
 export const GREETING_MESSAGE = `Bonjour et bienvenue au cabinet dentaire ! 👋
 
-Je suis l'assistant virtuel du Dr. Martin. Je suis là pour vous aider à :
+Je suis l'assistant virtuel du Dr. Desouches (YouSmile). Je suis là pour vous aider à :
 • Prendre rendez-vous
 • Répondre à vos questions
 • Évaluer l'urgence de votre situation

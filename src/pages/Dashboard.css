@@ -927,3 +927,285 @@
   width: 100%;
   margin-top: 10px;
 }
+
+/* ===== ORTHOMIND TAB LAYOUT ===== */
+.orthomind-tab-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  height: calc(100vh - 120px);
+}
+
+.orthomind-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 25px;
+  flex: 1;
+  min-height: 0; /* Important for scrollable children */
+}
+
+@media (max-width: 1024px) {
+  .orthomind-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow-y: auto;
+  }
+  .orthomind-tab-layout {
+    height: auto;
+  }
+}
+
+/* Left panel - Avatar HUD */
+.avatar-hud-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.avatar-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 242, 254, 0.06);
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  color: var(--primary-cyan);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.pulse-indicator {
+  width: 6px;
+  height: 6px;
+  background: var(--primary-cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--primary-cyan);
+  animation: pulse-dot 1.5s infinite alternate;
+}
+
+.avatar-display-box {
+  width: 100%;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.avatar-info-box {
+  width: 100%;
+  margin-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 15px;
+  text-align: center;
+}
+
+.avatar-info-box h3 {
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.knowledge-source-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 5px 12px;
+  border-radius: var(--radius-lg);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.clinical-suggestions {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.clinical-suggestions h4 {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.suggestion-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suggestion-chip {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.suggestion-chip:hover {
+  background: rgba(0, 242, 254, 0.04);
+  border-color: rgba(0, 242, 254, 0.15);
+  color: var(--text-primary);
+}
+
+/* Right panel - Chat interface */
+.chat-interface-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.15);
+  padding: 0;
+  overflow: hidden;
+}
+
+.chat-messages-container {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}
+
+.chat-bubble-wrapper {
+  display: flex;
+  gap: 12px;
+  max-width: 80%;
+}
+
+.chat-bubble-wrapper.user-wrapper {
+  align-self: flex-end;
+  max-width: 75%;
+}
+
+.chat-bubble-wrapper.assistant-wrapper {
+  align-self: flex-start;
+}
+
+.assistant-avatar-thumbnail {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.chat-bubble {
+  padding: 14px 18px;
+  border-radius: var(--radius-xl);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.user-bubble {
+  background: linear-gradient(135deg, var(--primary-blue), #0C447C);
+  border: 1px solid rgba(55, 138, 221, 0.3);
+  color: #FFFFFF;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.15);
+}
+
+.assistant-bubble {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  border-top-left-radius: 4px;
+}
+
+.assistant-bubble strong {
+  color: var(--text-primary);
+}
+
+.assistant-bubble ul, .assistant-bubble ol {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding-left: 20px;
+}
+
+.assistant-bubble li {
+  margin-bottom: 4px;
+}
+
+/* Typing bubble dots */
+.typing-bubble {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 20px;
+}
+
+.typing-bubble .dot {
+  width: 7px;
+  height: 7px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  animation: typing-dot 1.2s infinite ease-in-out;
+}
+
+.typing-bubble .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-bubble .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-dot {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-5px);
+    opacity: 1;
+    background: var(--primary-cyan);
+  }
+}
+
+/* Chat Input Bar */
+.chat-input-wrapper {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  background: rgba(6, 9, 19, 0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.chat-input-field {
+  flex: 1;
+  padding: 14px 20px;
+}
+
+.chat-send-btn {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
