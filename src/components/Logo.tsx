@@ -1,4 +1,4 @@
-import logoCasper from '../assets/casper-logo.png';
+import logoCasper from '../assets/orthomindxcasper.png';
 import logoCross from '../assets/logo-cross.svg';
 import './Logo.css';
 
