@@ -7,9 +7,10 @@ import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import { analyzeDentition, getGeminiApiKey, askOrthoMind, loadLocalCompiledKnowledge } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import defaultBookData from '../assets/cgs_volume_61.json';
-import heic2any from 'heic2any';
 import orthomindLogo from '../assets/orthomind-logo.png';
 import logoSeul from '../assets/logo-seul.png';
+import Patients from './Patients';
+import orthomindNavIcon from '../assets/Orthomind.png';
 import './Dashboard.css';
 
 interface BookDocument {
@@ -35,7 +36,7 @@ const Dashboard = () => {
     const { user, logout, supabaseUser } = useAuth();
     
     // Tabs state
-    const [activeTab, setActiveTab] = useState<'analyse' | 'orthomind' | 'knowledge' | 'history' | 'config'>('analyse');
+    const [activeTab, setActiveTab] = useState<'analyse' | 'patients' | 'orthomind' | 'knowledge' | 'history' | 'config'>('analyse');
 
     const handleSendChatMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -286,41 +287,64 @@ const Dashboard = () => {
         }
     };
 
-    // Handle images selection
+    // Helper function to process HEIC/standard files and add to scan state
+    const processAndAddFiles = async (filesArray: File[]) => {
+        const processedFiles: File[] = [];
+
+        for (const file of filesArray) {
+            const nameLower = file.name.toLowerCase();
+            if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
+                try {
+                    // Dynamic import of heic2any to bypass bundler/compilation default export issues
+                    const heic2anyModule = await import('heic2any');
+                    const heicConverter = heic2anyModule.default || heic2anyModule;
+                    
+                    const resultBlob = await heicConverter({
+                        blob: file,
+                        toType: 'image/jpeg',
+                        quality: 0.8
+                    });
+                    const blob = Array.isArray(resultBlob) ? resultBlob[0] : resultBlob;
+                    const convertedFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+                        type: 'image/jpeg'
+                    });
+                    processedFiles.push(convertedFile);
+                } catch (err) {
+                    console.error('HEIC conversion error, using original file:', err);
+                    processedFiles.push(file);
+                }
+            } else {
+                processedFiles.push(file);
+            }
+        }
+        
+        // Limit to 6 photos max
+        setImageFiles(prev => [...prev, ...processedFiles].slice(0, 6));
+
+        // Generate preview URLs
+        const newPreviews = processedFiles.map(file => URL.createObjectURL(file));
+        setPreviewUrls(prev => [...prev, ...newPreviews].slice(0, 6));
+    };
+
+    // Handle images selection via file input
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const filesArray = Array.from(e.target.files);
-            const processedFiles: File[] = [];
+            await processAndAddFiles(filesArray);
+        }
+    };
 
-            for (const file of filesArray) {
-                const nameLower = file.name.toLowerCase();
-                if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
-                    try {
-                        const resultBlob = await heic2any({
-                            blob: file,
-                            toType: 'image/jpeg',
-                            quality: 0.8
-                        });
-                        const blob = Array.isArray(resultBlob) ? resultBlob[0] : resultBlob;
-                        const convertedFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
-                            type: 'image/jpeg'
-                        });
-                        processedFiles.push(convertedFile);
-                    } catch (err) {
-                        console.error('HEIC conversion error, using original file:', err);
-                        processedFiles.push(file);
-                    }
-                } else {
-                    processedFiles.push(file);
-                }
-            }
-            
-            // Limit to 6 photos max
-            setImageFiles(prev => [...prev, ...processedFiles].slice(0, 6));
+    // Handle drag events on dropzone
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
 
-            // Generate preview URLs
-            const newPreviews = processedFiles.map(file => URL.createObjectURL(file));
-            setPreviewUrls(prev => [...prev, ...newPreviews].slice(0, 6));
+    const handleDrop = async (e: React.DragEvent) => {
+        e.preventDefault();
+        if (isScanning) return;
+        if (e.dataTransfer.files) {
+            const filesArray = Array.from(e.dataTransfer.files);
+            await processAndAddFiles(filesArray);
         }
     };
 
@@ -682,10 +706,32 @@ const Dashboard = () => {
                         className={`sidebar-nav-btn ${activeTab === 'analyse' ? 'active' : ''}`}
                         onClick={() => setActiveTab('analyse')}
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                        </svg>
+                        <img 
+                            src={orthomindNavIcon} 
+                            alt="" 
+                            style={{ 
+                                width: '18px', 
+                                height: '18px', 
+                                objectFit: 'contain', 
+                                filter: activeTab === 'analyse' ? 'none' : 'grayscale(1) opacity(0.7)', 
+                                transition: 'all 0.2s ease',
+                                borderRadius: '3px'
+                            }} 
+                        />
                         Analyse Clinique
+                    </button>
+
+                    <button 
+                        className={`sidebar-nav-btn ${activeTab === 'patients' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('patients')}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                        Liste de patients
                     </button>
 
                     <button 
@@ -803,6 +849,8 @@ const Dashboard = () => {
                                     <label 
                                         htmlFor="dental-photos-input" 
                                         className="dropzone-container"
+                                        onDragOver={handleDragOver}
+                                        onDrop={handleDrop}
                                     >
                                         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -946,6 +994,10 @@ const Dashboard = () => {
                             )}
                         </div>
                     </>
+                )}
+
+                {activeTab === 'patients' && (
+                    <Patients />
                 )}
 
                 {/* TAB: ORTHOMIND IA ASSISTANT */}
@@ -1126,7 +1178,13 @@ const Dashboard = () => {
 
                         {/* Books catalog table */}
                         <div className="glass-panel kb-books-card">
-                            <h2>Bibliothèque Scientifique de Casper ({books.length} livres indexés)</h2>
+                            <h2 style={{ display: 'flex', alignItems: 'center' }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', color: 'var(--primary-cyan)', filter: 'drop-shadow(0 0 4px rgba(0, 242, 254, 0.4))' }}>
+                                    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-3.12 3 3 0 0 1 0-4.88 2.5 2.5 0 0 1 0-3.12A2.5 2.5 0 0 1 9.5 2Z" />
+                                    <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-3.12 3 3 0 0 0 0-4.88 2.5 2.5 0 0 0 0-3.12A2.5 2.5 0 0 0 14.5 2Z" />
+                                </svg>
+                                Bibliothèque Scientifique de Casper ({books.length} livres indexés)
+                            </h2>
                             
                             {books.length === 0 ? (
                                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
