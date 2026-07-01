@@ -7,7 +7,52 @@ if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KE
     console.warn('Casper Dental: Missing Supabase environment variables. Using placeholder client fallbacks.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Safe client creation wrapper to prevent invalid environment URL strings from crashing script evaluation
+let supabaseClient: any;
+try {
+    // If URL is invalid, createClient will throw an exception
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+} catch (err) {
+    console.warn('Failed to initialize Supabase client:', err);
+    // Create a safe proxy client fallback so calls don't crash
+    supabaseClient = new Proxy({}, {
+        get: (target, prop) => {
+            if (prop === 'auth') {
+                return new Proxy({}, {
+                    get: (authTarget, authProp) => {
+                        if (authProp === 'onAuthStateChange') {
+                            return () => ({ data: { subscription: { unsubscribe: () => {} } } });
+                        }
+                        return () => Promise.resolve({ data: { session: null }, error: null });
+                    }
+                });
+            }
+            if (prop === 'storage') {
+                return new Proxy({}, {
+                    get: (storageTarget, storageProp) => {
+                        return () => ({
+                            upload: () => Promise.reject(new Error('Supabase Storage offline')),
+                            getPublicUrl: () => ({ data: { publicUrl: '' } })
+                        });
+                    }
+                });
+            }
+            return () => ({
+                select: () => ({
+                    eq: () => ({
+                        single: () => Promise.resolve({ data: null, error: new Error('Supabase offline') }),
+                        order: () => Promise.resolve({ data: [], error: new Error('Supabase offline') })
+                    }),
+                    order: () => Promise.resolve({ data: [], error: new Error('Supabase offline') })
+                }),
+                insert: () => Promise.resolve({ data: null, error: new Error('Supabase offline') }),
+                order: () => Promise.resolve({ data: [], error: new Error('Supabase offline') })
+            });
+        }
+    }) as any;
+}
+
+export const supabase = supabaseClient;
 
 // Upload a clinical photo to Supabase storage bucket and return its public URL
 export const uploadDentalPhoto = async (userId: string, file: File): Promise<string> => {
