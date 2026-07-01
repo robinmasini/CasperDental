@@ -12,372 +12,336 @@
     overflow: visible;
 }
 
-/* Base SVG element settings */
-.orthomind-svg {
+/* Image Wrapper with Floating Animation */
+.avatar-image-wrapper {
+    position: relative;
+    width: 200px;
+    height: 260px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2;
+    overflow: hidden;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    animation: avatar-float 5s infinite ease-in-out;
+}
+
+.orthomind-robot-image {
     width: 100%;
     height: 100%;
-    overflow: visible;
+    object-fit: cover;
+    object-position: top center;
+    transition: transform 0.5s ease;
 }
 
-/* Custom transitions for states */
-.orthomind-svg * {
-    transition-property: fill, stroke, opacity, transform;
-    transition-duration: 0.3s;
-    transition-timing-function: cubic-bezier(0.45, 0, 0.15, 1); /* Ease-in-out doux */
-}
-
-/* State Change Trigger Transitions (Overshoot) */
-.orthomind-avatar-container.listening .om-head-group,
-.orthomind-avatar-container.thinking .om-head-group,
-.orthomind-avatar-container.speaking .om-head-group {
-    transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
-}
-
-/* ===== DEFINITION OF ANIMATIONS ===== */
-
-/* Respiration/Breathing of the bust */
-@keyframes om-breath {
+/* Float Animation */
+@keyframes avatar-float {
     0%, 100% {
-        transform: scale(1);
+        transform: translateY(0) rotate(0deg);
+        box-shadow: 0 15px 35px rgba(29, 78, 216, 0.15), 0 20px 40px rgba(0, 0, 0, 0.4);
     }
     50% {
-        transform: scale(1.015);
+        transform: translateY(-8px) rotate(0.5deg);
+        box-shadow: 0 25px 45px rgba(29, 78, 216, 0.25), 0 20px 40px rgba(0, 0, 0, 0.4);
     }
 }
 
-/* Visor Reflection Glide */
-@keyframes om-reflection-glide {
+/* Visor Scanner Line (Thinking state) */
+.visor-scan-line {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(to right, transparent, #38bdf8, #60a5fa, #38bdf8, transparent);
+    box-shadow: 0 0 12px #38bdf8, 0 0 4px #60a5fa;
+    z-index: 3;
+    animation: visor-scan 2s infinite linear;
+}
+
+@keyframes visor-scan {
     0% {
-        transform: translateX(-40px) translateY(-20px);
-        opacity: 0.15;
+        top: 0%;
     }
     50% {
-        opacity: 0.35;
+        top: 100%;
     }
     100% {
-        transform: translateX(60px) translateY(30px);
-        opacity: 0.15;
+        top: 0%;
     }
 }
 
-/* Idle head Y-axis tilt (represented as minor rotation/translation) */
-@keyframes om-idle-tilt {
-    0%, 100% {
-        transform: rotate(-1.5deg) translateY(0px);
-    }
-    50% {
-        transform: rotate(1.5deg) translateY(-2px);
-    }
+/* Background Glowing Aura */
+.avatar-background-glow {
+    position: absolute;
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    z-index: 0;
+    pointer-events: none;
+    filter: blur(40px);
+    opacity: 0.5;
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    background: radial-gradient(circle, rgba(29, 78, 216, 0.4) 0%, rgba(29, 78, 216, 0) 70%);
 }
 
-/* Eye pulse (Idle) */
-@keyframes om-eye-pulse-idle {
-    0%, 100% {
-        opacity: 0.85;
-    }
-    50% {
-        opacity: 1;
-    }
+.avatar-radial-accent {
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    z-index: 1;
+    pointer-events: none;
+    filter: blur(25px);
+    opacity: 0.3;
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.3) 0%, rgba(56, 189, 248, 0) 70%);
 }
 
-/* Eye pulse (Thinking) - Marked and fast */
-@keyframes om-eye-pulse-thinking {
-    0%, 100% {
-        opacity: 0.6;
-        transform: scale(0.95);
-    }
-    50% {
-        opacity: 1;
-        transform: scale(1.08);
-    }
+/* States Glower definitions */
+.state-listening .avatar-background-glow {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.4) 0%, rgba(16, 185, 129, 0) 70%);
+}
+.state-listening .avatar-radial-accent {
+    background: radial-gradient(circle, rgba(52, 211, 153, 0.3) 0%, rgba(52, 211, 153, 0) 70%);
 }
 
-/* Eye pulse (Speaking) - Rhythmic fast pulse */
-@keyframes om-eye-pulse-speaking {
-    0%, 100% {
-        opacity: 0.75;
-        transform: scale(0.98);
-    }
-    50% {
-        opacity: 1;
-        transform: scale(1.04);
-    }
+.state-thinking .avatar-background-glow {
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, rgba(139, 92, 246, 0) 70%);
+    transform: scale(1.1);
+}
+.state-thinking .avatar-radial-accent {
+    background: radial-gradient(circle, rgba(192, 132, 252, 0.4) 0%, rgba(192, 132, 252, 0) 70%);
 }
 
-/* Rings Propagation (Thinking) */
-@keyframes om-ring-propagate {
+.state-speaking .avatar-background-glow {
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.5) 0%, rgba(56, 189, 248, 0) 70%);
+    transform: scale(1.05);
+}
+.state-speaking .avatar-radial-accent {
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.4) 0%, rgba(14, 165, 233, 0) 70%);
+}
+
+/* Glowing Pulsing Rings in background */
+.avatar-pulse-ring {
+    position: absolute;
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    border-radius: 50%;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.avatar-pulse-ring.ring-1 {
+    width: 240px;
+    height: 240px;
+}
+
+.avatar-pulse-ring.ring-2 {
+    width: 290px;
+    height: 290px;
+}
+
+/* Animate rings in active states */
+.state-listening .avatar-pulse-ring,
+.state-thinking .avatar-pulse-ring,
+.state-speaking .avatar-pulse-ring {
+    opacity: 1;
+}
+
+.state-listening .avatar-pulse-ring.ring-1 {
+    animation: ring-pulse 3s infinite ease-out;
+}
+.state-listening .avatar-pulse-ring.ring-2 {
+    animation: ring-pulse 3s infinite ease-out 1.5s;
+}
+
+.state-thinking .avatar-pulse-ring.ring-1 {
+    border-color: rgba(167, 139, 250, 0.2);
+    animation: ring-pulse 1.8s infinite linear;
+}
+.state-thinking .avatar-pulse-ring.ring-2 {
+    border-color: rgba(167, 139, 250, 0.1);
+    animation: ring-pulse 1.8s infinite linear 0.9s;
+}
+
+.state-speaking .avatar-pulse-ring.ring-1 {
+    border-color: rgba(56, 189, 248, 0.2);
+    animation: ring-pulse 2.2s infinite ease-in-out;
+}
+.state-speaking .avatar-pulse-ring.ring-2 {
+    border-color: rgba(56, 189, 248, 0.1);
+    animation: ring-pulse 2.2s infinite ease-in-out 1.1s;
+}
+
+@keyframes ring-pulse {
     0% {
-        transform: scale(1);
-        opacity: 0.5;
+        transform: scale(0.8);
+        opacity: 0.8;
     }
     100% {
-        transform: scale(2.2);
+        transform: scale(1.2);
         opacity: 0;
     }
 }
 
-/* Particle Orbit (Thinking) */
-@keyframes om-orbit-clockwise {
+/* ===== HUD Status overlay badge ===== */
+.avatar-status-overlay {
+    position: absolute;
+    bottom: -15px;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.avatar-status-overlay.status-listening,
+.avatar-status-overlay.status-thinking,
+.avatar-status-overlay.status-speaking {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: white;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    border-width: 1px;
+    border-style: solid;
+}
+
+/* Listening state badge styling */
+.status-badge.listening {
+    background: rgba(6, 78, 59, 0.6);
+    border-color: rgba(52, 211, 153, 0.3);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+}
+
+.pulse-indicator {
+    width: 6px;
+    height: 6px;
+    background-color: #34d399;
+    border-radius: 50%;
+    animation: badge-pulse 1.2s infinite;
+}
+
+@keyframes badge-pulse {
     0% {
-        transform: rotate(0deg);
+        transform: scale(0.9);
+        box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7);
+    }
+    70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 6px rgba(52, 211, 153, 0);
     }
     100% {
-        transform: rotate(360deg);
+        transform: scale(0.9);
+        box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
     }
 }
 
-@keyframes om-orbit-counter {
+/* Thinking state badge styling */
+.status-badge.thinking {
+    background: rgba(76, 29, 149, 0.6);
+    border-color: rgba(192, 132, 252, 0.3);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+}
+
+.thinking-dots-loader {
+    display: inline-flex;
+    gap: 3px;
+    align-items: center;
+}
+
+.thinking-dots-loader span {
+    width: 5px;
+    height: 5px;
+    background-color: #c084fc;
+    border-radius: 50%;
+    animation: dots-bounce 1.4s infinite ease-in-out both;
+}
+
+.thinking-dots-loader span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.thinking-dots-loader span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes dots-bounce {
+    0%, 80%, 100% { 
+        transform: scale(0.7);
+        opacity: 0.5;
+    } 40% { 
+        transform: scale(1.1);
+        opacity: 1;
+    }
+}
+
+/* Speaking state badge styling */
+.status-badge.speaking {
+    background: rgba(12, 74, 96, 0.6);
+    border-color: rgba(56, 189, 248, 0.3);
+    box-shadow: 0 0 15px rgba(14, 165, 233, 0.2);
+}
+
+.speaking-audio-waves {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2.5px;
+    height: 10px;
+}
+
+.speaking-audio-waves span {
+    width: 2.5px;
+    background-color: #38bdf8;
+    border-radius: 20px;
+    transform-origin: bottom;
+}
+
+.speaking-audio-waves span:nth-child(1) {
+    height: 60%;
+    animation: sound-wave 0.5s infinite ease-in-out alternate;
+}
+
+.speaking-audio-waves span:nth-child(2) {
+    height: 100%;
+    animation: sound-wave 0.4s infinite ease-in-out alternate 0.1s;
+}
+
+.speaking-audio-waves span:nth-child(3) {
+    height: 40%;
+    animation: sound-wave 0.6s infinite ease-in-out alternate 0.05s;
+}
+
+.speaking-audio-waves span:nth-child(4) {
+    height: 80%;
+    animation: sound-wave 0.45s infinite ease-in-out alternate 0.15s;
+}
+
+@keyframes sound-wave {
     0% {
-        transform: rotate(360deg);
-    }
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-/* Head bobbing during speaking (micro vertical movements) */
-@keyframes om-speaking-bob {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-2.5px);
-    }
-}
-
-/* Audio Visualizer Wave Bars (Listening/Speaking) */
-@keyframes om-bar-bounce-listening {
-    0%, 100% {
         transform: scaleY(0.2);
     }
-    50% {
-        transform: scaleY(0.7);
+    100% {
+        transform: scaleY(1);
     }
-}
-
-@keyframes om-bar-bounce-speaking {
-    0%, 100% {
-        transform: scaleY(0.15);
-    }
-    50% {
-        transform: scaleY(0.95);
-    }
-}
-
-
-/* ===== STATE: IDLE (Default) ===== */
-.orthomind-avatar-container.idle .om-bust {
-    animation: om-breath 5s infinite ease-in-out;
-    transform-origin: 200px 320px;
-}
-
-.orthomind-avatar-container.idle .om-head-group {
-    animation: om-idle-tilt 5s infinite ease-in-out;
-    transform-origin: 210px 240px;
-}
-
-.orthomind-avatar-container.idle .om-eye {
-    animation: om-eye-pulse-idle 3s infinite ease-in-out;
-    transform-origin: 160px 170px;
-}
-
-.orthomind-avatar-container.idle .om-visor-reflection {
-    animation: om-reflection-glide 8s infinite ease-in-out;
-}
-
-.orthomind-avatar-container.idle .om-ring,
-.orthomind-avatar-container.idle .om-orbiting-group,
-.orthomind-avatar-container.idle .om-audio-bars {
-    opacity: 0;
-    pointer-events: none;
-}
-
-
-/* ===== STATE: LISTENING (Active Saisie/Micro) ===== */
-.orthomind-avatar-container.listening .om-head-group {
-    /* Tilt +5° held */
-    transform: rotate(5deg) translateY(2px);
-    transform-origin: 210px 240px;
-}
-
-.orthomind-avatar-container.listening .om-eye {
-    /* Scale +8% fixed, no pulse */
-    transform: scale(1.08);
-    transform-origin: 160px 170px;
-    opacity: 1;
-}
-
-.orthomind-avatar-container.listening .om-visor-reflection {
-    animation: om-reflection-glide 6s infinite ease-in-out;
-}
-
-.orthomind-avatar-container.listening .om-audio-bars {
-    opacity: 1;
-}
-
-.orthomind-avatar-container.listening .om-audio-bar-1 {
-    animation: om-bar-bounce-listening 1.2s infinite ease-in-out;
-    transform-origin: bottom;
-}
-
-.orthomind-avatar-container.listening .om-audio-bar-2 {
-    animation: om-bar-bounce-listening 0.8s infinite ease-in-out;
-    animation-delay: 0.2s;
-    transform-origin: bottom;
-}
-
-.orthomind-avatar-container.listening .om-audio-bar-3 {
-    animation: om-bar-bounce-listening 1.4s infinite ease-in-out;
-    animation-delay: 0.1s;
-    transform-origin: bottom;
-}
-
-.orthomind-avatar-container.listening .om-audio-bar-4 {
-    animation: om-bar-bounce-listening 0.9s infinite ease-in-out;
-    animation-delay: 0.3s;
-    transform-origin: bottom;
-}
-
-.orthomind-avatar-container.listening .om-audio-bar-5 {
-    animation: om-bar-bounce-listening 1.1s infinite ease-in-out;
-    animation-delay: 0.4s;
-    transform-origin: bottom;
-}
-
-.orthomind-avatar-container.listening .om-ring,
-.orthomind-avatar-container.listening .om-orbiting-group {
-    opacity: 0;
-    pointer-events: none;
-}
-
-
-/* ===== STATE: THINKING (Traitement IA/RAG) ===== */
-.orthomind-avatar-container.thinking .om-eye {
-    /* Fast pulse & scale */
-    animation: om-eye-pulse-thinking 0.8s infinite ease-in-out;
-    transform-origin: 160px 170px;
-    fill: #378ADD; /* Intensified blue */
-}
-
-/* Orbiting particles */
-.orthomind-avatar-container.thinking .om-orbiting-group {
-    opacity: 1;
-}
-
-.orthomind-avatar-container.thinking .om-orbit-ring-1 {
-    animation: om-orbit-clockwise 6s infinite linear;
-    transform-origin: 200px 180px;
-}
-
-.orthomind-avatar-container.thinking .om-orbit-ring-2 {
-    animation: om-orbit-counter 8s infinite linear;
-    transform-origin: 200px 180px;
-}
-
-/* Concentric rings */
-.orthomind-avatar-container.thinking .om-rings-group {
-    opacity: 1;
-}
-
-.orthomind-avatar-container.thinking .om-ring-1 {
-    animation: om-ring-propagate 1.8s infinite ease-out;
-    transform-origin: 160px 170px;
-}
-
-.orthomind-avatar-container.thinking .om-ring-2 {
-    animation: om-ring-propagate 1.8s infinite ease-out;
-    animation-delay: 0.4s;
-    transform-origin: 160px 170px;
-}
-
-.orthomind-avatar-container.thinking .om-ring-3 {
-    animation: om-ring-propagate 1.8s infinite ease-out;
-    animation-delay: 0.8s;
-    transform-origin: 160px 170px;
-}
-
-.orthomind-avatar-container.thinking .om-visor-glow {
-    fill: url(#visorGlowThinkingGradient);
-    opacity: 0.8;
-}
-
-.orthomind-avatar-container.thinking .om-audio-bars {
-    opacity: 0;
-}
-
-
-/* ===== STATE: SPEAKING (Restitution Réponse) ===== */
-.orthomind-avatar-container.speaking .om-head-group {
-    animation: om-speaking-bob 0.5s infinite ease-in-out;
-    transform-origin: 210px 240px;
-}
-
-.orthomind-avatar-container.speaking .om-eye {
-    animation: om-eye-pulse-speaking 0.4s infinite ease-in-out;
-    transform-origin: 160px 170px;
-}
-
-.orthomind-avatar-container.speaking .om-audio-bars {
-    opacity: 1;
-}
-
-.orthomind-avatar-container.speaking .om-audio-bar {
-    fill: #85B7EB; /* Lighter blue for speaking activity */
-}
-
-.orthomind-avatar-container.speaking .om-audio-bar-1 {
-    animation: om-bar-bounce-speaking 0.4s infinite ease-in-out;
-    transform-origin: bottom;
-}
-
-.orthomind-avatar-container.speaking .om-audio-bar-2 {
-    animation: om-bar-bounce-speaking 0.5s infinite ease-in-out;
-    animation-delay: 0.1s;
-    transform-origin: bottom;
-}
-
-.orthomind-avatar-container.speaking .om-audio-bar-3 {
-    animation: om-bar-bounce-speaking 0.3s infinite ease-in-out;
-    animation-delay: 0.05s;
-    transform-origin: bottom;
-}
-
-.orthomind-avatar-container.speaking .om-audio-bar-4 {
-    animation: om-bar-bounce-speaking 0.45s infinite ease-in-out;
-    animation-delay: 0.15s;
-    transform-origin: bottom;
-}
-
-.orthomind-avatar-container.speaking .om-audio-bar-5 {
-    animation: om-bar-bounce-speaking 0.35s infinite ease-in-out;
-    animation-delay: 0.08s;
-    transform-origin: bottom;
-}
-
-.orthomind-avatar-container.speaking .om-ring,
-.orthomind-avatar-container.speaking .om-orbiting-group {
-    opacity: 0;
-    pointer-events: none;
-}
-
-
-/* Subtle Aura Glow behind the avatar for premium feel */
-.om-background-aura {
-    position: absolute;
-    width: 260px;
-    height: 260px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(29, 78, 216, 0.15) 0%, rgba(29, 78, 216, 0) 70%);
-    z-index: 0;
-    pointer-events: none;
-    transition: all 0.5s ease-in-out;
-}
-
-.orthomind-avatar-container.thinking .om-background-aura {
-    background: radial-gradient(circle, rgba(55, 138, 221, 0.25) 0%, rgba(55, 138, 221, 0) 70%);
-    transform: scale(1.1);
-}
-
-.orthomind-avatar-container.speaking .om-background-aura {
-    background: radial-gradient(circle, rgba(133, 183, 235, 0.22) 0%, rgba(133, 183, 235, 0) 70%);
 }
