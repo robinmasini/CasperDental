@@ -13,6 +13,7 @@ import Patients from './Patients';
 import orthomindNavIcon from '../assets/Orthomind.png';
 import welcomeCardImg from '../assets/welcomecard.png';
 import drPhoto from '../assets/photo.png';
+import casperLogoWelcome from '../assets/casper-logo-welcome.png';
 import './Dashboard.css';
 
 interface BookDocument {
@@ -36,6 +37,14 @@ interface DentalAnalysis {
 const Dashboard = () => {
     const navigate = useNavigate();
     const { user, logout, supabaseUser } = useAuth();
+
+    const currentDateRaw = new Date().toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+    const currentDate = currentDateRaw.charAt(0).toUpperCase() + currentDateRaw.slice(1);
     
     // Tabs state
     const [activeTab, setActiveTab] = useState<'analyse' | 'patients' | 'orthomind' | 'knowledge' | 'history' | 'config'>('analyse');
@@ -825,8 +834,26 @@ const Dashboard = () => {
                         </div>
 
                         {/* Welcome Card Banner */}
-                        <div className="glass-panel welcome-card-container" style={{ marginBottom: '30px', overflow: 'hidden', padding: 0, border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)' }}>
-                            <img src={welcomeCardImg} alt="Casper Dental Welcome" style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }} />
+                        <div className="welcome-banner-container">
+                            <div className="welcome-banner" style={{ '--banner-bg': `url(${welcomeCardImg})` } as React.CSSProperties}>
+                                <div className="banner-overlay"></div>
+                                <div className="banner-content">
+                                    <div className="banner-text-side">
+                                        <h1 className="banner-greeting">Bienvenue,</h1>
+                                        <a href="https://casperdental.fr/" target="_blank" rel="noopener noreferrer" className="banner-logo-wrapper">
+                                            <img src={casperLogoWelcome} alt="Casper Dental" className="banner-casper-logo" />
+                                        </a>
+                                        <div className="banner-subtext">
+                                            <p>Ravi de vous revoir !</p>
+                                            <p>Consultez votre Espace Praticien</p>
+                                        </div>
+                                        <div className="banner-date-section">
+                                            <p className="date-caption">Date d'aujourd'hui</p>
+                                            <p className="date-display">{currentDate}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="analyse-grid">

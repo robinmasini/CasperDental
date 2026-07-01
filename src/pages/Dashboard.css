@@ -1241,3 +1241,131 @@
   border-radius: var(--radius-lg);
   flex-shrink: 0;
 }
+
+/* ===== COMPACT CASPER DENTAL WELCOME BANNER ===== */
+.welcome-banner-container {
+  width: 100%;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-glass);
+  display: flex;
+  margin-bottom: 30px;
+  border: 1px solid var(--border-glass);
+}
+
+.welcome-banner {
+  position: relative;
+  width: 100%;
+  min-height: 230px; /* Compact height */
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 24px 40px; /* Reduced vertical padding */
+  color: white;
+  font-family: var(--font-sans);
+  overflow: hidden;
+}
+
+.welcome-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--banner-bg);
+  background-size: cover;
+  background-position: right center; /* Show the clinical team on the right */
+  background-repeat: no-repeat;
+  z-index: 0;
+  pointer-events: none;
+  transition: transform 0.5s ease;
+}
+
+.welcome-banner-container:hover .welcome-banner::before {
+  transform: scale(1.02); /* Subtle zoom on hover */
+}
+
+.banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(6, 9, 19, 0.65) 0%, rgba(6, 9, 19, 0.25) 50%, transparent 100%);
+  pointer-events: none;
+}
+
+.banner-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.banner-text-side {
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* Compact spacing */
+}
+
+.banner-greeting {
+  font-size: 1.1rem;
+  font-weight: 300;
+  margin: 0;
+  letter-spacing: 0.01em;
+  opacity: 0.85;
+}
+
+.banner-logo-wrapper {
+  height: 38px; /* Small, delicate logo */
+  width: fit-content;
+  margin-left: -2px;
+  display: block;
+}
+
+.banner-casper-logo {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.25));
+}
+
+.banner-subtext {
+  font-size: 0.9rem;
+  line-height: 1.35;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.banner-subtext p {
+  margin: 0;
+}
+
+.banner-date-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.date-caption {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  margin: 0;
+  font-weight: 500;
+}
+
+.date-display {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .welcome-banner {
+    padding: 20px;
+    min-height: 200px;
+  }
+  .banner-text-side {
+    max-width: 100%;
+  }
+  .banner-overlay {
+    background: linear-gradient(90deg, rgba(6, 9, 19, 0.8) 0%, rgba(6, 9, 19, 0.4) 100%);
+  }
+}
