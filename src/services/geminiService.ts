@@ -23,10 +23,30 @@ export const fileToGenerativePart = async (file: File): Promise<{ inlineData: { 
         const reader = new FileReader();
         reader.onloadend = () => {
             const base64Data = (reader.result as string).split(',')[1];
+            
+            // Safe fallback for MIME type if empty (common on macOS/iOS browsers for HEIC files)
+            let mimeType = file.type;
+            if (!mimeType) {
+                const nameLower = file.name.toLowerCase();
+                if (nameLower.endsWith('.heic')) {
+                    mimeType = 'image/heic';
+                } else if (nameLower.endsWith('.heif')) {
+                    mimeType = 'image/heif';
+                } else if (nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg')) {
+                    mimeType = 'image/jpeg';
+                } else if (nameLower.endsWith('.png')) {
+                    mimeType = 'image/png';
+                } else if (nameLower.endsWith('.webp')) {
+                    mimeType = 'image/webp';
+                } else {
+                    mimeType = 'image/jpeg'; // Safe fallback
+                }
+            }
+
             resolve({
                 inlineData: {
                     data: base64Data,
-                    mimeType: file.type
+                    mimeType: mimeType
                 }
             });
         };

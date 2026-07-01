@@ -47,7 +47,14 @@ const Dashboard = () => {
     const currentDate = currentDateRaw.charAt(0).toUpperCase() + currentDateRaw.slice(1);
     
     // Tabs state
-    const [activeTab, setActiveTab] = useState<'analyse' | 'patients' | 'orthomind' | 'knowledge' | 'history' | 'config'>('analyse');
+    const [activeTab, setActiveTab] = useState<'analyse' | 'patients' | 'orthomind' | 'knowledge' | 'history' | 'config'>(() => {
+        return (localStorage.getItem('casper_active_tab') as any) || 'analyse';
+    });
+
+    // Save active tab to localStorage on changes to survive refreshes
+    useEffect(() => {
+        localStorage.setItem('casper_active_tab', activeTab);
+    }, [activeTab]);
 
     const handleSendChatMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -305,13 +312,67 @@ const Dashboard = () => {
         for (const file of filesArray) {
             const nameLower = file.name.toLowerCase();
             if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
+                
+                // Detect if the browser is Safari (Safari natively renders HEIC images, making canvas-based conversion extremely fast and reliable)
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                
+                if (isSafari) {
+                    try {
+                        const nativeBlob = await new Promise<Blob>((resolve, reject) => {
+                            const url = URL.createObjectURL(file);
+                            const img = new Image();
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.naturalWidth || img.width;
+                                canvas.height = img.naturalHeight || img.height;
+                                const ctx = canvas.getContext('2d');
+                                if (ctx) {
+                                    ctx.drawImage(img, 0, 0);
+                                    canvas.toBlob((blob) => {
+                                        URL.revokeObjectURL(url);
+                                        if (blob) resolve(blob);
+                                        else reject(new Error('Canvas toBlob failed'));
+                                    }, 'image/jpeg', 0.85);
+                                } else {
+                                    URL.revokeObjectURL(url);
+                                    reject(new Error('Canvas 2D context failed'));
+                                }
+                            };
+                            img.onerror = (err) => {
+                                URL.revokeObjectURL(url);
+                                reject(err);
+                            };
+                            img.src = url;
+                        });
+                        
+                        const convertedFile = new File([nativeBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+                            type: 'image/jpeg'
+                        });
+                        processedFiles.push(convertedFile);
+                        continue; // Skip heic2any fallback
+                    } catch (nativeErr) {
+                        console.warn('Native HEIC conversion failed, falling back to heic2any:', nativeErr);
+                    }
+                }
+
+                // Fallback to heic2any for Chrome/Firefox/etc.
                 try {
                     // Dynamic import of heic2any to bypass bundler/compilation default export issues
                     const heic2anyModule = await import('heic2any');
-                    const heicConverter = heic2anyModule.default || heic2anyModule;
+                    let heicConverter = heic2anyModule.default || heic2anyModule;
+                    if (typeof heicConverter !== 'function' && (heicConverter as any).default) {
+                        heicConverter = (heicConverter as any).default;
+                    }
+                    
+                    if (typeof heicConverter !== 'function') {
+                        throw new Error('La bibliothèque de conversion heic2any n\'a pas pu être chargée correctement.');
+                    }
+
+                    // Wrap in a typed Blob if type is empty to ensure heic2any can detect it
+                    const blobToConvert = file.type ? file : new Blob([file], { type: 'image/heic' });
                     
                     const resultBlob = await heicConverter({
-                        blob: file,
+                        blob: blobToConvert,
                         toType: 'image/jpeg',
                         quality: 0.8
                     });
@@ -322,6 +383,7 @@ const Dashboard = () => {
                     processedFiles.push(convertedFile);
                 } catch (err) {
                     console.error('HEIC conversion error, using original file:', err);
+                    alert(`Attention: La conversion de l'image HEIC "${file.name}" a échoué. Le fichier d'origine sera utilisé mais peut poser problème lors de l'analyse.\nErreur: ${err instanceof Error ? err.message : err}`);
                     processedFiles.push(file);
                 }
             } else {
