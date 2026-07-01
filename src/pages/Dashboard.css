@@ -1272,7 +1272,7 @@
   inset: 0;
   background-image: var(--banner-bg);
   background-size: cover;
-  background-position: right 12%; /* Show the clinical team on the right, balanced to show heads and busts */
+  background-position: right 30%; /* Show the clinical team on the right, aligned to show heads and chests/busts clearly */
   background-repeat: no-repeat;
   z-index: 0;
   pointer-events: none;
