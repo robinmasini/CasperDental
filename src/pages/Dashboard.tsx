@@ -9,6 +9,7 @@ import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import defaultBookData from '../assets/cgs_volume_61.json';
 import heic2any from 'heic2any';
 import orthomindLogo from '../assets/orthomind-logo.png';
+import logoSeul from '../assets/logo-seul.png';
 import './Dashboard.css';
 
 interface BookDocument {
@@ -670,7 +671,7 @@ const Dashboard = () => {
             <aside className="sidebar-glass">
                 <div className="sidebar-brand-wrapper">
                     <div className="sidebar-logo-container">
-                        <img src={orthomindLogo} alt="OrthoMind Logo" style={{ height: '36px', objectFit: 'contain' }} />
+                        <img src={orthomindLogo} alt="OrthoMind Logo" style={{ height: '70px', objectFit: 'contain' }} />
                     </div>
                 </div>
 
@@ -835,12 +836,8 @@ const Dashboard = () => {
                                     onClick={handleStartAnalysis}
                                     disabled={isScanning || imageFiles.length === 0}
                                 >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                        <circle cx="12" cy="12" r="10" />
-                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                                        <path d="M2 12h20" />
-                                    </svg>
-                                    Lancer l'analyse Casper
+                                    <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                                    Lancer l'analyse
                                 </button>
                             </div>
 
