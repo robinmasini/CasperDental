@@ -35,39 +35,6 @@ const Dashboard = () => {
     // Tabs state
     const [activeTab, setActiveTab] = useState<'analyse' | 'orthomind' | 'knowledge' | 'history' | 'config'>('analyse');
 
-    // OrthoMind Chat States
-    const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
-        { 
-            role: 'assistant', 
-            content: 'Bonjour Dr. Desouches ! 👋\n\nJe suis **OrthoMind**, votre assistant clinique intelligent pour le cabinet YouSmile. Je suis connecté à votre base de connaissances.\n\nPosez-moi n\'importe quelle question sur vos cours, livres de référence en orthodontie indexés, ou cas cliniques.' 
-        }
-    ]);
-    const [chatInputValue, setChatInputValue] = useState('');
-    const [chatAvatarState, setChatAvatarState] = useState<OrthoMindState>('idle');
-    const [isChatTyping, setIsChatTyping] = useState(false);
-    const chatEndRef = useRef<HTMLDivElement>(null);
-
-    // Clinical Analysis Avatar State
-    const [analysisAvatarState, setAnalysisAvatarState] = useState<OrthoMindState>('idle');
-
-    // Sync Clinical Analysis Avatar State
-    useEffect(() => {
-        if (analysisAvatarState === 'speaking') return;
-        
-        if (isScanning) {
-            setAnalysisAvatarState('thinking');
-        } else if (imageFiles.length > 0) {
-            setAnalysisAvatarState('listening');
-        } else {
-            setAnalysisAvatarState('idle');
-        }
-    }, [imageFiles, isScanning]);
-
-    // Auto-scroll chat messages
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [chatMessages, isChatTyping]);
-
     const handleSendChatMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!chatInputValue.trim() || isChatTyping) return;
@@ -159,6 +126,39 @@ const Dashboard = () => {
 
     // Refs for logging interval
     const logIntervalRef = useRef<any>(null);
+
+    // OrthoMind Chat States
+    const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
+        { 
+            role: 'assistant', 
+            content: 'Bonjour Dr. Desouches ! 👋\n\nJe suis **OrthoMind**, votre assistant clinique intelligent pour le cabinet YouSmile. Je suis connecté à votre base de connaissances.\n\nPosez-moi n\'importe quelle question sur vos cours, livres de référence en orthodontie indexés, ou cas cliniques.' 
+        }
+    ]);
+    const [chatInputValue, setChatInputValue] = useState('');
+    const [chatAvatarState, setChatAvatarState] = useState<OrthoMindState>('idle');
+    const [isChatTyping, setIsChatTyping] = useState(false);
+    const chatEndRef = useRef<HTMLDivElement>(null);
+
+    // Clinical Analysis Avatar State
+    const [analysisAvatarState, setAnalysisAvatarState] = useState<OrthoMindState>('idle');
+
+    // Sync Clinical Analysis Avatar State
+    useEffect(() => {
+        if (analysisAvatarState === 'speaking') return;
+        
+        if (isScanning) {
+            setAnalysisAvatarState('thinking');
+        } else if (imageFiles.length > 0) {
+            setAnalysisAvatarState('listening');
+        } else {
+            setAnalysisAvatarState('idle');
+        }
+    }, [imageFiles, isScanning]);
+
+    // Auto-scroll chat messages
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatMessages, isChatTyping]);
 
     // Check database connection and load API Key
     useEffect(() => {
