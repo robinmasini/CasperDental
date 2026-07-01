@@ -28,7 +28,13 @@ export const OrthoMindAvatar: React.FC<OrthoMindAvatarProps> = ({ state }) => {
                 />
                 
                 {/* Cyber-HUD visor scanner bar overlay */}
-                {state === 'thinking' && <div className="visor-scan-line" />}
+                {state === 'thinking' && (
+                    <>
+                        <div className="visor-scan-line" />
+                        <div className="hologram-grid-overlay" />
+                        <div className="scan-glow-overlay" />
+                    </>
+                )}
             </div>
 
             {/* Active Status Badge Overlay */}
