@@ -8,6 +8,7 @@ import { analyzeDentition, getGeminiApiKey, askOrthoMind, loadLocalCompiledKnowl
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import defaultBookData from '../assets/cgs_volume_61.json';
 import heic2any from 'heic2any';
+import orthomindLogo from '../assets/orthomind-logo.png';
 import './Dashboard.css';
 
 interface BookDocument {
@@ -669,7 +670,7 @@ const Dashboard = () => {
             <aside className="sidebar-glass">
                 <div className="sidebar-brand-wrapper">
                     <div className="sidebar-logo-container">
-                        <Logo size="medium" />
+                        <img src={orthomindLogo} alt="OrthoMind Logo" style={{ height: '36px', objectFit: 'contain' }} />
                     </div>
                 </div>
 
