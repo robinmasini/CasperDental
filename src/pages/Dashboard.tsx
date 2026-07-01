@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 import { supabase, uploadDentalPhoto } from '../lib/supabase';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
-import { analyzeDentition, getGeminiApiKey, askOrthoMind } from '../services/geminiService';
+import { analyzeDentition, getGeminiApiKey, askOrthoMind, loadLocalCompiledKnowledge } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import defaultBookData from '../assets/cgs_volume_61.json';
 import heic2any from 'heic2any';
@@ -191,11 +191,17 @@ const Dashboard = () => {
         const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
         const isCgsDeleted = localStorage.getItem('casper_cgs_deleted') === 'true';
         
+        // Load local compiled books from public/casper_knowledge.json
+        const compiledLocal = await loadLocalCompiledKnowledge();
+        const compiledBooks = compiledLocal.books || [];
+        
         if (isMockAuth) {
             const localBooks = localStorage.getItem('casper_mock_books');
             const parsedLocal = localBooks ? JSON.parse(localBooks) : [];
             const hasDefault = parsedLocal.some((b: any) => b.id === defaultBookData.document.id);
-            const combinedBooks = (hasDefault || isCgsDeleted) ? parsedLocal : [defaultBookData.document, ...parsedLocal];
+            const combinedBooks = (hasDefault || isCgsDeleted) 
+                ? [...compiledBooks, ...parsedLocal] 
+                : [defaultBookData.document, ...compiledBooks, ...parsedLocal];
             setBooks(combinedBooks);
             return;
         }
@@ -207,20 +213,26 @@ const Dashboard = () => {
                 .order('created_at', { ascending: false });
             if (!error && data) {
                 const hasDefault = data.some((b: any) => b.id === defaultBookData.document.id || b.title.includes('61st volume'));
-                const combined = (hasDefault || isCgsDeleted) ? data : [defaultBookData.document, ...data];
+                const combined = (hasDefault || isCgsDeleted) 
+                    ? [...compiledBooks, ...data] 
+                    : [defaultBookData.document, ...compiledBooks, ...data];
                 setBooks(combined);
             } else {
                 const localBooks = localStorage.getItem('casper_mock_books');
                 const parsedLocal = localBooks ? JSON.parse(localBooks) : [];
                 const hasDefault = parsedLocal.some((b: any) => b.id === defaultBookData.document.id);
-                setBooks((hasDefault || isCgsDeleted) ? parsedLocal : [defaultBookData.document, ...parsedLocal]);
+                setBooks((hasDefault || isCgsDeleted) 
+                    ? [...compiledBooks, ...parsedLocal] 
+                    : [defaultBookData.document, ...compiledBooks, ...parsedLocal]);
             }
         } catch (e) {
             console.error('Failed to load books from Supabase, loading local:', e);
             const localBooks = localStorage.getItem('casper_mock_books');
             const parsedLocal = localBooks ? JSON.parse(localBooks) : [];
             const hasDefault = parsedLocal.some((b: any) => b.id === defaultBookData.document.id);
-            setBooks((hasDefault || isCgsDeleted) ? parsedLocal : [defaultBookData.document, ...parsedLocal]);
+            setBooks((hasDefault || isCgsDeleted) 
+                ? [...compiledBooks, ...parsedLocal] 
+                : [defaultBookData.document, ...compiledBooks, ...parsedLocal]);
         }
     };
 
@@ -596,6 +608,10 @@ const Dashboard = () => {
 
     // Delete indexed book
     const handleDeleteBook = async (bookId: string) => {
+        if (bookId.startsWith('local-book-')) {
+            alert('Ce livre est intégré localement à partir de la bibliothèque OrthoMind sur votre bureau et ne peut pas être supprimé depuis l\'interface.');
+            return;
+        }
         if (confirm('Voulez-vous supprimer ce livre et toutes ses connaissances indexées ?')) {
             try {
                 if (bookId === 'cgs-volume-61') {

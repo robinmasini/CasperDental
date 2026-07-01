@@ -47,18 +47,42 @@ const base64ToGenerativePart = (base64String: string, mimeType: string = 'image/
     };
 };
 
-// Search Supabase for orthodontic knowledge chunks matching key terms
+let cachedLocalKnowledge: { books: any[]; chunks: any[] } | null = null;
+
+export const loadLocalCompiledKnowledge = async (): Promise<{ books: any[]; chunks: any[] }> => {
+    if (cachedLocalKnowledge) return cachedLocalKnowledge;
+    try {
+        const response = await fetch('/casper_knowledge.json');
+        if (response.ok) {
+            const data = await response.json();
+            cachedLocalKnowledge = data;
+            return data;
+        }
+    } catch (e) {
+        console.warn('Failed to load compiled local knowledge from /casper_knowledge.json:', e);
+    }
+    cachedLocalKnowledge = { books: [], chunks: [] };
+    return cachedLocalKnowledge;
+};
+
+// Search Supabase and local compiled files for orthodontic knowledge chunks matching key terms
 export const searchKnowledgeBase = async (keywords: string[]): Promise<string> => {
     if (!keywords || keywords.length === 0) return '';
     
     const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
     const isCgsDeleted = localStorage.getItem('casper_cgs_deleted') === 'true';
 
+    // Load local compiled knowledge from desktop library
+    const compiledLocal = await loadLocalCompiledKnowledge();
+    const compiledChunks = compiledLocal.chunks || [];
+
     try {
         if (isMockAuth) {
             const localKnowledge = localStorage.getItem('casper_mock_knowledge');
             const parsedLocal = localKnowledge ? JSON.parse(localKnowledge) : [];
-            const chunks = isCgsDeleted ? parsedLocal : [...defaultBookData.chunks, ...parsedLocal];
+            const chunks = isCgsDeleted 
+                ? [...compiledChunks, ...parsedLocal] 
+                : [...defaultBookData.chunks, ...compiledChunks, ...parsedLocal];
             
             let matchingChunks: any[] = [];
             for (const kw of keywords.slice(0, 5)) {
@@ -78,23 +102,46 @@ export const searchKnowledgeBase = async (keywords: string[]): Promise<string> =
                 .join('\n\n---\n\n');
         }
 
-        // Construct query filter
-        // We will perform searches for the top keywords
+        // Construct query filter and perform search in local compiled chunks too
         let allChunks: any[] = [];
         
+        // 1. Search in local compiled chunks first
+        let localMatchingChunks: any[] = [];
         for (const kw of keywords.slice(0, 5)) {
-            const { data, error } = await supabase
-                .from('orthodontic_knowledge')
-                .select('content, page_number, orthodontic_documents(title)')
-                .ilike('content', `%${kw}%`)
-                .limit(3);
-                
-            if (!error && data) {
-                allChunks = [...allChunks, ...data];
+            const kwLower = kw.toLowerCase();
+            const matched = compiledChunks.filter(c => c.content?.toLowerCase().includes(kwLower)).slice(0, 3);
+            localMatchingChunks = [...localMatchingChunks, ...matched];
+        }
+        
+        if (localMatchingChunks.length > 0) {
+            const formattedLocal = localMatchingChunks.map(chunk => ({
+                content: chunk.content,
+                page_number: chunk.page_number,
+                orthodontic_documents: {
+                    title: chunk.book_title || 'Livre de Référence'
+                }
+            }));
+            allChunks = [...allChunks, ...formattedLocal];
+        }
+
+        // 2. Search in Supabase (if available)
+        for (const kw of keywords.slice(0, 5)) {
+            try {
+                const { data, error } = await supabase
+                    .from('orthodontic_knowledge')
+                    .select('content, page_number, orthodontic_documents(title)')
+                    .ilike('content', `%${kw}%`)
+                    .limit(3);
+                    
+                if (!error && data) {
+                    allChunks = [...allChunks, ...data];
+                }
+            } catch (e) {
+                console.warn('Supabase query failed during RAG search:', e);
             }
         }
         
-        // If Supabase has no results and the default CGS book is not deleted,
+        // If everything has no results and the default CGS book is not deleted,
         // we can merge the default book chunks as a fallback
         if (allChunks.length === 0 && !isCgsDeleted) {
             const defaultChunks = defaultBookData.chunks;
@@ -135,7 +182,9 @@ export const searchKnowledgeBase = async (keywords: string[]): Promise<string> =
         try {
             const localKnowledge = localStorage.getItem('casper_mock_knowledge');
             const parsedLocal = localKnowledge ? JSON.parse(localKnowledge) : [];
-            const chunks = isCgsDeleted ? parsedLocal : [...defaultBookData.chunks, ...parsedLocal];
+            const chunks = isCgsDeleted 
+                ? [...compiledChunks, ...parsedLocal] 
+                : [...defaultBookData.chunks, ...compiledChunks, ...parsedLocal];
             
             let matchingChunks: any[] = [];
             for (const kw of keywords.slice(0, 5)) {
