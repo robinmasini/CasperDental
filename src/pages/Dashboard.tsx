@@ -671,7 +671,9 @@ const Dashboard = () => {
             <aside className="sidebar-glass">
                 <div className="sidebar-brand-wrapper">
                     <div className="sidebar-logo-container">
-                        <img src={orthomindLogo} alt="OrthoMind Logo" style={{ height: '95px', objectFit: 'contain' }} />
+                        <div className="logo-shimmer-wrapper" style={{ position: 'relative', display: 'inline-block' }}>
+                            <img src={orthomindLogo} alt="OrthoMind Logo" style={{ height: '130px', objectFit: 'contain', display: 'block' }} />
+                        </div>
                     </div>
                 </div>
 
