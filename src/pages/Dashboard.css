@@ -2,7 +2,8 @@
 .dashboard-container {
   display: flex;
   min-height: 100vh;
-  background: radial-gradient(circle at 10% 20%, #0d1527 0%, #060913 90%);
+  background: url('../assets/bg.png') no-repeat center center fixed;
+  background-size: cover;
   position: relative;
   overflow: hidden;
 }
@@ -96,10 +97,10 @@
 }
 
 .sidebar-nav-btn.active {
-  background: rgba(0, 242, 254, 0.08);
-  border-color: rgba(0, 242, 254, 0.15);
-  color: var(--primary-cyan);
-  box-shadow: 0 4px 20px rgba(0, 242, 254, 0.05);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.05);
 }
 
 .sidebar-nav-btn svg {
@@ -107,8 +108,8 @@
 }
 
 .sidebar-nav-btn.active svg {
-  color: var(--primary-cyan);
-  filter: drop-shadow(0 0 5px var(--primary-cyan));
+  color: var(--text-primary);
+  filter: drop-shadow(0 0 5px var(--text-primary));
 }
 
 /* Sidebar profile card */
@@ -766,9 +767,9 @@
 }
 
 .view-analysis-btn {
-  background: rgba(0, 242, 254, 0.08);
-  border: 1px solid rgba(0, 242, 254, 0.15);
-  color: var(--primary-cyan);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
   padding: 6px 12px;
   border-radius: var(--radius-lg);
   font-size: 0.85rem;
@@ -778,8 +779,8 @@
 }
 
 .view-analysis-btn:hover {
-  background: rgba(0, 242, 254, 0.18);
-  border-color: rgba(0, 242, 254, 0.35);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 /* Modal Popup */

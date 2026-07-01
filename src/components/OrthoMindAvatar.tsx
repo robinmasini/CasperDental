@@ -1,5 +1,5 @@
 import React from 'react';
-import orthomindImage from '../assets/Orthomind.png';
+import orthomindImage from '../assets/Brain.png';
 import './OrthoMindAvatar.css';
 
 export type OrthoMindState = 'idle' | 'listening' | 'thinking' | 'speaking';
