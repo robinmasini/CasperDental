@@ -11,6 +11,8 @@ import orthomindLogo from '../assets/orthomind-logo.png';
 import logoSeul from '../assets/logo-seul.png';
 import Patients from './Patients';
 import orthomindNavIcon from '../assets/Orthomind.png';
+import welcomeCardImg from '../assets/welcomecard.png';
+import drPhoto from '../assets/photo.png';
 import './Dashboard.css';
 
 interface BookDocument {
@@ -783,11 +785,20 @@ const Dashboard = () => {
                 </nav>
 
                 <div className="sidebar-profile">
-                    <div className="profile-avatar-glow">
-                        {user?.name?.[0] || 'D'}
-                    </div>
+                    <img 
+                        src={drPhoto} 
+                        alt="Dr. Renaud Desouches" 
+                        style={{ 
+                            width: '40px', 
+                            height: '40px', 
+                            borderRadius: '50%', 
+                            objectFit: 'cover',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            boxShadow: '0 0 10px rgba(255, 255, 255, 0.1)'
+                        }} 
+                    />
                     <div className="profile-info">
-                        <h4>{user?.name || 'Dr. Dentiste'}</h4>
+                        <h4>Dr. Renaud Desouches</h4>
                         <p>{user?.specialty || 'Chirurgien Orthodontiste'}</p>
                     </div>
                 </div>
@@ -811,6 +822,11 @@ const Dashboard = () => {
                         <div className="dashboard-header">
                             <h1>Diagnostic Casper Expert</h1>
                             <p>Déposez les photographies intra-buccales de votre patient pour initier l'analyse clinique par RAG.</p>
+                        </div>
+
+                        {/* Welcome Card Banner */}
+                        <div className="glass-panel welcome-card-container" style={{ marginBottom: '30px', overflow: 'hidden', padding: 0, border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)' }}>
+                            <img src={welcomeCardImg} alt="Casper Dental Welcome" style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }} />
                         </div>
 
                         <div className="analyse-grid">
