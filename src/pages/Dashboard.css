@@ -1430,37 +1430,69 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 75px;
-    z-index: 150;
+    height: 62px;
+    z-index: 99999 !important;
     background: transparent;
     padding: 0;
+  }
+  
+  .mobile-navbar-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+  }
+  
+  .backdrop-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 48px;
+    background: #060913;
+  }
+  
+  .backdrop-circle {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: #060913;
   }
   
   .mobile-navbar-image-container {
     position: relative;
     width: 100%;
     height: 100%;
-    background-size: cover;
+    background-size: contain;
     background-repeat: no-repeat;
     background-position: center bottom;
+    z-index: 2;
     filter: drop-shadow(0 -5px 15px rgba(0, 0, 0, 0.6));
   }
   
   .mobile-navbar-tab-btn {
     position: absolute;
-    top: 10px;
-    height: calc(100% - 10px);
+    top: 5px;
+    height: calc(100% - 5px);
     background: transparent;
     border: none;
     cursor: pointer;
     outline: none;
+    z-index: 3;
     -webkit-tap-highlight-color: transparent;
   }
   
   /* Make sure the main content area has space at the bottom so it doesn't get covered */
   .dashboard-content-area {
     margin-left: 0 !important;
-    padding-bottom: 100px !important;
+    padding-bottom: 85px !important;
     padding-left: 20px !important;
     padding-right: 20px !important;
   }

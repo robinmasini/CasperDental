@@ -1634,6 +1634,10 @@ const Dashboard = () => {
 
             {/* Mobile Bottom Navigation Bar */}
             <div className="mobile-bottom-navbar">
+                <div className="mobile-navbar-backdrop">
+                    <div className="backdrop-circle"></div>
+                    <div className="backdrop-bar"></div>
+                </div>
                 <div 
                     className="mobile-navbar-image-container"
                     style={{ 
