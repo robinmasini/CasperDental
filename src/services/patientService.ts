@@ -48,13 +48,31 @@ export interface Patient {
     famille_membre3_date_naissance?: string;
 }
 
+// Helper to sanitize date fields (removes empty strings which Postgres rejects as invalid dates)
+const sanitizePatient = <T extends Partial<Patient>>(patient: T): T => {
+    const sanitized = { ...patient };
+    const dateFields: (keyof Patient)[] = [
+        'responsable_date_naissance',
+        'famille_membre1_date_naissance',
+        'famille_membre2_date_naissance',
+        'famille_membre3_date_naissance'
+    ];
+    for (const field of dateFields) {
+        if (sanitized[field] === '') {
+            delete sanitized[field];
+        }
+    }
+    return sanitized;
+};
+
 // Create patient
 export const createPatient = async (patient: Patient): Promise<{ data: Patient | null; error: any }> => {
     console.log('patientService: Starting createPatient with data:', patient);
+    const sanitized = sanitizePatient(patient);
     try {
         const { data, error } = await supabase
             .from('patients')
-            .insert([patient])
+            .insert([sanitized])
             .select()
             .single();
 
@@ -110,9 +128,10 @@ export const getPatientById = async (id: string): Promise<Patient | null> => {
 
 // Update patient
 export const updatePatient = async (id: string, patient: Partial<Patient>): Promise<Patient | null> => {
+    const sanitized = sanitizePatient(patient);
     const { data, error } = await supabase
         .from('patients')
-        .update(patient)
+        .update(sanitized)
         .eq('id', id)
         .select()
         .single();
