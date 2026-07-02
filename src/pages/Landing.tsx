@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Logo from '../components/Logo';
+import logoCdOm from '../assets/logo-cd_om.png';
 import './Landing.css';
 
 const Landing = () => {
@@ -42,14 +42,13 @@ const Landing = () => {
     if (loading) {
         return (
             <div className="login-screen-container">
-                <div className="liquid-bg">
-                    <div className="blob blob-1"></div>
-                    <div className="blob blob-2"></div>
-                    <div className="blob blob-3"></div>
-                </div>
+                <video autoPlay loop muted playsInline className="login-bg-video">
+                    <source src="/login-video.mp4" type="video/mp4" />
+                </video>
+                <div className="login-video-overlay"></div>
                 <div className="premium-loader-container">
                     <div className="premium-loader-logo neon-glow-loader">
-                        <Logo size="large" />
+                        <img src={logoCdOm} alt="Casper Dental x OrthoMind" className="logo-image" style={{ maxWidth: '280px', height: 'auto' }} />
                     </div>
                 </div>
             </div>
@@ -58,18 +57,17 @@ const Landing = () => {
 
     return (
         <div className="login-screen-container">
-            {/* Liquid Background Effect */}
-            <div className="liquid-bg">
-                <div className="blob blob-1"></div>
-                <div className="blob blob-2"></div>
-                <div className="blob blob-3"></div>
-            </div>
+            {/* Background Video */}
+            <video autoPlay loop muted playsInline className="login-bg-video">
+                <source src="/login-video.mp4" type="video/mp4" />
+            </video>
+            <div className="login-video-overlay"></div>
 
             {/* Login Card */}
             <div className="login-glass-card glass-card-glow">
                 <div className="login-header-section">
                     <div className="login-logo-wrapper">
-                        <Logo size="large" />
+                        <img src={logoCdOm} alt="Casper Dental x OrthoMind" className="login-logo" style={{ maxWidth: '240px', height: 'auto', display: 'block', margin: '0 auto' }} />
                     </div>
                     <h1>Casper Dental</h1>
                     <p>Portail d'analyse orthodontique expert</p>
