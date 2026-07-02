@@ -823,7 +823,7 @@
   bottom: 0;
   background: rgba(3, 7, 18, 0.7);
   backdrop-filter: blur(8px);
-  z-index: 200;
+  z-index: 100000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1430,8 +1430,8 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 62px;
-    z-index: 99999 !important;
+    height: 82px;
+    z-index: 9999;
     background: transparent;
     padding: 0;
   }
@@ -1451,17 +1451,17 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 48px;
+    height: 56px;
     background: #060913;
   }
   
   .backdrop-circle {
     position: absolute;
-    bottom: 6px;
+    bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
-    width: 58px;
-    height: 58px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     background: #060913;
   }
@@ -1479,8 +1479,8 @@
   
   .mobile-navbar-tab-btn {
     position: absolute;
-    top: 5px;
-    height: calc(100% - 5px);
+    top: 15px;
+    height: calc(100% - 15px);
     background: transparent;
     border: none;
     cursor: pointer;
@@ -1492,7 +1492,7 @@
   /* Make sure the main content area has space at the bottom so it doesn't get covered */
   .dashboard-content-area {
     margin-left: 0 !important;
-    padding-bottom: 85px !important;
+    padding-bottom: 110px !important;
     padding-left: 20px !important;
     padding-right: 20px !important;
   }
