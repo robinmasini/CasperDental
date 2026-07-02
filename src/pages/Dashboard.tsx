@@ -309,11 +309,23 @@ const Dashboard = () => {
     const processAndAddFiles = async (filesArray: File[]) => {
         const processedFiles: File[] = [];
 
+        const getErrorString = (err: any): string => {
+            if (!err) return 'Une erreur inconnue est survenue.';
+            if (err instanceof Error) return err.message;
+            if (typeof err === 'object') {
+                if ('message' in err) return String(err.message);
+                if ('errorMsg' in err) return String(err.errorMsg);
+                if ('error' in err) return typeof err.error === 'string' ? err.error : String(err.error?.message || JSON.stringify(err));
+                return JSON.stringify(err);
+            }
+            return String(err);
+        };
+
         for (const file of filesArray) {
             const nameLower = file.name.toLowerCase();
             if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
                 
-                // Detect if the browser is Safari (Safari natively renders HEIC images, making canvas-based conversion extremely fast and reliable)
+                // 1. Detect if the browser is Safari (Safari natively renders HEIC images, making canvas-based conversion extremely fast and reliable)
                 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
                 
                 if (isSafari) {
@@ -349,15 +361,40 @@ const Dashboard = () => {
                             type: 'image/jpeg'
                         });
                         processedFiles.push(convertedFile);
-                        continue; // Skip heic2any fallback
+                        continue; // Conversion succeeded!
                     } catch (nativeErr) {
-                        console.warn('Native HEIC conversion failed, falling back to heic2any:', nativeErr);
+                        console.warn('Native HEIC conversion failed, falling back to heic-to:', nativeErr);
                     }
                 }
 
-                // Fallback to heic2any for Chrome/Firefox/etc.
+                // 2. Primary cross-browser fallback: heic-to (modern library supporting modern iOS HEIC profiles)
                 try {
-                    // Dynamic import of heic2any to bypass bundler/compilation default export issues
+                    const heicToModule = await import('heic-to');
+                    const heicToConverter = heicToModule.heicTo || heicToModule.default || heicToModule;
+                    
+                    if (typeof heicToConverter !== 'function') {
+                        throw new Error('La bibliothèque heic-to n\'a pas pu être résolue comme une fonction.');
+                    }
+
+                    const blobToConvert = file.type ? file : new Blob([file], { type: 'image/heic' });
+                    
+                    const resultBlob = await heicToConverter({
+                        blob: blobToConvert,
+                        type: 'image/jpeg',
+                        quality: 0.8
+                    });
+
+                    const convertedFile = new File([resultBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+                        type: 'image/jpeg'
+                    });
+                    processedFiles.push(convertedFile);
+                    continue; // Conversion succeeded!
+                } catch (heicToErr) {
+                    console.warn('heic-to conversion failed, falling back to heic2any:', heicToErr);
+                }
+
+                // 3. Secondary cross-browser fallback: heic2any
+                try {
                     const heic2anyModule = await import('heic2any');
                     let heicConverter = heic2anyModule.default || heic2anyModule;
                     if (typeof heicConverter !== 'function' && (heicConverter as any).default) {
@@ -365,10 +402,9 @@ const Dashboard = () => {
                     }
                     
                     if (typeof heicConverter !== 'function') {
-                        throw new Error('La bibliothèque de conversion heic2any n\'a pas pu être chargée correctement.');
+                        throw new Error('La bibliothèque heic2any n\'a pas pu être résolue comme une fonction.');
                     }
 
-                    // Wrap in a typed Blob if type is empty to ensure heic2any can detect it
                     const blobToConvert = file.type ? file : new Blob([file], { type: 'image/heic' });
                     
                     const resultBlob = await heicConverter({
@@ -382,8 +418,9 @@ const Dashboard = () => {
                     });
                     processedFiles.push(convertedFile);
                 } catch (err) {
-                    console.error('HEIC conversion error, using original file:', err);
-                    alert(`Attention: La conversion de l'image HEIC "${file.name}" a échoué. Le fichier d'origine sera utilisé mais peut poser problème lors de l'analyse.\nErreur: ${err instanceof Error ? err.message : err}`);
+                    console.error('All HEIC conversion methods failed, using original file:', err);
+                    const errStr = getErrorString(err);
+                    alert(`Attention: La conversion de l'image HEIC "${file.name}" a échoué. Le fichier d'origine sera utilisé mais peut poser problème lors de l'analyse.\n\nErreur: ${errStr}`);
                     processedFiles.push(file);
                 }
             } else {
