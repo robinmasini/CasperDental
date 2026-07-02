@@ -42,6 +42,53 @@ const Dashboard = () => {
     const navigate = useNavigate();
     const { user, logout, supabaseUser } = useAuth();
 
+    // Helper function to compress images to small thumbnails for local storage compatibility (max 5MB quota)
+    const compressImageToThumbnail = (file: File): Promise<string> => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    // Downscale to max 300px width/height to make it small (~15-20KB base64)
+                    const maxDim = 300;
+                    if (width > height) {
+                        if (width > maxDim) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        }
+                    } else {
+                        if (height > maxDim) {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% quality JPEG
+                    } else {
+                        resolve(e.target?.result as string);
+                    }
+                };
+                img.onerror = () => {
+                    resolve(e.target?.result as string);
+                };
+                img.src = e.target?.result as string;
+            };
+            reader.onerror = () => {
+                resolve('');
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
     const currentDateRaw = new Date().toLocaleDateString('fr-FR', {
         weekday: 'long',
         day: 'numeric',
@@ -216,6 +263,48 @@ const Dashboard = () => {
         loadBooks();
         loadHistory();
     }, []);
+
+    // Auto-save active analysis if it's not yet in the history (recovering unsaved analysis from state)
+    useEffect(() => {
+        if (analysisResult && imageFiles.length > 0) {
+            const exists = history.some(h => h.diagnostic_text === analysisResult.diagnostic);
+            if (!exists) {
+                const autoSave = async () => {
+                    try {
+                        const currentPatient = patientName.trim() || 'Patient Anonyme';
+                        const base64Images: string[] = [];
+                        for (const file of imageFiles) {
+                            try {
+                                const compressed = await compressImageToThumbnail(file);
+                                base64Images.push(compressed);
+                            } catch (e) {
+                                base64Images.push('');
+                            }
+                        }
+                        const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
+                        const localHistory = JSON.parse(localHistoryStr);
+                        const alreadySavedLocally = localHistory.some((h: any) => h.diagnostic_text === analysisResult.diagnostic);
+                        if (!alreadySavedLocally) {
+                            const newAnalysis = {
+                                id: 'mock-analysis-recovered-' + Date.now(),
+                                patient_name: currentPatient,
+                                created_at: new Date().toISOString(),
+                                images: base64Images,
+                                diagnostic_text: analysisResult.diagnostic,
+                                traitement_text: analysisResult.traitement
+                            };
+                            localHistory.unshift(newAnalysis);
+                            localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
+                            loadHistory();
+                        }
+                    } catch (e) {
+                        console.error('Failed to auto-save/recover active analysis:', e);
+                    }
+                };
+                autoSave();
+            }
+        }
+    }, [analysisResult, imageFiles, history]);
 
     // Load indexed orthodontic books
     const loadBooks = async () => {
@@ -577,15 +666,17 @@ const Dashboard = () => {
                 }
 
                 if (!savedToSupabase) {
-                    // Convert images to base64 array for local persistence if needed
+                    addLog('[SYSTEM] Génération de miniatures compressées pour la sauvegarde locale...');
+                    // Convert images to compressed base64 thumbnails
                     const base64Images: string[] = [];
                     for (const file of imageFiles) {
-                        const reader = new FileReader();
-                        const b64Promise = new Promise<string>((resolve) => {
-                            reader.onloadend = () => resolve(reader.result as string);
-                        });
-                        reader.readAsDataURL(file);
-                        base64Images.push(await b64Promise);
+                        try {
+                            const compressed = await compressImageToThumbnail(file);
+                            base64Images.push(compressed);
+                        } catch (compressErr) {
+                            console.error('Failed to compress image, using fallback empty string:', compressErr);
+                            base64Images.push('');
+                        }
                     }
 
                     const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
@@ -800,13 +891,88 @@ const Dashboard = () => {
     // Formatter for custom markdown diagnostic output
     const formatReportText = (text: string) => {
         if (!text) return '';
-        // Basic Markdown-to-HTML parser for clinical display
-        return text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/^-\s+(.*)$/gm, '<li>$1</li>')
-            .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-            .replace(/\n/g, '<br/>');
+        
+        // Escape HTML tags/characters to prevent rendering errors with symbols like < or >
+        const escapedText = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
+        // Process line by line
+        const lines = escapedText.split('\n');
+        const processedLines: string[] = [];
+        let inUnorderedList = false;
+        let inOrderedList = false;
+
+        const applyInlineFormatting = (str: string): string => {
+            return str
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>');
+        };
+
+        for (let line of lines) {
+            const trimmedLine = line.trim();
+
+            // Match bullet list item: starts with "-" or "*" followed by space
+            const bulletMatch = trimmedLine.match(/^[-*]\s+(.*)$/);
+            // Match numbered list item: starts with one or more digits followed by "." and space
+            const numberMatch = trimmedLine.match(/^(\d+)\.\s+(.*)$/);
+
+            if (bulletMatch) {
+                if (inOrderedList) {
+                    processedLines.push('</ol>');
+                    inOrderedList = false;
+                }
+                if (!inUnorderedList) {
+                    processedLines.push('<ul>');
+                    inUnorderedList = true;
+                }
+                const content = applyInlineFormatting(bulletMatch[1]);
+                processedLines.push(`<li>${content}</li>`);
+            } else if (numberMatch) {
+                if (inUnorderedList) {
+                    processedLines.push('</ul>');
+                    inUnorderedList = false;
+                }
+                if (!inOrderedList) {
+                    processedLines.push('<ol>');
+                    inOrderedList = true;
+                }
+                const content = applyInlineFormatting(numberMatch[2]);
+                processedLines.push(`<li>${content}</li>`);
+            } else {
+                // Not a list item. Close any active lists
+                if (inUnorderedList) {
+                    processedLines.push('</ul>');
+                    inUnorderedList = false;
+                }
+                if (inOrderedList) {
+                    processedLines.push('</ol>');
+                    inOrderedList = false;
+                }
+
+                if (trimmedLine === '') {
+                    // Empty line - represent as paragraph gap
+                    processedLines.push('<br/>');
+                } else {
+                    // Normal text line
+                    const content = applyInlineFormatting(trimmedLine);
+                    processedLines.push(`<p>${content}</p>`);
+                }
+            }
+        }
+
+        // Close any trailing lists
+        if (inUnorderedList) {
+            processedLines.push('</ul>');
+        }
+        if (inOrderedList) {
+            processedLines.push('</ol>');
+        }
+
+        return processedLines.join('\n');
     };
 
     return (
@@ -855,39 +1021,14 @@ const Dashboard = () => {
                     </button>
 
                     <button 
-                        className={`sidebar-nav-btn ${activeTab === 'orthomind' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('orthomind')}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <rect x="3" y="11" width="18" height="10" rx="2" />
-                            <circle cx="12" cy="5" r="2" />
-                            <path d="M12 7v4" />
-                            <line x1="8" y1="16" x2="8" y2="16" />
-                            <line x1="16" y1="16" x2="16" y2="16" />
-                        </svg>
-                        Assistant OrthoMind
-                    </button>
-                    
-                    <button 
                         className={`sidebar-nav-btn ${activeTab === 'knowledge' ? 'active' : ''}`}
                         onClick={() => setActiveTab('knowledge')}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-3.12 3 3 0 0 1 0-4.88 2.5 2.5 0 0 1 0-3.12A2.5 2.5 0 0 1 9.5 2Z" />
-                            <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-3.12 3 3 0 0 0 0-4.88 2.5 2.5 0 0 0 0-3.12A2.5 2.5 0 0 0 14.5 2Z" />
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
                         </svg>
                         Connaissances PDF
-                    </button>
-
-                    <button 
-                        className={`sidebar-nav-btn ${activeTab === 'history' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('history')}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        Historique Scans
                     </button>
 
                     <button 

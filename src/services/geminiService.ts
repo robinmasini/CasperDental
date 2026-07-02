@@ -312,26 +312,30 @@ ${searchContext ? `### LECTURES DE RÉFÉRENCE ISSUES DE TA BASE DE CONNAISSANCE
 ${searchContext}
 ` : 'Note : Aucune base de connaissances externe n\'est disponible. Fie-toi à tes connaissances internes approfondies.'}
 
-Fais une analyse clinique extrêmement pointue et rigoureuse des photos dentaires fournies.
+Fais une analyse clinique extrêmement pointue, exhaustive et rigoureuse des photos dentaires fournies.
 Rédige ton diagnostic en français sous la forme de deux catégories strictement séparées. Ta réponse doit impérativement respecter le format balisé XML ci-dessous pour que l'interface puisse les séparer :
 
+Dans la section diagnostic, commence impérativement par mettre en valeur et de manière très visible la Classe d'Angle (Classe I, Classe II division 1, Classe II division 2, Classe III, etc.) car c'est le point clinique le plus important attendu par le praticien.
+
 <diagnostic>
-(Écris ici ton diagnostic clinique détaillé. Inclus :
-- Les anomalies d'occlusion (Classe d'Angle, surplomb, recouvrement)
-- Les alignements (encombrements, rotations, diastèmes, articulés croisés)
+(Écris ici ton diagnostic clinique détaillé. Commence impérativement par :
+1. CLASSIFICATION D'ANGLE : Détermine précisément la Classe d'Angle (Classe I, Classe II, ou Classe III) et justifie-la.
+Ensuite, décris en détail :
+- Les autres anomalies d'occlusion (surplomb, recouvrement, articulé croisé, etc.)
+- Les alignements et arcades (encombrements, rotations, diastèmes)
 - L'évaluation esthétique et fonctionnelle
 - Références aux extraits de livres s'ils s'appliquent)
 </diagnostic>
 
 <traitement>
-(Écris ici tes recommandations thérapeutiques précises. Inclus :
+(Écris ici tes recommandations thérapeutiques précises et exhaustives. Inclus :
 - Les types d'appareillage conseillés (aligneurs invisibles, bagues multi-attaches, expansion palatine, etc.)
 - La séquence de traitement suggérée et les étapes clés
 - Les difficultés ou risques cliniques à surveiller
 - La durée estimée du traitement)
 </traitement>
 
-Sois technique, précis, et adopte le ton d'un éminent chirurgien-dentiste s'adressant à un confrère. Ne mets aucun texte d'introduction ni de conclusion en dehors des balises.`;
+Sois technique, précis, exhaustif, et adopte le ton d'un éminent chirurgien-dentiste s'adressant à un confrère. Ne mets aucun texte d'introduction ni de conclusion en dehors des balises.`;
 
     const apiBody = {
         contents: [
@@ -344,7 +348,7 @@ Sois technique, précis, et adopte le ton d'un éminent chirurgien-dentiste s'ad
         ],
         generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 2048
+            maxOutputTokens: 8192
         }
     };
 
@@ -365,23 +369,56 @@ Sois technique, précis, et adopte le ton d'un éminent chirurgien-dentiste s'ad
     const resultData = await resultResponse.json();
     const resultText = resultData.candidates?.[0]?.content?.parts?.[0]?.text || '';
     
-    // Parse the XML tags
-    const diagMatch = resultText.match(/<diagnostic>([\s\S]*?)<\/diagnostic>/);
-    const traitMatch = resultText.match(/<traitement>([\s\S]*?)<\/traitement>/);
+    // Parse the XML tags (case-insensitive)
+    const diagMatch = resultText.match(/<diagnostic>([\s\S]*?)<\/diagnostic>/i);
+    const traitMatch = resultText.match(/<traitement>([\s\S]*?)<\/traitement>/i);
     
     let diagnostic = diagMatch ? diagMatch[1].trim() : '';
     let traitement = traitMatch ? traitMatch[1].trim() : '';
     
-    // Fallback if formatting was not respected
+    // Robust parsing fallback for unclosed tags or missing closing tags
+    if (!diagnostic || !traitement) {
+        // If we have <diagnostic> but no </diagnostic>
+        if (!diagnostic && resultText.match(/<diagnostic>/i)) {
+            const diagStartIndex = resultText.search(/<diagnostic>/i);
+            const diagStart = diagStartIndex + resultText.match(/<diagnostic>/i)![0].length;
+            const traitStartIndex = resultText.search(/<traitement>/i);
+            const diagEnd = traitStartIndex !== -1 ? traitStartIndex : resultText.length;
+            
+            diagnostic = resultText.substring(diagStart, diagEnd)
+                .replace(/<\/diagnostic>/gi, '')
+                .trim();
+        }
+        
+        // If we have <traitement> but no </traitement>
+        if (!traitement && resultText.match(/<traitement>/i)) {
+            const traitStartIndex = resultText.search(/<traitement>/i);
+            const traitStart = traitStartIndex + resultText.match(/<traitement>/i)![0].length;
+            
+            traitement = resultText.substring(traitStart)
+                .replace(/<\/traitement>/gi, '')
+                .trim();
+        }
+    }
+    
+    // Absolute fallback if still empty
     if (!diagnostic && !traitement) {
         // Try split by headings
         const splitText = resultText.split(/traitement/i);
         if (splitText.length >= 2) {
-            diagnostic = splitText[0].replace(/diagnostic/i, '').trim();
-            traitement = splitText[1].trim();
+            diagnostic = splitText[0].replace(/diagnostic/i, '').replace(/<[^>]*>/g, '').trim();
+            traitement = splitText[1].replace(/<[^>]*>/g, '').trim();
         } else {
             diagnostic = resultText;
             traitement = "Aucun plan de traitement distinct n'a été généré. Veuillez réanalyser.";
+        }
+    } else {
+        // Ensure neither is blank
+        if (!diagnostic) {
+            diagnostic = "Analyse diagnostique incomplète ou non générée.";
+        }
+        if (!traitement) {
+            traitement = "Plan de traitement non généré ou interrompu. Veuillez réanalyser.";
         }
     }
 
