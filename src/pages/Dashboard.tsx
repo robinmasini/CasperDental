@@ -14,6 +14,10 @@ import orthomindNavIcon from '../assets/Orthomind.png';
 import welcomeCardImg from '../assets/welcomecard.png';
 import drPhoto from '../assets/photo.png';
 import casperLogoWelcome from '../assets/casper-logo-welcome.png';
+import navbar1 from '../assets/navbar-1.png';
+import navbar2 from '../assets/navbar-2.png';
+import navbar3 from '../assets/navbar-3.png';
+import navbar4 from '../assets/navbar-4.png';
 import './Dashboard.css';
 
 interface BookDocument {
@@ -47,14 +51,20 @@ const Dashboard = () => {
     const currentDate = currentDateRaw.charAt(0).toUpperCase() + currentDateRaw.slice(1);
     
     // Tabs state
-    const [activeTab, setActiveTab] = useState<'analyse' | 'patients' | 'orthomind' | 'knowledge' | 'history' | 'config'>(() => {
-        return (localStorage.getItem('casper_active_tab') as any) || 'analyse';
+    const [activeTab, setActiveTab] = useState<'analyse' | 'patients' | 'knowledge' | 'config'>(() => {
+        const saved = localStorage.getItem('casper_active_tab');
+        if (saved === 'orthomind' || saved === 'history') return 'analyse';
+        return (saved as any) || 'analyse';
     });
 
     // Save active tab to localStorage on changes to survive refreshes
     useEffect(() => {
         localStorage.setItem('casper_active_tab', activeTab);
     }, [activeTab]);
+
+    // Modals state for OrthoMind and History
+    const [showOrthoMindModal, setShowOrthoMindModal] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
 
     const handleSendChatMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -932,6 +942,27 @@ const Dashboard = () => {
                             <p>Déposez les photographies intra-buccales de votre patient pour initier l'analyse clinique par RAG.</p>
                         </div>
 
+                        {/* Shortcuts for OrthoMind and Scan History */}
+                        <div className="clinical-header-actions-row">
+                            <button className="glass-btn glass-btn-secondary clinical-action-btn" onClick={() => setShowOrthoMindModal(true)}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '8px', color: 'var(--primary-cyan)' }}>
+                                    <rect x="3" y="11" width="18" height="10" rx="2" />
+                                    <circle cx="12" cy="5" r="2" />
+                                    <path d="M12 7v4" />
+                                    <line x1="8" y1="16" x2="8" y2="16" />
+                                    <line x1="16" y1="16" x2="16" y2="16" />
+                                </svg>
+                                Assistant OrthoMind
+                            </button>
+                            <button className="glass-btn glass-btn-secondary clinical-action-btn" onClick={() => setShowHistoryModal(true)}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '8px', color: 'var(--primary-blue)' }}>
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                                Historique des Scans
+                            </button>
+                        </div>
+
                         {/* Welcome Card Banner */}
                         <div className="welcome-banner-container">
                             <div className="welcome-banner" style={{ '--banner-bg': `url(${welcomeCardImg})` } as React.CSSProperties}>
@@ -1142,136 +1173,6 @@ const Dashboard = () => {
                     <Patients />
                 )}
 
-                {/* TAB: ORTHOMIND IA ASSISTANT */}
-                {activeTab === 'orthomind' && (
-                    <div className="orthomind-tab-layout">
-                        <div className="dashboard-header">
-                            <h1>OrthoMind — Cabinet Dr. Desouches</h1>
-                            <p>Votre assistant clinique expert YouSmile connecté à votre base de connaissances en orthodontie.</p>
-                        </div>
-
-                        <div className="orthomind-grid">
-                            {/* Left panel: Avatar and Status info */}
-                            <div className="glass-panel avatar-hud-panel">
-                                <div className="avatar-status-badge">
-                                    <span className="pulse-indicator"></span>
-                                    <span>OrthoMind v2.5 (Actif)</span>
-                                </div>
-
-                                <div className="avatar-display-box">
-                                    <OrthoMindAvatar state={chatAvatarState} />
-                                </div>
-
-                                <div className="avatar-info-box">
-                                    <h3>Statut du Robot</h3>
-                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                        {chatAvatarState === 'idle' && "En veille active. En attente d'une question clinique."}
-                                        {chatAvatarState === 'listening' && "À l'écoute du praticien..."}
-                                        {chatAvatarState === 'thinking' && "Recherche sémantique RAG dans le volume 61 et génération de la réponse clinique..."}
-                                        {chatAvatarState === 'speaking' && "Transmission des recommandations orthodontiques..."}
-                                    </p>
-
-                                    <div className="knowledge-source-badge">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                                        </svg>
-                                        <span>61st volume CGS Indexé</span>
-                                    </div>
-                                </div>
-
-                                <div className="clinical-suggestions">
-                                    <h4>Suggestions Cliniques</h4>
-                                    <div className="suggestion-chips">
-                                        <button 
-                                            className="suggestion-chip"
-                                            onClick={() => setChatInputValue("Quelles sont les principales indications d'une force de traction extra-buccale ?")}
-                                        >
-                                            Indications force extra-buccale
-                                        </button>
-                                        <button 
-                                            className="suggestion-chip"
-                                            onClick={() => setChatInputValue("Explique la classification des malocclusions selon Angle.")}
-                                        >
-                                            Classification d'Angle
-                                        </button>
-                                        <button 
-                                            className="suggestion-chip"
-                                            onClick={() => setChatInputValue("Quels sont les effets cliniques d'un disjoncteur maxillaire ?")}
-                                        >
-                                            Disjoncteur maxillaire
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Right panel: Chat UI */}
-                            <div className="glass-panel chat-interface-panel">
-                                <div className="chat-messages-container">
-                                    {chatMessages.map((msg, index) => (
-                                        <div 
-                                            key={index} 
-                                            className={`chat-bubble-wrapper ${msg.role === 'user' ? 'user-wrapper' : 'assistant-wrapper'}`}
-                                        >
-                                            {msg.role === 'assistant' && (
-                                                <div className="assistant-avatar-thumbnail">
-                                                    🤖
-                                                </div>
-                                            )}
-                                            <div 
-                                                className={`chat-bubble ${msg.role === 'user' ? 'user-bubble' : 'assistant-bubble'}`}
-                                                dangerouslySetInnerHTML={{ __html: formatReportText(msg.content) }}
-                                            />
-                                        </div>
-                                    ))}
-                                    
-                                    {/* Glassmorphic typing indicator */}
-                                    {isChatTyping && (
-                                        <div className="chat-bubble-wrapper assistant-wrapper">
-                                            <div className="assistant-avatar-thumbnail">
-                                                🤖
-                                            </div>
-                                            <div className="chat-bubble assistant-bubble typing-bubble">
-                                                <span className="dot"></span>
-                                                <span className="dot"></span>
-                                                <span className="dot"></span>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div ref={chatEndRef} />
-                                </div>
-
-                                <form className="chat-input-wrapper" onSubmit={handleSendChatMessage}>
-                                    <input 
-                                        type="text" 
-                                        className="glass-input chat-input-field" 
-                                        placeholder="Posez votre question clinique à OrthoMind..."
-                                        value={chatInputValue}
-                                        onChange={(e) => setChatInputValue(e.target.value)}
-                                        onFocus={() => {
-                                            if (chatAvatarState === 'idle') setChatAvatarState('listening');
-                                        }}
-                                        onBlur={() => {
-                                            if (chatAvatarState === 'listening') setChatAvatarState('idle');
-                                        }}
-                                        disabled={isChatTyping}
-                                    />
-                                    <button 
-                                        type="submit" 
-                                        className="glass-btn glass-btn-primary chat-send-btn"
-                                        disabled={!chatInputValue.trim() || isChatTyping}
-                                    >
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                            <line x1="22" y1="2" x2="11" y2="13" />
-                                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                                        </svg>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* TAB 2: KNOWLEDGE BASE PDF UPLOAD */}
                 {activeTab === 'knowledge' && (
                     <div className="kb-layout">
@@ -1363,58 +1264,6 @@ const Dashboard = () => {
                                                                 <polyline points="3 6 5 6 21 6" />
                                                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                                                             </svg>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* TAB 3: SCAN HISTORY */}
-                {activeTab === 'history' && (
-                    <div className="history-layout">
-                        <div className="dashboard-header">
-                            <h1>Historique des Diagnostics Cabinet</h1>
-                            <p>Consultez la liste des diagnostics et des stratégies de traitement générées par Casper.</p>
-                        </div>
-
-                        <div className="glass-panel history-card">
-                            {history.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                                    Aucune analyse n'a été enregistrée pour le moment.
-                                </div>
-                            ) : (
-                                <div className="glass-table-container">
-                                    <table className="glass-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Patient</th>
-                                                <th>Date du Diagnostic</th>
-                                                <th>Nombre de clichés</th>
-                                                <th>Résumé Clinique</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {history.map((item) => (
-                                                <tr key={item.id}>
-                                                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.patient_name}</td>
-                                                    <td>{new Date(item.created_at).toLocaleDateString('fr-FR')} à {new Date(item.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td>
-                                                    <td>{item.images?.length || 0} clichés</td>
-                                                    <td style={{ maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                        {item.diagnostic_text.slice(0, 70)}...
-                                                    </td>
-                                                    <td>
-                                                        <button 
-                                                            className="view-analysis-btn"
-                                                            onClick={() => setSelectedHistoryItem(item)}
-                                                        >
-                                                            Ouvrir le Dossier
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -1577,6 +1426,259 @@ const Dashboard = () => {
                     </div>
                 </div>
             )}
+
+            {/* Modal popup for OrthoMind IA Assistant */}
+            {showOrthoMindModal && (
+                <div className="glass-modal-overlay" onClick={() => setShowOrthoMindModal(false)}>
+                    <div className="glass-modal-content orthomind-modal" onClick={(e) => e.stopPropagation()}>
+                        <button className="modal-close-btn" onClick={() => setShowOrthoMindModal(false)}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                        <div className="orthomind-tab-layout" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <div className="dashboard-header">
+                                <h1>OrthoMind — Cabinet Dr. Desouches</h1>
+                                <p>Votre assistant clinique expert YouSmile connecté à votre base de connaissances en orthodontie.</p>
+                            </div>
+
+                            <div className="orthomind-grid" style={{ flex: 1, minHeight: 0 }}>
+                                {/* Left panel: Avatar and Status info */}
+                                <div className="glass-panel avatar-hud-panel">
+                                    <div className="avatar-status-badge">
+                                        <span className="pulse-indicator"></span>
+                                        <span>OrthoMind v2.5 (Actif)</span>
+                                    </div>
+
+                                    <div className="avatar-display-box">
+                                        <OrthoMindAvatar state={chatAvatarState} />
+                                    </div>
+
+                                    <div className="avatar-info-box">
+                                        <h3>Statut du Robot</h3>
+                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                            {chatAvatarState === 'idle' && "En veille active. En attente d'une question clinique."}
+                                            {chatAvatarState === 'listening' && "À l'écoute du praticien..."}
+                                            {chatAvatarState === 'thinking' && "Recherche sémantique RAG dans le volume 61 et génération de la réponse clinique..."}
+                                            {chatAvatarState === 'speaking' && "Transmission des recommandations orthodontiques..."}
+                                        </p>
+
+                                        <div className="knowledge-source-badge">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                            </svg>
+                                            <span>61st volume CGS Indexé</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="clinical-suggestions">
+                                        <h4>Suggestions Cliniques</h4>
+                                        <div className="suggestion-chips">
+                                            <button 
+                                                className="suggestion-chip"
+                                                onClick={() => setChatInputValue("Quelles sont les principales indications d'une force de traction extra-buccale ?")}
+                                            >
+                                                Indications force extra-buccale
+                                            </button>
+                                            <button 
+                                                className="suggestion-chip"
+                                                onClick={() => setChatInputValue("Explique la classification des malocclusions selon Angle.")}
+                                            >
+                                                Classification d'Angle
+                                            </button>
+                                            <button 
+                                                className="suggestion-chip"
+                                                onClick={() => setChatInputValue("Quels sont les effets cliniques d'un disjoncteur maxillaire ?")}
+                                            >
+                                                Disjoncteur maxillaire
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right panel: Chat UI */}
+                                <div className="glass-panel chat-interface-panel">
+                                    <div className="chat-messages-container">
+                                        {chatMessages.map((msg, index) => (
+                                            <div 
+                                                key={index} 
+                                                className={`chat-bubble-wrapper ${msg.role === 'user' ? 'user-wrapper' : 'assistant-wrapper'}`}
+                                            >
+                                                {msg.role === 'assistant' && (
+                                                    <div className="assistant-avatar-thumbnail">
+                                                        🤖
+                                                    </div>
+                                                )}
+                                                <div 
+                                                    className={`chat-bubble ${msg.role === 'user' ? 'user-bubble' : 'assistant-bubble'}`}
+                                                    dangerouslySetInnerHTML={{ __html: formatReportText(msg.content) }}
+                                                />
+                                            </div>
+                                        ))}
+                                        
+                                        {/* Glassmorphic typing indicator */}
+                                        {isChatTyping && (
+                                            <div className="chat-bubble-wrapper assistant-wrapper">
+                                                <div className="assistant-avatar-thumbnail">
+                                                    🤖
+                                                </div>
+                                                <div className="chat-bubble assistant-bubble typing-bubble">
+                                                    <span className="dot"></span>
+                                                    <span className="dot"></span>
+                                                    <span className="dot"></span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div ref={chatEndRef} />
+                                    </div>
+
+                                    <form className="chat-input-wrapper" onSubmit={handleSendChatMessage}>
+                                        <input 
+                                            type="text" 
+                                            className="glass-input chat-input-field" 
+                                            placeholder="Posez votre question clinique à OrthoMind..."
+                                            value={chatInputValue}
+                                            onChange={(e) => setChatInputValue(e.target.value)}
+                                            onFocus={() => {
+                                                if (chatAvatarState === 'idle') setChatAvatarState('listening');
+                                            }}
+                                            onBlur={() => {
+                                                if (chatAvatarState === 'listening') setChatAvatarState('idle');
+                                            }}
+                                            disabled={isChatTyping}
+                                        />
+                                        <button 
+                                            type="submit" 
+                                            className="glass-btn glass-btn-primary chat-send-btn"
+                                            disabled={!chatInputValue.trim() || isChatTyping}
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <line x1="22" y1="2" x2="11" y2="13" />
+                                                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal popup for Scan History */}
+            {showHistoryModal && (
+                <div className="glass-modal-overlay" onClick={() => setShowHistoryModal(false)}>
+                    <div className="glass-modal-content history-modal" onClick={(e) => e.stopPropagation()}>
+                        <button className="modal-close-btn" onClick={() => setShowHistoryModal(false)}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                        <div className="history-layout">
+                            <div className="dashboard-header">
+                                <h1>Historique des Diagnostics Cabinet</h1>
+                                <p>Consultez la liste des diagnostics et des stratégies de traitement générées par Casper.</p>
+                            </div>
+
+                            <div className="glass-panel history-card">
+                                {history.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                        Aucune analyse n'a été enregistrée pour le moment.
+                                    </div>
+                                ) : (
+                                    <div className="glass-table-container">
+                                        <table className="glass-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Patient</th>
+                                                    <th>Date du Diagnostic</th>
+                                                    <th>Nombre de clichés</th>
+                                                    <th>Résumé Clinique</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {history.map((item) => (
+                                                    <tr key={item.id}>
+                                                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.patient_name}</td>
+                                                        <td>{new Date(item.created_at).toLocaleDateString('fr-FR')} à {new Date(item.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td>
+                                                        <td>{item.images?.length || 0} clichés</td>
+                                                        <td style={{ maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            {item.diagnostic_text.slice(0, 70)}...
+                                                        </td>
+                                                        <td>
+                                                            <button 
+                                                                className="view-analysis-btn"
+                                                                onClick={() => {
+                                                                    setSelectedHistoryItem(item);
+                                                                    setShowHistoryModal(false);
+                                                                }}
+                                                            >
+                                                                Ouvrir le Dossier
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Mobile Bottom Navigation Bar */}
+            <div className="mobile-bottom-navbar">
+                <div 
+                    className="mobile-navbar-image-container"
+                    style={{ 
+                        backgroundImage: `url(${
+                            activeTab === 'analyse' ? navbar1 :
+                            activeTab === 'patients' ? navbar2 :
+                            activeTab === 'knowledge' ? navbar3 :
+                            navbar4
+                        })`
+                    }}
+                >
+                    {/* Invisible Clickable Overlays */}
+                    <button 
+                        className="mobile-navbar-tab-btn" 
+                        style={{ left: '0%', width: '22%' }}
+                        onClick={() => setActiveTab('analyse')}
+                        title="Analyse Clinique"
+                    />
+                    <button 
+                        className="mobile-navbar-tab-btn" 
+                        style={{ left: '22%', width: '18%' }}
+                        onClick={() => setActiveTab('patients')}
+                        title="Liste de patients"
+                    />
+                    {/* Center Hexagon defaults to Clinical Analysis */}
+                    <button 
+                        className="mobile-navbar-tab-btn" 
+                        style={{ left: '40%', width: '20%' }}
+                        onClick={() => setActiveTab('analyse')}
+                        title="Casper Logo"
+                    />
+                    <button 
+                        className="mobile-navbar-tab-btn" 
+                        style={{ left: '60%', width: '18%' }}
+                        onClick={() => setActiveTab('knowledge')}
+                        title="Connaissances PDF"
+                    />
+                    <button 
+                        className="mobile-navbar-tab-btn" 
+                        style={{ left: '78%', width: '22%' }}
+                        onClick={() => setActiveTab('config')}
+                        title="Configuration / API"
+                    />
+                </div>
+            </div>
         </div>
     );
 };
