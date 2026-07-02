@@ -144,7 +144,28 @@ export const searchKnowledgeBase = async (keywords: string[]): Promise<string> =
             allChunks = [...allChunks, ...formattedLocal];
         }
 
-        // 2. Search in Supabase (if available)
+        // 2. Search in default book chunks (if not deleted)
+        if (!isCgsDeleted) {
+            let defaultMatchingChunks: any[] = [];
+            const defaultChunks = defaultBookData.chunks || [];
+            for (const kw of keywords.slice(0, 5)) {
+                const kwLower = kw.toLowerCase();
+                const matched = defaultChunks.filter(c => c.content?.toLowerCase().includes(kwLower)).slice(0, 3);
+                defaultMatchingChunks = [...defaultMatchingChunks, ...matched];
+            }
+            if (defaultMatchingChunks.length > 0) {
+                const formattedDefault = defaultMatchingChunks.map(chunk => ({
+                    content: chunk.content,
+                    page_number: chunk.page_number,
+                    orthodontic_documents: {
+                        title: chunk.book_title || 'Livre de Référence'
+                    }
+                }));
+                allChunks = [...allChunks, ...formattedDefault];
+            }
+        }
+
+        // 3. Search in Supabase (if available)
         for (const kw of keywords.slice(0, 5)) {
             try {
                 const { data, error } = await supabase
@@ -159,28 +180,6 @@ export const searchKnowledgeBase = async (keywords: string[]): Promise<string> =
             } catch (e) {
                 console.warn('Supabase query failed during RAG search:', e);
             }
-        }
-        
-        // If everything has no results and the default CGS book is not deleted,
-        // we can merge the default book chunks as a fallback
-        if (allChunks.length === 0 && !isCgsDeleted) {
-            const defaultChunks = defaultBookData.chunks;
-            let matchingChunks: any[] = [];
-            for (const kw of keywords.slice(0, 5)) {
-                const kwLower = kw.toLowerCase();
-                const matched = defaultChunks.filter(c => c.content?.toLowerCase().includes(kwLower)).slice(0, 3);
-                matchingChunks = [...matchingChunks, ...matched];
-            }
-            if (matchingChunks.length > 0) {
-                const uniqueChunks = Array.from(new Map(matchingChunks.map(item => [item.content, item])).values());
-                return uniqueChunks
-                    .map((chunk: any) => {
-                        const bookTitle = chunk.book_title || 'Livre de Référence';
-                        return `[Source: ${bookTitle}, Page: ${chunk.page_number}]\n${chunk.content}`;
-                    })
-                    .join('\n\n---\n\n');
-            }
-            return '';
         }
 
         if (allChunks.length === 0) {
