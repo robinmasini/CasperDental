@@ -10,8 +10,8 @@
 
 .login-glass-card {
   width: 100%;
-  max-width: 480px;
-  padding: 40px;
+  max-width: 370px;
+  padding: 30px;
   background: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
@@ -31,7 +31,7 @@
 
 .login-header-section {
   text-align: center;
-  margin-bottom: 35px;
+  margin-bottom: 15px;
 }
 
 .login-logo-wrapper {

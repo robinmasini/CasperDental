@@ -67,10 +67,8 @@ const Landing = () => {
             <div className="login-glass-card glass-card-glow">
                 <div className="login-header-section">
                     <div className="login-logo-wrapper">
-                        <img src={logoCdOm} alt="Casper Dental x OrthoMind" className="login-logo" style={{ maxWidth: '240px', height: 'auto', display: 'block', margin: '0 auto' }} />
+                        <img src={logoCdOm} alt="Casper Dental x OrthoMind" className="login-logo" style={{ maxWidth: '200px', height: 'auto', display: 'block', margin: '0 auto' }} />
                     </div>
-                    <h1>Casper Dental</h1>
-                    <p>Portail d'analyse orthodontique expert</p>
                 </div>
 
                 <form onSubmit={handleSubmit}>
