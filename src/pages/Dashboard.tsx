@@ -618,7 +618,7 @@ const Dashboard = () => {
             const result = await analyzeDentition(imageFiles, (status) => {
                 setScanStatusText(status);
                 addLog(`[INFO] ${status}`);
-            });
+            }, currentPatient);
 
             clearInterval(logIntervalRef.current);
             addLog('[SUCCESS] Rapport de diagnostic finalisé avec succès.');
