@@ -1430,47 +1430,17 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 82px;
+    height: 96px;
     z-index: 9999;
     background: transparent;
     padding: 0;
-  }
-  
-  .mobile-navbar-backdrop {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-    pointer-events: none;
-  }
-  
-  .backdrop-bar {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 56px;
-    background: #060913;
-  }
-  
-  .backdrop-circle {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: #060913;
   }
   
   .mobile-navbar-image-container {
     position: relative;
     width: 100%;
     height: 100%;
-    background-size: contain;
+    background-size: 100% 100%;
     background-repeat: no-repeat;
     background-position: center bottom;
     z-index: 2;
@@ -1492,7 +1462,7 @@
   /* Make sure the main content area has space at the bottom so it doesn't get covered */
   .dashboard-content-area {
     margin-left: 0 !important;
-    padding-bottom: 110px !important;
+    padding-bottom: 130px !important;
     padding-left: 20px !important;
     padding-right: 20px !important;
   }
