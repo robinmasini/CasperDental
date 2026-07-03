@@ -1456,6 +1456,14 @@
     opacity: 0.88;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    
+    /* Proportional masking properties */
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center bottom;
+    mask-position: center bottom;
   }
   
   .mobile-navbar-tab-btn {

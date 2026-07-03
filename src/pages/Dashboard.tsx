@@ -1805,6 +1805,18 @@ const Dashboard = () => {
                             activeTab === 'patients' ? navbar2 :
                             activeTab === 'knowledge' ? navbar3 :
                             navbar4
+                        })`,
+                        WebkitMaskImage: `url(${
+                            activeTab === 'analyse' ? navbar1 :
+                            activeTab === 'patients' ? navbar2 :
+                            activeTab === 'knowledge' ? navbar3 :
+                            navbar4
+                        })`,
+                        maskImage: `url(${
+                            activeTab === 'analyse' ? navbar1 :
+                            activeTab === 'patients' ? navbar2 :
+                            activeTab === 'knowledge' ? navbar3 :
+                            navbar4
                         })`
                     }}
                 >
