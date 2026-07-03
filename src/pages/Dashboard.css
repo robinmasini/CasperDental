@@ -1453,6 +1453,9 @@
     background-position: center bottom;
     z-index: 2;
     filter: drop-shadow(0 -5px 15px rgba(0, 0, 0, 0.6));
+    opacity: 0.88;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
   
   .mobile-navbar-tab-btn {
