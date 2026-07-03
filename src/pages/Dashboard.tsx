@@ -184,6 +184,7 @@ const Dashboard = () => {
     const [patientName, setPatientName] = useState('');
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+    const [isProcessingFiles, setIsProcessingFiles] = useState(false);
     
     // Scanner HUD simulation & API call states
     const [isScanning, setIsScanning] = useState(false);
@@ -406,133 +407,138 @@ const Dashboard = () => {
 
     // Helper function to process HEIC/standard files and add to scan state
     const processAndAddFiles = async (filesArray: File[]) => {
-        const processedFiles: File[] = [];
+        setIsProcessingFiles(true);
+        try {
+            const processedFiles: File[] = [];
 
-        const getErrorString = (err: any): string => {
-            if (!err) return 'Une erreur inconnue est survenue.';
-            if (err instanceof Error) return err.message;
-            if (typeof err === 'object') {
-                if ('message' in err) return String(err.message);
-                if ('errorMsg' in err) return String(err.errorMsg);
-                if ('error' in err) return typeof err.error === 'string' ? err.error : String(err.error?.message || JSON.stringify(err));
-                return JSON.stringify(err);
-            }
-            return String(err);
-        };
+            const getErrorString = (err: any): string => {
+                if (!err) return 'Une erreur inconnue est survenue.';
+                if (err instanceof Error) return err.message;
+                if (typeof err === 'object') {
+                    if ('message' in err) return String(err.message);
+                    if ('errorMsg' in err) return String(err.errorMsg);
+                    if ('error' in err) return typeof err.error === 'string' ? err.error : String(err.error?.message || JSON.stringify(err));
+                    return JSON.stringify(err);
+                }
+                return String(err);
+            };
 
-        for (const file of filesArray) {
-            const nameLower = file.name.toLowerCase();
-            if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
-                
-                // 1. Detect if the browser is Safari (Safari natively renders HEIC images, making canvas-based conversion extremely fast and reliable)
-                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                
-                if (isSafari) {
-                    try {
-                        const nativeBlob = await new Promise<Blob>((resolve, reject) => {
-                            const url = URL.createObjectURL(file);
-                            const img = new Image();
-                            img.onload = () => {
-                                const canvas = document.createElement('canvas');
-                                canvas.width = img.naturalWidth || img.width;
-                                canvas.height = img.naturalHeight || img.height;
-                                const ctx = canvas.getContext('2d');
-                                if (ctx) {
-                                    ctx.drawImage(img, 0, 0);
-                                    canvas.toBlob((blob) => {
+            for (const file of filesArray) {
+                const nameLower = file.name.toLowerCase();
+                if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
+                    
+                    // 1. Detect if the browser is Safari (Safari natively renders HEIC images, making canvas-based conversion extremely fast and reliable)
+                    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                    
+                    if (isSafari) {
+                        try {
+                            const nativeBlob = await new Promise<Blob>((resolve, reject) => {
+                                const url = URL.createObjectURL(file);
+                                const img = new Image();
+                                img.onload = () => {
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = img.naturalWidth || img.width;
+                                    canvas.height = img.naturalHeight || img.height;
+                                    const ctx = canvas.getContext('2d');
+                                    if (ctx) {
+                                        ctx.drawImage(img, 0, 0);
+                                        canvas.toBlob((blob) => {
+                                            URL.revokeObjectURL(url);
+                                            if (blob) resolve(blob);
+                                            else reject(new Error('Canvas toBlob failed'));
+                                        }, 'image/jpeg', 0.85);
+                                    } else {
                                         URL.revokeObjectURL(url);
-                                        if (blob) resolve(blob);
-                                        else reject(new Error('Canvas toBlob failed'));
-                                    }, 'image/jpeg', 0.85);
-                                } else {
+                                        reject(new Error('Canvas 2D context failed'));
+                                    }
+                                };
+                                img.onerror = (err) => {
                                     URL.revokeObjectURL(url);
-                                    reject(new Error('Canvas 2D context failed'));
-                                }
-                            };
-                            img.onerror = (err) => {
-                                URL.revokeObjectURL(url);
-                                reject(err);
-                            };
-                            img.src = url;
-                        });
+                                    reject(err);
+                                };
+                                img.src = url;
+                            });
+                            
+                            const convertedFile = new File([nativeBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+                                type: 'image/jpeg'
+                            });
+                            processedFiles.push(convertedFile);
+                            continue; // Conversion succeeded!
+                        } catch (nativeErr) {
+                            console.warn('Native HEIC conversion failed, falling back to heic-to:', nativeErr);
+                        }
+                    }
+
+                    // 2. Primary cross-browser fallback: heic-to (modern library supporting modern iOS HEIC profiles)
+                    try {
+                        const heicToModule = await import('heic-to');
+                        const heicToConverter = heicToModule.heicTo || heicToModule.default || heicToModule;
                         
-                        const convertedFile = new File([nativeBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+                        if (typeof heicToConverter !== 'function') {
+                            throw new Error('La bibliothèque heic-to n\'a pas pu être résolue comme une fonction.');
+                        }
+
+                        const blobToConvert = file.type ? file : new Blob([file], { type: 'image/heic' });
+                        
+                        const resultBlob = await heicToConverter({
+                            blob: blobToConvert,
+                            type: 'image/jpeg',
+                            quality: 0.8
+                        });
+
+                        const convertedFile = new File([resultBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
                             type: 'image/jpeg'
                         });
                         processedFiles.push(convertedFile);
                         continue; // Conversion succeeded!
-                    } catch (nativeErr) {
-                        console.warn('Native HEIC conversion failed, falling back to heic-to:', nativeErr);
-                    }
-                }
-
-                // 2. Primary cross-browser fallback: heic-to (modern library supporting modern iOS HEIC profiles)
-                try {
-                    const heicToModule = await import('heic-to');
-                    const heicToConverter = heicToModule.heicTo || heicToModule.default || heicToModule;
-                    
-                    if (typeof heicToConverter !== 'function') {
-                        throw new Error('La bibliothèque heic-to n\'a pas pu être résolue comme une fonction.');
+                    } catch (heicToErr) {
+                        console.warn('heic-to conversion failed, falling back to heic2any:', heicToErr);
                     }
 
-                    const blobToConvert = file.type ? file : new Blob([file], { type: 'image/heic' });
-                    
-                    const resultBlob = await heicToConverter({
-                        blob: blobToConvert,
-                        type: 'image/jpeg',
-                        quality: 0.8
-                    });
+                    // 3. Secondary cross-browser fallback: heic2any
+                    try {
+                        const heic2anyModule = await import('heic2any');
+                        let heicConverter = heic2anyModule.default || heic2anyModule;
+                        if (typeof heicConverter !== 'function' && (heicConverter as any).default) {
+                            heicConverter = (heicConverter as any).default;
+                        }
+                        
+                        if (typeof heicConverter !== 'function') {
+                            throw new Error('La bibliothèque heic2any n\'a pas pu être résolue comme une fonction.');
+                        }
 
-                    const convertedFile = new File([resultBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
-                        type: 'image/jpeg'
-                    });
-                    processedFiles.push(convertedFile);
-                    continue; // Conversion succeeded!
-                } catch (heicToErr) {
-                    console.warn('heic-to conversion failed, falling back to heic2any:', heicToErr);
-                }
-
-                // 3. Secondary cross-browser fallback: heic2any
-                try {
-                    const heic2anyModule = await import('heic2any');
-                    let heicConverter = heic2anyModule.default || heic2anyModule;
-                    if (typeof heicConverter !== 'function' && (heicConverter as any).default) {
-                        heicConverter = (heicConverter as any).default;
+                        const blobToConvert = file.type ? file : new Blob([file], { type: 'image/heic' });
+                        
+                        const resultBlob = await heicConverter({
+                            blob: blobToConvert,
+                            toType: 'image/jpeg',
+                            quality: 0.8
+                        });
+                        const blob = Array.isArray(resultBlob) ? resultBlob[0] : resultBlob;
+                        const convertedFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+                            type: 'image/jpeg'
+                        });
+                        processedFiles.push(convertedFile);
+                    } catch (err) {
+                        console.error('All HEIC conversion methods failed, using original file:', err);
+                        const errStr = getErrorString(err);
+                        alert(`Attention: La conversion de l'image HEIC "${file.name}" a échoué. Le fichier d'origine sera utilisé mais peut poser problème lors de l'analyse.\n\nErreur: ${errStr}`);
+                        processedFiles.push(file);
                     }
-                    
-                    if (typeof heicConverter !== 'function') {
-                        throw new Error('La bibliothèque heic2any n\'a pas pu être résolue comme une fonction.');
-                    }
-
-                    const blobToConvert = file.type ? file : new Blob([file], { type: 'image/heic' });
-                    
-                    const resultBlob = await heicConverter({
-                        blob: blobToConvert,
-                        toType: 'image/jpeg',
-                        quality: 0.8
-                    });
-                    const blob = Array.isArray(resultBlob) ? resultBlob[0] : resultBlob;
-                    const convertedFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
-                        type: 'image/jpeg'
-                    });
-                    processedFiles.push(convertedFile);
-                } catch (err) {
-                    console.error('All HEIC conversion methods failed, using original file:', err);
-                    const errStr = getErrorString(err);
-                    alert(`Attention: La conversion de l'image HEIC "${file.name}" a échoué. Le fichier d'origine sera utilisé mais peut poser problème lors de l'analyse.\n\nErreur: ${errStr}`);
+                } else {
                     processedFiles.push(file);
                 }
-            } else {
-                processedFiles.push(file);
             }
-        }
-        
-        // Limit to 6 photos max
-        setImageFiles(prev => [...prev, ...processedFiles].slice(0, 6));
+            
+            // Limit to 6 photos max
+            setImageFiles(prev => [...prev, ...processedFiles].slice(0, 6));
 
-        // Generate preview URLs
-        const newPreviews = processedFiles.map(file => URL.createObjectURL(file));
-        setPreviewUrls(prev => [...prev, ...newPreviews].slice(0, 6));
+            // Generate preview URLs
+            const newPreviews = processedFiles.map(file => URL.createObjectURL(file));
+            setPreviewUrls(prev => [...prev, ...newPreviews].slice(0, 6));
+        } finally {
+            setIsProcessingFiles(false);
+        }
     };
 
     // Handle images selection via file input
@@ -940,8 +946,9 @@ const Dashboard = () => {
                     processedLines.push('<ol>');
                     inOrderedList = true;
                 }
+                const itemNumber = numberMatch[1];
                 const content = applyInlineFormatting(numberMatch[2]);
-                processedLines.push(`<li>${content}</li>`);
+                processedLines.push(`<li value="${itemNumber}">${content}</li>`);
             } else {
                 // Not a list item. Close any active lists
                 if (inUnorderedList) {
@@ -1144,7 +1151,7 @@ const Dashboard = () => {
                                         value={patientName}
                                         onChange={(e) => setPatientName(e.target.value)}
                                         placeholder="Ex: Jean Dupont (N° 4015)"
-                                        disabled={isScanning}
+                                        disabled={isScanning || isProcessingFiles}
                                     />
                                 </div>
 
@@ -1157,22 +1164,37 @@ const Dashboard = () => {
                                         accept="image/*,.heic,.HEIC,.heif,.HEIF" 
                                         onChange={handleImageChange}
                                         style={{ display: 'none' }}
-                                        disabled={isScanning}
+                                        disabled={isScanning || isProcessingFiles}
                                     />
                                     
                                     <label 
-                                        htmlFor="dental-photos-input" 
-                                        className="dropzone-container"
-                                        onDragOver={handleDragOver}
-                                        onDrop={handleDrop}
+                                        htmlFor={isProcessingFiles ? undefined : "dental-photos-input"} 
+                                        className={`dropzone-container ${isProcessingFiles ? 'processing' : ''}`}
+                                        onDragOver={isProcessingFiles ? undefined : handleDragOver}
+                                        onDrop={isProcessingFiles ? undefined : handleDrop}
+                                        style={{ cursor: isProcessingFiles ? 'wait' : 'pointer' }}
                                     >
-                                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                            <circle cx="8.5" cy="8.5" r="1.5" />
-                                            <polyline points="21 15 16 10 5 21" />
-                                        </svg>
-                                        <div className="dropzone-title">Sélectionner les clichés dentaires</div>
-                                        <div className="dropzone-subtitle">Formats JPEG, PNG, HEIC supportés. Maximum 6 images.</div>
+                                        {isProcessingFiles ? (
+                                            <>
+                                                <div className="uploader-loader-spinner"></div>
+                                                <div className="dropzone-title" style={{ marginTop: '16px', color: 'var(--primary-cyan)' }}>
+                                                    Traitement des clichés en cours...
+                                                </div>
+                                                <div className="dropzone-subtitle">
+                                                    Optimisation, conversion (HEIC ➡️ JPG) et calibrage des images...
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                                    <circle cx="8.5" cy="8.5" r="1.5" />
+                                                    <polyline points="21 15 16 10 5 21" />
+                                                </svg>
+                                                <div className="dropzone-title">Sélectionner les clichés dentaires</div>
+                                                <div className="dropzone-subtitle">Formats JPEG, PNG, HEIC supportés. Maximum 6 images.</div>
+                                            </>
+                                        )}
                                     </label>
                                 </div>
 
@@ -1182,7 +1204,7 @@ const Dashboard = () => {
                                         {previewUrls.map((url, idx) => (
                                             <div key={idx} className="preview-item">
                                                 <img src={url} alt={`Preview ${idx + 1}`} />
-                                                {!isScanning && (
+                                                {!isScanning && !isProcessingFiles && (
                                                     <button 
                                                         className="preview-remove-btn"
                                                         onClick={() => removeImage(idx)}
@@ -1198,7 +1220,7 @@ const Dashboard = () => {
                                 <button 
                                     className="glass-btn glass-btn-primary start-scan-btn"
                                     onClick={handleStartAnalysis}
-                                    disabled={isScanning || imageFiles.length === 0}
+                                    disabled={isScanning || isProcessingFiles || imageFiles.length === 0}
                                 >
                                     <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
                                     Lancer l'analyse
