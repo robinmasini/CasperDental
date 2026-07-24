@@ -1336,8 +1336,10 @@ const Dashboard = () => {
                                     </div>
                                 </div>
                             )}
+                        </div>
 
-                            {/* OrthoMind Simulation CTA Banner — toujours visible */}
+                        {/* OrthoMind Simulation CTA — hors grille, compact */}
+                        <div className="simulation-cta-wrapper">
                             <div
                                 className="simulation-cta-banner"
                                 onClick={() => setShowSimulationModal(true)}

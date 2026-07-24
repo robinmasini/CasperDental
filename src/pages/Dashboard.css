@@ -1555,32 +1555,40 @@
   pointer-events: none;
 }
 /* ===== SIMULATION CTA BANNER ===== */
+.simulation-cta-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+}
+
 .simulation-cta-banner {
-  grid-column: 1 / -1;
-  margin-top: 24px;
   cursor: pointer;
-  border-radius: 20px;
+  border-radius: 16px;
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
   outline: none;
+  max-width: 560px;
+  width: 100%;
+  background: none;
+  border: none;
 }
 
 .simulation-cta-banner:hover,
 .simulation-cta-banner:focus {
-  transform: translateY(-4px) scale(1.008);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45), 0 0 30px rgba(0, 242, 254, 0.12);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), 0 0 20px rgba(0, 242, 254, 0.1);
 }
 
 .simulation-cta-banner:active {
-  transform: translateY(-1px) scale(1.002);
+  transform: translateY(-1px) scale(1.005);
 }
 
 .simulation-cta-img {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 20px;
+  border-radius: 16px;
 }
 
 /* ===== SIMULATION MODAL ===== */
