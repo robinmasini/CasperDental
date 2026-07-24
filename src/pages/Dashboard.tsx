@@ -1133,7 +1133,7 @@ const Dashboard = () => {
 
                                 {/* Robot OrthoMind en haut */}
                                 <div className="merged-avatar-zone">
-                                    <div style={{ transform: 'scale(0.8)', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div className="merged-avatar-wrapper">
                                         <OrthoMindAvatar state={analysisAvatarState} />
                                     </div>
                                     {isScanning ? (

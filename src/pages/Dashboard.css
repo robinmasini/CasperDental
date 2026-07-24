@@ -1864,9 +1864,19 @@
   margin-bottom: 4px;
 }
 
+.merged-avatar-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 260px;
+  transform: scale(0.82);
+}
+
 .merged-avatar-status {
-  margin-top: 4px;
+  margin-top: 6px;
   min-height: 28px;
+  position: relative;
+  z-index: 10;
 }
 
 .merged-console {
