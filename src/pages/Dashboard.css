@@ -239,17 +239,6 @@
 }
 
 /* ===== TAB 1: ANALYSE ===== */
-.analyse-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
-}
-
-@media (max-width: 1200px) {
-  .analyse-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
 .upload-panel {
   padding: 30px;
@@ -1854,4 +1843,56 @@
   gap: 12px;
   flex-shrink: 0;
   flex-wrap: wrap;
+}
+
+/* ===== MERGED PANEL (Robot + Formulaire) ===== */
+.merged-panel {
+  padding: 28px 30px;
+  display: flex;
+  flex-direction: column;
+}
+
+.merged-avatar-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.merged-avatar-status {
+  margin-top: 4px;
+  min-height: 28px;
+}
+
+.merged-console {
+  width: 100%;
+  max-height: 100px;
+  margin-top: 8px;
+  font-size: 0.75rem;
+}
+
+.merged-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 18px 0 24px;
+}
+
+/* Grille : 1 col par défaut, 2 cols quand résultats présents */
+.analyse-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 30px;
+  align-items: start;
+}
+
+.analyse-grid:has(.results-panel) {
+  grid-template-columns: 420px 1fr;
+}
+
+@media (max-width: 1100px) {
+  .analyse-grid {
+    grid-template-columns: 1fr;
+  }
 }

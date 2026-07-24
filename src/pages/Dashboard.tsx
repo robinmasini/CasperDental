@@ -1143,8 +1143,43 @@ const Dashboard = () => {
                         </div>
 
                         <div className="analyse-grid">
-                            {/* Drag and Drop Zone Card */}
-                            <div className="glass-panel upload-panel">
+                            {/* Panel unique : Robot + Formulaire */}
+                            <div className="glass-panel upload-panel merged-panel">
+
+                                {/* Robot OrthoMind en haut */}
+                                <div className="merged-avatar-zone">
+                                    <div style={{ transform: 'scale(0.8)', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <OrthoMindAvatar state={analysisAvatarState} />
+                                    </div>
+                                    {isScanning ? (
+                                        <div className="hud-console-logs merged-console">
+                                            {consoleLogs.map((log, idx) => (
+                                                <div key={idx} className="console-line">
+                                                    <span className="console-timestamp">[{log.time}]</span>
+                                                    <span>{log.msg}</span>
+                                                </div>
+                                            ))}
+                                            <p className="console-status-text" style={{ marginTop: '10px' }}>{scanStatusText}</p>
+                                        </div>
+                                    ) : (
+                                        <div className="merged-avatar-status">
+                                            {imageFiles.length > 0 ? (
+                                                <p style={{ color: 'var(--primary-cyan)', fontWeight: 600, fontSize: '0.9rem' }}>
+                                                    ✓ {imageFiles.length} cliché(s) chargé(s) — Prêt à analyser
+                                                </p>
+                                            ) : (
+                                                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                    OrthoMind en attente de vos clichés
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Séparateur */}
+                                <div className="merged-divider" />
+
+                                {/* Formulaire diagnostic */}
                                 <h2>Nouveau Diagnostic</h2>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '25px' }}>
                                     Glissez vos fichiers ou sélectionnez-les pour commencer.
@@ -1152,10 +1187,10 @@ const Dashboard = () => {
 
                                 <div className="patient-input-group">
                                     <label htmlFor="patient-name">Nom ou Référence du Patient</label>
-                                    <input 
-                                        type="text" 
+                                    <input
+                                        type="text"
                                         id="patient-name"
-                                        className="glass-input" 
+                                        className="glass-input"
                                         value={patientName}
                                         onChange={(e) => setPatientName(e.target.value)}
                                         placeholder="Ex: Jean Dupont (N° 4015)"
@@ -1165,18 +1200,17 @@ const Dashboard = () => {
 
                                 <div className="patient-input-group">
                                     <label>Clichés dentaires (Recommandé : 5-6 photos)</label>
-                                    <input 
-                                        type="file" 
+                                    <input
+                                        type="file"
                                         id="dental-photos-input"
-                                        multiple 
-                                        accept="image/*,.heic,.HEIC,.heif,.HEIF" 
+                                        multiple
+                                        accept="image/*,.heic,.HEIC,.heif,.HEIF"
                                         onChange={handleImageChange}
                                         style={{ display: 'none' }}
                                         disabled={isScanning || isProcessingFiles}
                                     />
-                                    
-                                    <label 
-                                        htmlFor={isProcessingFiles ? undefined : "dental-photos-input"} 
+                                    <label
+                                        htmlFor={isProcessingFiles ? undefined : "dental-photos-input"}
                                         className={`dropzone-container ${isProcessingFiles ? 'processing' : ''}`}
                                         onDragOver={isProcessingFiles ? undefined : handleDragOver}
                                         onDrop={isProcessingFiles ? undefined : handleDrop}
@@ -1213,7 +1247,7 @@ const Dashboard = () => {
                                             <div key={idx} className="preview-item">
                                                 <img src={url} alt={`Preview ${idx + 1}`} />
                                                 {!isScanning && !isProcessingFiles && (
-                                                    <button 
+                                                    <button
                                                         className="preview-remove-btn"
                                                         onClick={() => removeImage(idx)}
                                                     >
@@ -1225,7 +1259,7 @@ const Dashboard = () => {
                                     </div>
                                 )}
 
-                                <button 
+                                <button
                                     className="glass-btn glass-btn-primary start-scan-btn"
                                     onClick={handleStartAnalysis}
                                     disabled={isScanning || isProcessingFiles || imageFiles.length === 0}
@@ -1235,49 +1269,7 @@ const Dashboard = () => {
                                 </button>
                             </div>
 
-                            {/* Scanner HUD Overlay */}
-                            <div className="glass-panel hud-panel">
-                                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                                    {/* Embedded Robot Avatar */}
-                                    <div style={{ transform: 'scale(0.85)', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '10px 0' }}>
-                                        <OrthoMindAvatar state={analysisAvatarState} />
-                                    </div>
-
-                                    {isScanning ? (
-                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                                            <div className="hud-console-logs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                                                {consoleLogs.map((log, idx) => (
-                                                    <div key={idx} className="console-line">
-                                                        <span className="console-timestamp">[{log.time}]</span>
-                                                        <span>{log.msg}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <p className="console-status-text" style={{ marginTop: '10px', fontWeight: 'bold' }}>{scanStatusText}</p>
-                                        </div>
-                                    ) : (
-                                        <div style={{ textAlign: 'center', padding: '10px 20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                            {imageFiles.length > 0 ? (
-                                                <>
-                                                    <h4 style={{ color: 'var(--primary-cyan)', marginBottom: '6px' }}>OrthoMind Prêt à l'Analyse</h4>
-                                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                                        {imageFiles.length} cliché(s) chargé(s). Cliquez sur "Lancer l'analyse Casper" ci-dessus pour démarrer.
-                                                    </p>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <h4 style={{ color: 'var(--text-primary)', marginBottom: '6px' }}>OrthoMind en Attente</h4>
-                                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                                        Déposez des clichés cliniques dans la zone de gauche pour activer l'assistant.
-                                                    </p>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Diagnostic & Traitement split outputs */}
+                                                        {/* Diagnostic & Traitement split outputs */}
                             {analysisResult && (
                                 <div className="glass-panel results-panel">
                                     <div className="results-header-row">
