@@ -1186,19 +1186,6 @@ const Dashboard = () => {
                                 </p>
 
                                 <div className="patient-input-group">
-                                    <label htmlFor="patient-name">Nom ou Référence du Patient</label>
-                                    <input
-                                        type="text"
-                                        id="patient-name"
-                                        className="glass-input"
-                                        value={patientName}
-                                        onChange={(e) => setPatientName(e.target.value)}
-                                        placeholder="Ex: Jean Dupont (N° 4015)"
-                                        disabled={isScanning || isProcessingFiles}
-                                    />
-                                </div>
-
-                                <div className="patient-input-group">
                                     <label>Clichés dentaires (Recommandé : 5-6 photos)</label>
                                     <input
                                         type="file"
