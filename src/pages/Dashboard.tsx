@@ -1679,17 +1679,35 @@ const Dashboard = () => {
                                                     generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
                                                 };
 
-                                                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`;
-                                                const resp = await fetch(url, {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify(apiBody)
-                                                });
+                                                // Essai avec les modèles image disponibles (v1alpha requis pour les modèles preview)
+                                                const imageModels = [
+                                                    { version: 'v1alpha', model: 'gemini-2.0-flash-preview-image-generation' },
+                                                    { version: 'v1beta',  model: 'gemini-2.0-flash-exp' },
+                                                    { version: 'v1beta',  model: 'gemini-2.0-flash' },
+                                                ];
 
-                                                if (!resp.ok) {
-                                                    const errData = await resp.json().catch(() => ({}));
-                                                    throw new Error(errData.error?.message || `Erreur API: ${resp.status}`);
+                                                let resp: Response | null = null;
+                                                let lastErr = '';
+                                                for (const { version, model } of imageModels) {
+                                                    const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${apiKey}`;
+                                                    try {
+                                                        const r = await fetch(url, {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify(apiBody)
+                                                        });
+                                                        if (r.ok) { resp = r; break; }
+                                                        const errData = await r.json().catch(() => ({}));
+                                                        lastErr = errData.error?.message || `Status ${r.status}`;
+                                                    } catch (fetchErr: any) {
+                                                        lastErr = fetchErr.message;
+                                                    }
                                                 }
+
+                                                if (!resp || !resp.ok) {
+                                                    throw new Error(lastErr || 'Tous les modèles image ont échoué.');
+                                                }
+
 
                                                 const data = await resp.json();
                                                 const parts = data.candidates?.[0]?.content?.parts || [];
