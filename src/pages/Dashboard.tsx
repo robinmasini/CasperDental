@@ -113,6 +113,14 @@ const Dashboard = () => {
     const [showOrthoMindModal, setShowOrthoMindModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
 
+    // Smile Simulation Modal state
+    const [showSimulationModal, setShowSimulationModal] = useState(false);
+    const [simPhoto, setSimPhoto] = useState<string | null>(null);
+    const [simPhotoFile, setSimPhotoFile] = useState<File | null>(null);
+    const [isGeneratingSim, setIsGeneratingSim] = useState(false);
+    const [simResult, setSimResult] = useState<string | null>(null);
+    const [simDragOver, setSimDragOver] = useState(false);
+
     const handleSendChatMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!chatInputValue.trim() || isChatTyping) return;
@@ -1328,6 +1336,17 @@ const Dashboard = () => {
                                     </div>
                                 </div>
                             )}
+
+                            {/* OrthoMind Simulation CTA Banner — toujours visible */}
+                            <div
+                                className="simulation-cta-banner"
+                                onClick={() => setShowSimulationModal(true)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => e.key === 'Enter' && setShowSimulationModal(true)}
+                            >
+                                <img src="/cta-om.png" alt="Découvrez votre futur sourire" className="simulation-cta-img" />
+                            </div>
                         </div>
                     </>
                 )}
@@ -1521,6 +1540,242 @@ const Dashboard = () => {
                     </div>
                 )}
             </main>
+
+            {/* Smile Simulation Modal */}
+            {showSimulationModal && (
+                <div className="glass-modal-overlay sim-modal-overlay" onClick={() => { setShowSimulationModal(false); setSimPhoto(null); setSimPhotoFile(null); setSimResult(null); setIsGeneratingSim(false); }}>
+                    <div className="glass-modal-content sim-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <button className="modal-close-btn" onClick={() => { setShowSimulationModal(false); setSimPhoto(null); setSimPhotoFile(null); setSimResult(null); setIsGeneratingSim(false); }}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+
+                        <div className="sim-modal-header">
+                            <div className="sim-modal-badge">
+                                <span className="pulse-indicator"></span>
+                                <span>OrthoMind — Simulation IA</span>
+                            </div>
+                            <h2>Découvrez votre futur sourire 😁🔮</h2>
+                            <p>Uploadez une photo frontale du sourire de votre patient. Notre IA OrthoMind génère une simulation photoréaliste du résultat après traitement par gouttières.</p>
+                        </div>
+
+                        {!simResult ? (
+                            <div className="sim-upload-area">
+                                {!simPhoto ? (
+                                    <>
+                                        <input
+                                            type="file"
+                                            id="sim-photo-input"
+                                            accept="image/*,.heic,.HEIC"
+                                            style={{ display: 'none' }}
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setSimPhotoFile(file);
+                                                    const url = URL.createObjectURL(file);
+                                                    setSimPhoto(url);
+                                                }
+                                            }}
+                                        />
+                                        <label
+                                            htmlFor="sim-photo-input"
+                                            className={`sim-dropzone ${simDragOver ? 'drag-over' : ''}`}
+                                            onDragOver={(e) => { e.preventDefault(); setSimDragOver(true); }}
+                                            onDragLeave={() => setSimDragOver(false)}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                setSimDragOver(false);
+                                                const file = e.dataTransfer.files?.[0];
+                                                if (file && file.type.startsWith('image/')) {
+                                                    setSimPhotoFile(file);
+                                                    const url = URL.createObjectURL(file);
+                                                    setSimPhoto(url);
+                                                }
+                                            }}
+                                        >
+                                            <div className="sim-dropzone-icon">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                                    <circle cx="12" cy="7" r="4" />
+                                                </svg>
+                                            </div>
+                                            <div className="dropzone-title">Déposer une photo frontale du sourire</div>
+                                            <div className="dropzone-subtitle">JPEG, PNG, HEIC — Portrait de face recommandé</div>
+                                        </label>
+                                    </>
+                                ) : (
+                                    <div className="sim-preview-section">
+                                        <div className="sim-preview-wrapper">
+                                            <img src={simPhoto} alt="Photo patient" className="sim-preview-img" />
+                                            <div className="sim-preview-label">Photo originale</div>
+                                        </div>
+                                        <div className="sim-arrow-container">
+                                            <div className="sim-arrow-pulse">
+                                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                                    <polyline points="12 5 19 12 12 19" />
+                                                </svg>
+                                            </div>
+                                            <span>Simulation IA</span>
+                                        </div>
+                                        <div className="sim-result-placeholder">
+                                            <div className="sim-result-glow">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                    <circle cx="12" cy="12" r="10" />
+                                                    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                                                    <line x1="9" y1="9" x2="9.01" y2="9" />
+                                                    <line x1="15" y1="9" x2="15.01" y2="9" />
+                                                </svg>
+                                            </div>
+                                            <span>Sourire simulé</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="sim-actions-row">
+                                    {simPhoto && (
+                                        <button
+                                            className="glass-btn glass-btn-secondary"
+                                            onClick={() => { setSimPhoto(null); setSimPhotoFile(null); }}
+                                            disabled={isGeneratingSim}
+                                        >
+                                            Changer la photo
+                                        </button>
+                                    )}
+                                    <button
+                                        className="glass-btn glass-btn-primary sim-generate-btn"
+                                        disabled={!simPhoto || isGeneratingSim}
+                                        onClick={async () => {
+                                            if (!simPhotoFile) return;
+                                            setIsGeneratingSim(true);
+                                            try {
+                                                const apiKey = getGeminiApiKey();
+                                                if (!apiKey) throw new Error('Clé API Gemini manquante. Configurez-la dans l\'onglet Configuration.');
+
+                                                const toBase64 = (file: File): Promise<string> =>
+                                                    new Promise((res) => {
+                                                        const reader = new FileReader();
+                                                        reader.onload = (e) => {
+                                                            const result = e.target?.result as string;
+                                                            res(result.split(',')[1]);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    });
+
+                                                const base64Data = await toBase64(simPhotoFile);
+                                                const fileMime = simPhotoFile.type || 'image/jpeg';
+
+                                                const simPrompt = 'Génère une image photoréaliste du même sourire APRÈS un traitement complet par gouttières orthodontiques. Les dents doivent être parfaitement alignées, symétriques, blanches et naturelles. Préserve exactement le visage — modifie uniquement les dents.';
+
+                                                const apiBody = {
+                                                    contents: [{
+                                                        parts: [
+                                                            { inlineData: { data: base64Data, mimeType: fileMime } },
+                                                            { text: simPrompt }
+                                                        ]
+                                                    }],
+                                                    generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+                                                };
+
+                                                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`;
+                                                const resp = await fetch(url, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify(apiBody)
+                                                });
+
+                                                if (!resp.ok) {
+                                                    const errData = await resp.json().catch(() => ({}));
+                                                    throw new Error(errData.error?.message || `Erreur API: ${resp.status}`);
+                                                }
+
+                                                const data = await resp.json();
+                                                const parts = data.candidates?.[0]?.content?.parts || [];
+                                                let found = false;
+                                                for (const part of parts) {
+                                                    if (part.inlineData?.data) {
+                                                        const imgMime = part.inlineData.mimeType || 'image/png';
+                                                        setSimResult(`data:${imgMime};base64,${part.inlineData.data}`);
+                                                        found = true;
+                                                        break;
+                                                    }
+                                                }
+                                                if (!found) throw new Error('Aucune image générée. Le modèle image n\'est peut-être pas accessible avec votre clé.');
+                                            } catch (err: any) {
+                                                console.error('Simulation error:', err);
+                                                alert(`Erreur lors de la génération : ${err.message || 'Vérifiez votre clé API Gemini.'}`);
+                                            } finally {
+                                                setIsGeneratingSim(false);
+                                            }
+                                        }}
+                                    >
+                                        {isGeneratingSim ? (
+                                            <>
+                                                <div className="uploader-loader-spinner" style={{ width: '18px', height: '18px', marginRight: '8px' }}></div>
+                                                Génération en cours...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '8px' }}>
+                                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                </svg>
+                                                Simuler mon sourire avec OrthoMind
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="sim-result-section">
+                                <div className="sim-comparison-grid">
+                                    <div className="sim-comparison-item">
+                                        <img src={simPhoto!} alt="Avant" className="sim-comparison-img" />
+                                        <div className="sim-comparison-label before-label">Avant traitement</div>
+                                    </div>
+                                    <div className="sim-vs-badge">→</div>
+                                    <div className="sim-comparison-item">
+                                        <img src={simResult} alt="Après gouttières" className="sim-comparison-img sim-after-img" />
+                                        <div className="sim-comparison-label after-label">Après gouttières ✨</div>
+                                    </div>
+                                </div>
+
+                                <div className="sim-result-cta">
+                                    <div className="sim-result-cta-text">
+                                        <h3>Prêt à transformer votre sourire ?</h3>
+                                        <p>La précision chirurgicale d'OrthoMind au service d'un alignement parfait. Lancez votre traitement dès aujourd'hui.</p>
+                                    </div>
+                                    <div className="sim-result-actions">
+                                        <button
+                                            className="glass-btn glass-btn-secondary"
+                                            onClick={() => { setSimResult(null); setSimPhoto(null); setSimPhotoFile(null); }}
+                                        >
+                                            Nouvelle simulation
+                                        </button>
+                                        <button
+                                            className="glass-btn glass-btn-primary"
+                                            onClick={() => {
+                                                const link = document.createElement('a');
+                                                link.href = simResult!;
+                                                link.download = 'simulation-sourire-orthomind.png';
+                                                link.click();
+                                            }}
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '6px' }}>
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                                <polyline points="7 10 12 15 17 10" />
+                                                <line x1="12" y1="15" x2="12" y2="3" />
+                                            </svg>
+                                            Télécharger la simulation
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Modal popup for history items */}
             {selectedHistoryItem && (
@@ -1797,6 +2052,8 @@ const Dashboard = () => {
 
             {/* Mobile Bottom Navigation Bar */}
             <div className="mobile-bottom-navbar">
+                {/* Glow effect behind the active icon */}
+                <div className={`nav-background-glow pos-${activeTab}`} />
                 <div 
                     className="mobile-navbar-image-container"
                     style={{ 
