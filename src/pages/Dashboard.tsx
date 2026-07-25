@@ -118,6 +118,7 @@ const Dashboard = () => {
     const [simPhoto, setSimPhoto] = useState<string | null>(null);
     const [simPhotoFile, setSimPhotoFile] = useState<File | null>(null);
     const [isGeneratingSim, setIsGeneratingSim] = useState(false);
+    const [isConvertingSimHeic, setIsConvertingSimHeic] = useState(false);
     const [simResult, setSimResult] = useState<string | null>(null);
     const [simDragOver, setSimDragOver] = useState(false);
 
@@ -410,6 +411,107 @@ const Dashboard = () => {
         } else {
             localStorage.removeItem('casper_gemini_api_key');
             alert('Clé API effacée du stockage local.');
+        }
+    };
+
+    // Standalone helper function to convert HEIC/HEIF file to browser-compatible JPEG
+    const convertSingleHeicFile = async (file: File): Promise<File> => {
+        const nameLower = file.name.toLowerCase();
+        if (!nameLower.endsWith('.heic') && !nameLower.endsWith('.heif') && file.type !== 'image/heic' && file.type !== 'image/heif') {
+            return file;
+        }
+
+        // 1. Safari native canvas conversion
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        if (isSafari) {
+            try {
+                const nativeBlob = await new Promise<Blob>((resolve, reject) => {
+                    const url = URL.createObjectURL(file);
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.naturalWidth || img.width;
+                        canvas.height = img.naturalHeight || img.height;
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            ctx.drawImage(img, 0, 0);
+                            canvas.toBlob((blob) => {
+                                URL.revokeObjectURL(url);
+                                if (blob) resolve(blob);
+                                else reject(new Error('Canvas toBlob failed'));
+                            }, 'image/jpeg', 0.85);
+                        } else {
+                            URL.revokeObjectURL(url);
+                            reject(new Error('Canvas 2D context failed'));
+                        }
+                    };
+                    img.onerror = (err) => {
+                        URL.revokeObjectURL(url);
+                        reject(err);
+                    };
+                    img.src = url;
+                });
+                return new File([nativeBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+            } catch (nativeErr) {
+                console.warn('Native HEIC conversion failed, trying fallbacks:', nativeErr);
+            }
+        }
+
+        // 2. Primary fallback: heic-to module
+        try {
+            const heicToModule = await import('heic-to');
+            const heicToConverter = heicToModule.heicTo || heicToModule.default || heicToModule;
+            if (typeof heicToConverter === 'function') {
+                const blobToConvert = file.type ? file : new Blob([file], { type: 'image/heic' });
+                const resultBlob = await heicToConverter({
+                    blob: blobToConvert,
+                    type: 'image/jpeg',
+                    quality: 0.8
+                });
+                return new File([resultBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+            }
+        } catch (heicToErr) {
+            console.warn('heic-to conversion failed, trying heic2any:', heicToErr);
+        }
+
+        // 3. Secondary fallback: heic2any module
+        try {
+            const heic2anyModule = await import('heic2any');
+            let heicConverter = heic2anyModule.default || heic2anyModule;
+            if (typeof heicConverter !== 'function' && (heicConverter as any).default) {
+                heicConverter = (heicConverter as any).default;
+            }
+            if (typeof heicConverter === 'function') {
+                const blobToConvert = file.type ? file : new Blob([file], { type: 'image/heic' });
+                const resultBlob = await heicConverter({
+                    blob: blobToConvert,
+                    toType: 'image/jpeg',
+                    quality: 0.8
+                });
+                const blob = Array.isArray(resultBlob) ? resultBlob[0] : resultBlob;
+                return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+            }
+        } catch (err) {
+            console.error('All HEIC conversion methods failed:', err);
+        }
+
+        return file;
+    };
+
+    const handleSimFileSelection = async (file: File) => {
+        setIsConvertingSimHeic(true);
+        try {
+            const convertedFile = await convertSingleHeicFile(file);
+            setSimPhotoFile(convertedFile);
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                setSimPhoto(ev.target?.result as string);
+                setIsConvertingSimHeic(false);
+            };
+            reader.readAsDataURL(convertedFile);
+        } catch (err) {
+            console.error('Error selecting sim photo:', err);
+            setIsConvertingSimHeic(false);
         }
     };
 
@@ -1577,12 +1679,7 @@ const Dashboard = () => {
                                             style={{ display: 'none' }}
                                             onChange={(e) => {
                                                 const file = e.target.files?.[0];
-                                                if (file) {
-                                                    setSimPhotoFile(file);
-                                                    const reader = new FileReader();
-                                                    reader.onload = (ev) => setSimPhoto(ev.target?.result as string);
-                                                    reader.readAsDataURL(file);
-                                                }
+                                                if (file) handleSimFileSelection(file);
                                             }}
                                         />
                                         <label
@@ -1594,22 +1691,27 @@ const Dashboard = () => {
                                                 e.preventDefault();
                                                 setSimDragOver(false);
                                                 const file = e.dataTransfer.files?.[0];
-                                                if (file && (file.type.startsWith('image/') || /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(file.name))) {
-                                                    setSimPhotoFile(file);
-                                                    const reader = new FileReader();
-                                                    reader.onload = (ev) => setSimPhoto(ev.target?.result as string);
-                                                    reader.readAsDataURL(file);
-                                                }
+                                                if (file) handleSimFileSelection(file);
                                             }}
                                         >
-                                            <div className="sim-dropzone-icon">
-                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                                    <circle cx="12" cy="7" r="4" />
-                                                </svg>
-                                            </div>
-                                            <div className="dropzone-title">Déposer une photo frontale du sourire</div>
-                                            <div className="dropzone-subtitle">JPEG, PNG, HEIC — Portrait de face recommandé</div>
+                                            {isConvertingSimHeic ? (
+                                                <div style={{ textAlign: 'center', padding: '20px' }}>
+                                                    <div className="uploader-loader-spinner" style={{ width: '32px', height: '32px', margin: '0 auto 14px' }}></div>
+                                                    <div className="dropzone-title">Conversion HEIC ➡️ JPG en cours...</div>
+                                                    <div className="dropzone-subtitle">Décodage du format photo Apple pour l'affichage et la simulation.</div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="sim-dropzone-icon">
+                                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                                            <circle cx="12" cy="7" r="4" />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="dropzone-title">Déposer une photo frontale du sourire</div>
+                                                    <div className="dropzone-subtitle">JPEG, PNG, HEIC — Portrait de face recommandé</div>
+                                                </>
+                                            )}
                                         </label>
                                     </>
                                 ) : (
