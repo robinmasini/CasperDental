@@ -1831,23 +1831,23 @@ const Dashboard = () => {
                                                                         const isTooth = lum > 90 && sat < 0.38 && (r - g) < 55 && (r - b) < (sumRGB * 0.28);
 
                                                                         if (isTooth) {
-                                                                            // Porcelain enamel bleaching & whitening
-                                                                            const targetLum = Math.min(255, lum * 1.25 + 28);
+                                                                            // Subtle, realistic orthodontic enamel brightening (VITA A1/B1 shade target)
+                                                                            const targetLum = Math.min(255, lum * 1.08 + 8);
                                                                             const scale = targetLum / Math.max(1, lum);
 
-                                                                            let newR = Math.min(255, Math.round(r * scale + 6));
-                                                                            let newG = Math.min(255, Math.round(g * scale + 12));
-                                                                            let newB = Math.min(255, Math.round(b * (scale * 1.35) + 38)); // High blue boost to eliminate yellowing
+                                                                            let newR = Math.min(255, Math.round(r * scale + 2));
+                                                                            let newG = Math.min(255, Math.round(g * scale + 4));
+                                                                            let newB = Math.min(255, Math.round(b * (scale * 1.12) + 12)); // Gentle blue boost for natural enamel shade
 
-                                                                            // High-impact whitening blend
-                                                                            d[i]   = Math.round(r * 0.10 + newR * 0.90);
-                                                                            d[i+1] = Math.round(g * 0.10 + newG * 0.90);
-                                                                            d[i+2] = Math.round(b * 0.10 + newB * 0.90);
+                                                                            // Natural 45% blend preserving original enamel translucency and anatomical highlights
+                                                                            d[i]   = Math.round(r * 0.55 + newR * 0.45);
+                                                                            d[i+1] = Math.round(g * 0.55 + newG * 0.45);
+                                                                            d[i+2] = Math.round(b * 0.55 + newB * 0.45);
                                                                         } else if (lum > 40 && lum <= 90 && sat < 0.35 && (r - g) < 42) {
-                                                                            // Interdental shadow & crowding smoothing (brighten gaps between crooked teeth)
-                                                                            d[i]   = Math.min(255, Math.round(r * 1.25 + 15));
-                                                                            d[i+1] = Math.min(255, Math.round(g * 1.28 + 18));
-                                                                            d[i+2] = Math.min(255, Math.round(b * 1.45 + 32));
+                                                                            // Gentle interdental shadow softening (subtle smoothing of crowding gaps)
+                                                                            d[i]   = Math.min(255, Math.round(r * 1.06 + 4));
+                                                                            d[i+1] = Math.min(255, Math.round(g * 1.07 + 5));
+                                                                            d[i+2] = Math.min(255, Math.round(b * 1.12 + 10));
                                                                         }
                                                                     }
                                                                 }
