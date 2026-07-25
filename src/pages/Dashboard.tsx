@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 import { supabase, uploadDentalPhoto } from '../lib/supabase';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
-import { analyzeDentition, getGeminiApiKey, askOrthoMind, loadLocalCompiledKnowledge } from '../services/geminiService';
+import { analyzeDentition, getGeminiApiKey, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import defaultBookData from '../assets/cgs_volume_61.json';
 import orthomindLogo from '../assets/orthomind-logo.png';
@@ -1763,33 +1763,12 @@ const Dashboard = () => {
                                                 const apiKey = getGeminiApiKey();
                                                 let generatedImg: string | null = null;
 
-                                                // 1. Try Imagen 3 API with strict 6s timeout if API key is configured
+                                                // 1. Try Gemini Vision & Imagen API if API key is configured
                                                 if (apiKey) {
                                                     try {
-                                                        const controller = new AbortController();
-                                                        const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-                                                        // Try Imagen 3 predict endpoint
-                                                        const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-                                                        const resp = await fetch(imagenUrl, {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            signal: controller.signal,
-                                                            body: JSON.stringify({
-                                                                instances: [{
-                                                                    prompt: "A close-up photorealistic medical dental portrait of a patient smiling with perfectly aligned, straight, white, clean teeth after invisible clear aligner orthodontic treatment, natural dental lighting, high resolution"
-                                                                }],
-                                                                parameters: { sampleCount: 1, aspectRatio: "1:1" }
-                                                            })
-                                                        });
-                                                        clearTimeout(timeoutId);
-                                                        if (resp.ok) {
-                                                            const data = await resp.json();
-                                                            const b64 = data.predictions?.[0]?.bytesBase64Encoded || data.generatedImages?.[0]?.image?.imageBytes;
-                                                            if (b64) generatedImg = `data:image/jpeg;base64,${b64}`;
-                                                        }
+                                                        generatedImg = await generateSmileSimulationWithGemini(simPhoto);
                                                     } catch (e) {
-                                                        console.warn('Imagen 3 API skipped or timed out:', e);
+                                                        console.warn('Gemini smile simulation service skipped:', e);
                                                     }
                                                 }
 
@@ -1827,32 +1806,48 @@ const Dashboard = () => {
                                                                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                                                                 const d = imgData.data;
 
-                                                                // Accurate tooth enamel whitening pass (analyzing full image for tooth pixels)
-                                                                for (let y = 0; y < canvas.height; y++) {
-                                                                    for (let x = 0; x < canvas.width; x++) {
+                                                                // Adaptive Tooth Enamel Isolation & Porcelain Whitening Algorithm
+                                                                const startY = Math.floor(canvas.height * 0.28);
+                                                                const endY = Math.floor(canvas.height * 0.82);
+                                                                const startX = Math.floor(canvas.width * 0.12);
+                                                                const endX = Math.floor(canvas.width * 0.88);
+
+                                                                for (let y = startY; y < endY; y++) {
+                                                                    for (let x = startX; x < endX; x++) {
                                                                         const i = (y * canvas.width + x) * 4;
                                                                         let r = d[i], g = d[i+1], b = d[i+2];
 
+                                                                        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
                                                                         const maxC = Math.max(r, g, b);
                                                                         const minC = Math.min(r, g, b);
                                                                         const sat = maxC > 0 ? (maxC - minC) / maxC : 0;
-                                                                        const br = (r + g + b) / 3;
+                                                                        const sumRGB = r + g + b;
 
-                                                                        // Precise Tooth Enamel Filter:
-                                                                        // Brightness > 110, low saturation < 0.22, low red-blue / red-green difference
-                                                                        // (Isolates teeth enamel while strictly avoiding skin, lips, tongue and gums)
-                                                                        if (br > 110 && sat < 0.22 && (r - b) < 48 && (r - g) < 32) {
-                                                                            const targetBrightness = Math.min(255, br * 1.12 + 12);
-                                                                            const scale = targetBrightness / Math.max(1, br);
+                                                                        // Adaptive teeth detection under ANY lighting (warm indoor, daylight, fluorescent):
+                                                                        // 1. Luminance > 90 (teeth are local brightness maxima inside mouth)
+                                                                        // 2. Saturation < 0.38 (skin & lips are red/pink with sat > 0.38)
+                                                                        // 3. (r - g) < 55 (lips/gums have dominant red r - g > 55)
+                                                                        // 4. (r - b) < sumRGB * 0.28 (excludes skin tones while accepting warm-lit teeth)
+                                                                        const isTooth = lum > 90 && sat < 0.38 && (r - g) < 55 && (r - b) < (sumRGB * 0.28);
 
-                                                                            const newR = Math.min(255, Math.round(r * scale));
-                                                                            const newG = Math.min(255, Math.round(g * scale + 2));
-                                                                            const newB = Math.min(255, Math.round(b * scale * 1.18 + 16));
+                                                                        if (isTooth) {
+                                                                            // Porcelain enamel bleaching & whitening
+                                                                            const targetLum = Math.min(255, lum * 1.25 + 28);
+                                                                            const scale = targetLum / Math.max(1, lum);
 
-                                                                            // Blend with original pixel to preserve natural tooth anatomical contours
-                                                                            d[i]   = Math.round(r * 0.2 + newR * 0.8);
-                                                                            d[i+1] = Math.round(g * 0.2 + newG * 0.8);
-                                                                            d[i+2] = Math.round(b * 0.2 + newB * 0.8);
+                                                                            let newR = Math.min(255, Math.round(r * scale + 6));
+                                                                            let newG = Math.min(255, Math.round(g * scale + 12));
+                                                                            let newB = Math.min(255, Math.round(b * (scale * 1.35) + 38)); // High blue boost to eliminate yellowing
+
+                                                                            // High-impact whitening blend
+                                                                            d[i]   = Math.round(r * 0.10 + newR * 0.90);
+                                                                            d[i+1] = Math.round(g * 0.10 + newG * 0.90);
+                                                                            d[i+2] = Math.round(b * 0.10 + newB * 0.90);
+                                                                        } else if (lum > 40 && lum <= 90 && sat < 0.35 && (r - g) < 42) {
+                                                                            // Interdental shadow & crowding smoothing (brighten gaps between crooked teeth)
+                                                                            d[i]   = Math.min(255, Math.round(r * 1.25 + 15));
+                                                                            d[i+1] = Math.min(255, Math.round(g * 1.28 + 18));
+                                                                            d[i+2] = Math.min(255, Math.round(b * 1.45 + 32));
                                                                         }
                                                                     }
                                                                 }
