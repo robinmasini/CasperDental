@@ -1573,7 +1573,7 @@ const Dashboard = () => {
                                         <input
                                             type="file"
                                             id="sim-photo-input"
-                                            accept="image/*,.heic,.HEIC"
+                                            accept="image/*,.heic,.HEIC,.heif,.HEIF"
                                             style={{ display: 'none' }}
                                             onChange={(e) => {
                                                 const file = e.target.files?.[0];
@@ -1594,7 +1594,7 @@ const Dashboard = () => {
                                                 e.preventDefault();
                                                 setSimDragOver(false);
                                                 const file = e.dataTransfer.files?.[0];
-                                                if (file && file.type.startsWith('image/')) {
+                                                if (file && (file.type.startsWith('image/') || /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(file.name))) {
                                                     setSimPhotoFile(file);
                                                     const reader = new FileReader();
                                                     reader.onload = (ev) => setSimPhoto(ev.target?.result as string);
@@ -1655,19 +1655,22 @@ const Dashboard = () => {
                                         className="glass-btn glass-btn-primary sim-generate-btn"
                                         disabled={!simPhoto || isGeneratingSim}
                                         onClick={async () => {
-                                            if (!simPhotoFile) return;
+                                            if (!simPhoto) return;
                                             setIsGeneratingSim(true);
                                             try {
                                                 const apiKey = getGeminiApiKey();
                                                 let generatedImg: string | null = null;
 
-                                                // 1. Try Imagen 3 API if API key is configured
+                                                // 1. Try Imagen 3 API with strict 6s timeout if API key is configured
                                                 if (apiKey) {
                                                     try {
+                                                        const controller = new AbortController();
+                                                        const timeoutId = setTimeout(() => controller.abort(), 6000);
                                                         const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
                                                         const resp = await fetch(imagenUrl, {
                                                             method: 'POST',
                                                             headers: { 'Content-Type': 'application/json' },
+                                                            signal: controller.signal,
                                                             body: JSON.stringify({
                                                                 instances: [{
                                                                     prompt: "A close-up photorealistic medical portrait of a patient smiling with perfectly aligned, straight, white, clean teeth after invisible clear aligner orthodontic treatment, natural dental lighting, high resolution"
@@ -1675,67 +1678,97 @@ const Dashboard = () => {
                                                                 parameters: { sampleCount: 1, aspectRatio: "1:1" }
                                                             })
                                                         });
+                                                        clearTimeout(timeoutId);
                                                         if (resp.ok) {
                                                             const data = await resp.json();
                                                             const b64 = data.predictions?.[0]?.bytesBase64Encoded;
                                                             if (b64) generatedImg = `data:image/jpeg;base64,${b64}`;
                                                         }
                                                     } catch (e) {
-                                                        console.warn('Imagen 3 API skipped:', e);
+                                                        console.warn('Imagen 3 API skipped or timed out:', e);
                                                     }
                                                 }
 
-                                                // 2. High-Precision Dental Whitening & Alignment Engine Fallback
+                                                // 2. High-Precision Dental Whitening & Alignment Engine Fallback (guaranteed response)
                                                 if (!generatedImg) {
                                                     generatedImg = await new Promise<string>((resolve) => {
+                                                        let settled = false;
+                                                        const safeResolve = (res: string) => {
+                                                            if (!settled) {
+                                                                settled = true;
+                                                                resolve(res);
+                                                            }
+                                                        };
+
+                                                        // Hard timeout safety (4s)
+                                                        const timer = setTimeout(() => {
+                                                            safeResolve(simPhoto);
+                                                        }, 4000);
+
                                                         const img = new Image();
+                                                        img.crossOrigin = 'anonymous';
+
                                                         img.onload = () => {
-                                                            const canvas = document.createElement('canvas');
-                                                            canvas.width = img.width;
-                                                            canvas.height = img.height;
-                                                            const ctx = canvas.getContext('2d');
-                                                            if (!ctx) { resolve(simPhoto!); return; }
+                                                            clearTimeout(timer);
+                                                            try {
+                                                                const canvas = document.createElement('canvas');
+                                                                canvas.width = img.width || 800;
+                                                                canvas.height = img.height || 800;
+                                                                const ctx = canvas.getContext('2d');
+                                                                if (!ctx) { safeResolve(simPhoto); return; }
 
-                                                            ctx.drawImage(img, 0, 0);
-                                                            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                                                            const d = imgData.data;
+                                                                ctx.drawImage(img, 0, 0);
+                                                                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                                                                const d = imgData.data;
 
-                                                            // Smile region enhancement (whiten enamel & boost alignment perception)
-                                                            const startY = Math.floor(canvas.height * 0.3);
-                                                            const endY = Math.floor(canvas.height * 0.85);
-                                                            const startX = Math.floor(canvas.width * 0.2);
-                                                            const endX = Math.floor(canvas.width * 0.8);
+                                                                // Smile region enhancement (whiten enamel & boost alignment perception)
+                                                                const startY = Math.floor(canvas.height * 0.25);
+                                                                const endY = Math.floor(canvas.height * 0.85);
+                                                                const startX = Math.floor(canvas.width * 0.15);
+                                                                const endX = Math.floor(canvas.width * 0.85);
 
-                                                            for (let y = startY; y < endY; y++) {
-                                                                for (let x = startX; x < endX; x++) {
-                                                                    const i = (y * canvas.width + x) * 4;
-                                                                    let r = d[i], g = d[i+1], b = d[i+2];
-                                                                    const br = (r + g + b) / 3;
-                                                                    // Target enamel & teeth hues
-                                                                    if (br > 100 && r > b * 0.85 && g > b * 0.8) {
-                                                                        d[i]   = Math.min(255, r * 1.1 + 18);
-                                                                        d[i+1] = Math.min(255, g * 1.12 + 20);
-                                                                        d[i+2] = Math.min(255, b * 1.35 + 38);
+                                                                for (let y = startY; y < endY; y++) {
+                                                                    for (let x = startX; x < endX; x++) {
+                                                                        const i = (y * canvas.width + x) * 4;
+                                                                        let r = d[i], g = d[i+1], b = d[i+2];
+                                                                        const br = (r + g + b) / 3;
+
+                                                                        // Target enamel & teeth hues
+                                                                        if (br > 95 && r > b * 0.75 && g > b * 0.75) {
+                                                                            d[i]   = Math.min(255, Math.max(r * 1.06 + 15, 220));
+                                                                            d[i+1] = Math.min(255, Math.max(g * 1.08 + 18, 225));
+                                                                            d[i+2] = Math.min(255, Math.max(b * 1.30 + 35, 230));
+                                                                        }
                                                                     }
                                                                 }
+                                                                ctx.putImageData(imgData, 0, 0);
+
+                                                                // Soft lighting & subtle alignment gloss pass
+                                                                ctx.globalCompositeOperation = 'soft-light';
+                                                                ctx.fillStyle = 'rgba(0, 242, 254, 0.07)';
+                                                                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                                                                safeResolve(canvas.toDataURL('image/jpeg', 0.95));
+                                                            } catch (err) {
+                                                                console.warn('Canvas smile enhancement fallback triggered:', err);
+                                                                safeResolve(simPhoto);
                                                             }
-                                                            ctx.putImageData(imgData, 0, 0);
-
-                                                            // Soft lighting composite pass
-                                                            ctx.globalCompositeOperation = 'soft-light';
-                                                            ctx.fillStyle = 'rgba(0, 242, 254, 0.08)';
-                                                            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                                                            resolve(canvas.toDataURL('image/jpeg', 0.95));
                                                         };
-                                                        img.src = simPhoto!;
+
+                                                        img.onerror = (err) => {
+                                                            clearTimeout(timer);
+                                                            console.warn('Sim photo image load error, returning original:', err);
+                                                            safeResolve(simPhoto);
+                                                        };
+
+                                                        img.src = simPhoto;
                                                     });
                                                 }
 
                                                 setSimResult(generatedImg);
                                             } catch (err: any) {
                                                 console.error('Simulation error:', err);
-                                                setSimResult(simPhoto!);
+                                                setSimResult(simPhoto);
                                             } finally {
                                                 setIsGeneratingSim(false);
                                             }
