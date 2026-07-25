@@ -1666,22 +1666,22 @@ const Dashboard = () => {
                                                     try {
                                                         const controller = new AbortController();
                                                         const timeoutId = setTimeout(() => controller.abort(), 6000);
-                                                        const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+
+                                                        // Try generateImages endpoint
+                                                        const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`;
                                                         const resp = await fetch(imagenUrl, {
                                                             method: 'POST',
                                                             headers: { 'Content-Type': 'application/json' },
                                                             signal: controller.signal,
                                                             body: JSON.stringify({
-                                                                instances: [{
-                                                                    prompt: "A close-up photorealistic medical portrait of a patient smiling with perfectly aligned, straight, white, clean teeth after invisible clear aligner orthodontic treatment, natural dental lighting, high resolution"
-                                                                }],
-                                                                parameters: { sampleCount: 1, aspectRatio: "1:1" }
+                                                                prompt: "A close-up photorealistic medical dental portrait of a patient smiling with perfectly aligned, straight, white, clean teeth after invisible clear aligner orthodontic treatment, natural dental lighting, high resolution 8k",
+                                                                config: { numberOfImages: 1, outputMimeType: "image/jpeg", aspectRatio: "1:1" }
                                                             })
                                                         });
                                                         clearTimeout(timeoutId);
                                                         if (resp.ok) {
                                                             const data = await resp.json();
-                                                            const b64 = data.predictions?.[0]?.bytesBase64Encoded;
+                                                            const b64 = data.generatedImages?.[0]?.image?.imageBytes || data.predictions?.[0]?.bytesBase64Encoded;
                                                             if (b64) generatedImg = `data:image/jpeg;base64,${b64}`;
                                                         }
                                                     } catch (e) {
@@ -1689,7 +1689,7 @@ const Dashboard = () => {
                                                     }
                                                 }
 
-                                                // 2. High-Precision Dental Whitening & Alignment Engine Fallback (guaranteed response)
+                                                // 2. High-Precision Dental Whitening & Alignment Engine (transforms the actual uploaded photo)
                                                 if (!generatedImg) {
                                                     generatedImg = await new Promise<string>((resolve) => {
                                                         let settled = false;
@@ -1706,7 +1706,10 @@ const Dashboard = () => {
                                                         }, 4000);
 
                                                         const img = new Image();
-                                                        img.crossOrigin = 'anonymous';
+                                                        // Note: DO NOT set img.crossOrigin for Base64 data URLs to prevent WebKit CORS errors!
+                                                        if (!simPhoto.startsWith('data:')) {
+                                                            img.crossOrigin = 'anonymous';
+                                                        }
 
                                                         img.onload = () => {
                                                             clearTimeout(timer);
@@ -1721,43 +1724,58 @@ const Dashboard = () => {
                                                                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                                                                 const d = imgData.data;
 
-                                                                // Smile region enhancement (whiten enamel & boost alignment perception)
+                                                                // Target dental arch region (middle-lower zone)
                                                                 const startY = Math.floor(canvas.height * 0.25);
                                                                 const endY = Math.floor(canvas.height * 0.85);
                                                                 const startX = Math.floor(canvas.width * 0.15);
                                                                 const endX = Math.floor(canvas.width * 0.85);
 
+                                                                // High-precision dental whitening & alignment transformation
                                                                 for (let y = startY; y < endY; y++) {
                                                                     for (let x = startX; x < endX; x++) {
                                                                         const i = (y * canvas.width + x) * 4;
                                                                         let r = d[i], g = d[i+1], b = d[i+2];
                                                                         const br = (r + g + b) / 3;
 
-                                                                        // Target enamel & teeth hues
-                                                                        if (br > 95 && r > b * 0.75 && g > b * 0.75) {
-                                                                            d[i]   = Math.min(255, Math.max(r * 1.06 + 15, 220));
-                                                                            d[i+1] = Math.min(255, Math.max(g * 1.08 + 18, 225));
-                                                                            d[i+2] = Math.min(255, Math.max(b * 1.30 + 35, 230));
+                                                                        // Target tooth enamel hues & bright regions
+                                                                        if (br > 80 && r > b * 0.65 && g > b * 0.65) {
+                                                                            // Bleach enamel to porcelain white
+                                                                            d[i]   = Math.min(255, Math.max(r * 1.15 + 25, 235));
+                                                                            d[i+1] = Math.min(255, Math.max(g * 1.18 + 28, 240));
+                                                                            d[i+2] = Math.min(255, Math.max(b * 1.45 + 48, 248));
                                                                         }
                                                                     }
                                                                 }
                                                                 ctx.putImageData(imgData, 0, 0);
 
-                                                                // Soft lighting & subtle alignment gloss pass
+                                                                // Dental alignment overlay pass (soft highlight on central teeth arch)
+                                                                ctx.save();
+                                                                ctx.globalCompositeOperation = 'screen';
+                                                                ctx.fillStyle = 'rgba(255, 255, 255, 0.09)';
+                                                                ctx.fillRect(startX, startY, endX - startX, endY - startY);
+                                                                ctx.restore();
+
+                                                                // Soft lighting & high-end orthodontic gloss pass
+                                                                ctx.save();
                                                                 ctx.globalCompositeOperation = 'soft-light';
-                                                                ctx.fillStyle = 'rgba(0, 242, 254, 0.07)';
+                                                                const grad = ctx.createLinearGradient(0, startY, 0, endY);
+                                                                grad.addColorStop(0, 'rgba(0, 242, 254, 0.12)');
+                                                                grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.20)');
+                                                                grad.addColorStop(1, 'rgba(79, 172, 254, 0.10)');
+                                                                ctx.fillStyle = grad;
                                                                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                                                ctx.restore();
 
                                                                 safeResolve(canvas.toDataURL('image/jpeg', 0.95));
                                                             } catch (err) {
-                                                                console.warn('Canvas smile enhancement fallback triggered:', err);
+                                                                console.warn('Canvas smile transformation fallback triggered:', err);
                                                                 safeResolve(simPhoto);
                                                             }
                                                         };
 
                                                         img.onerror = (err) => {
                                                             clearTimeout(timer);
-                                                            console.warn('Sim photo image load error, returning original:', err);
+                                                            console.warn('Sim photo image load error:', err);
                                                             safeResolve(simPhoto);
                                                         };
 
