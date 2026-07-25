@@ -1667,21 +1667,23 @@ const Dashboard = () => {
                                                         const controller = new AbortController();
                                                         const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-                                                        // Try generateImages endpoint
-                                                        const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`;
+                                                        // Try Imagen 3 predict endpoint
+                                                        const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
                                                         const resp = await fetch(imagenUrl, {
                                                             method: 'POST',
                                                             headers: { 'Content-Type': 'application/json' },
                                                             signal: controller.signal,
                                                             body: JSON.stringify({
-                                                                prompt: "A close-up photorealistic medical dental portrait of a patient smiling with perfectly aligned, straight, white, clean teeth after invisible clear aligner orthodontic treatment, natural dental lighting, high resolution 8k",
-                                                                config: { numberOfImages: 1, outputMimeType: "image/jpeg", aspectRatio: "1:1" }
+                                                                instances: [{
+                                                                    prompt: "A close-up photorealistic medical dental portrait of a patient smiling with perfectly aligned, straight, white, clean teeth after invisible clear aligner orthodontic treatment, natural dental lighting, high resolution"
+                                                                }],
+                                                                parameters: { sampleCount: 1, aspectRatio: "1:1" }
                                                             })
                                                         });
                                                         clearTimeout(timeoutId);
                                                         if (resp.ok) {
                                                             const data = await resp.json();
-                                                            const b64 = data.generatedImages?.[0]?.image?.imageBytes || data.predictions?.[0]?.bytesBase64Encoded;
+                                                            const b64 = data.predictions?.[0]?.bytesBase64Encoded || data.generatedImages?.[0]?.image?.imageBytes;
                                                             if (b64) generatedImg = `data:image/jpeg;base64,${b64}`;
                                                         }
                                                     } catch (e) {
@@ -1706,7 +1708,6 @@ const Dashboard = () => {
                                                         }, 4000);
 
                                                         const img = new Image();
-                                                        // Note: DO NOT set img.crossOrigin for Base64 data URLs to prevent WebKit CORS errors!
                                                         if (!simPhoto.startsWith('data:')) {
                                                             img.crossOrigin = 'anonymous';
                                                         }
@@ -1724,47 +1725,36 @@ const Dashboard = () => {
                                                                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                                                                 const d = imgData.data;
 
-                                                                // Target dental arch region (middle-lower zone)
-                                                                const startY = Math.floor(canvas.height * 0.25);
-                                                                const endY = Math.floor(canvas.height * 0.85);
-                                                                const startX = Math.floor(canvas.width * 0.15);
-                                                                const endX = Math.floor(canvas.width * 0.85);
-
-                                                                // High-precision dental whitening & alignment transformation
-                                                                for (let y = startY; y < endY; y++) {
-                                                                    for (let x = startX; x < endX; x++) {
+                                                                // Accurate tooth enamel whitening pass (analyzing full image for tooth pixels)
+                                                                for (let y = 0; y < canvas.height; y++) {
+                                                                    for (let x = 0; x < canvas.width; x++) {
                                                                         const i = (y * canvas.width + x) * 4;
                                                                         let r = d[i], g = d[i+1], b = d[i+2];
+
+                                                                        const maxC = Math.max(r, g, b);
+                                                                        const minC = Math.min(r, g, b);
+                                                                        const sat = maxC > 0 ? (maxC - minC) / maxC : 0;
                                                                         const br = (r + g + b) / 3;
 
-                                                                        // Target tooth enamel hues & bright regions
-                                                                        if (br > 80 && r > b * 0.65 && g > b * 0.65) {
-                                                                            // Bleach enamel to porcelain white
-                                                                            d[i]   = Math.min(255, Math.max(r * 1.15 + 25, 235));
-                                                                            d[i+1] = Math.min(255, Math.max(g * 1.18 + 28, 240));
-                                                                            d[i+2] = Math.min(255, Math.max(b * 1.45 + 48, 248));
+                                                                        // Precise Tooth Enamel Filter:
+                                                                        // Brightness > 110, low saturation < 0.22, low red-blue / red-green difference
+                                                                        // (Isolates teeth enamel while strictly avoiding skin, lips, tongue and gums)
+                                                                        if (br > 110 && sat < 0.22 && (r - b) < 48 && (r - g) < 32) {
+                                                                            const targetBrightness = Math.min(255, br * 1.12 + 12);
+                                                                            const scale = targetBrightness / Math.max(1, br);
+
+                                                                            const newR = Math.min(255, Math.round(r * scale));
+                                                                            const newG = Math.min(255, Math.round(g * scale + 2));
+                                                                            const newB = Math.min(255, Math.round(b * scale * 1.18 + 16));
+
+                                                                            // Blend with original pixel to preserve natural tooth anatomical contours
+                                                                            d[i]   = Math.round(r * 0.2 + newR * 0.8);
+                                                                            d[i+1] = Math.round(g * 0.2 + newG * 0.8);
+                                                                            d[i+2] = Math.round(b * 0.2 + newB * 0.8);
                                                                         }
                                                                     }
                                                                 }
                                                                 ctx.putImageData(imgData, 0, 0);
-
-                                                                // Dental alignment overlay pass (soft highlight on central teeth arch)
-                                                                ctx.save();
-                                                                ctx.globalCompositeOperation = 'screen';
-                                                                ctx.fillStyle = 'rgba(255, 255, 255, 0.09)';
-                                                                ctx.fillRect(startX, startY, endX - startX, endY - startY);
-                                                                ctx.restore();
-
-                                                                // Soft lighting & high-end orthodontic gloss pass
-                                                                ctx.save();
-                                                                ctx.globalCompositeOperation = 'soft-light';
-                                                                const grad = ctx.createLinearGradient(0, startY, 0, endY);
-                                                                grad.addColorStop(0, 'rgba(0, 242, 254, 0.12)');
-                                                                grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.20)');
-                                                                grad.addColorStop(1, 'rgba(79, 172, 254, 0.10)');
-                                                                ctx.fillStyle = grad;
-                                                                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                                                                ctx.restore();
 
                                                                 safeResolve(canvas.toDataURL('image/jpeg', 0.95));
                                                             } catch (err) {
