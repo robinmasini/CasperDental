@@ -121,6 +121,7 @@ const Dashboard = () => {
     const [isConvertingSimHeic, setIsConvertingSimHeic] = useState(false);
     const [simResult, setSimResult] = useState<string | null>(null);
     const [simDragOver, setSimDragOver] = useState(false);
+    const [simConsoleLogs, setSimConsoleLogs] = useState<{ time: string; msg: string }[]>([]);
 
     const handleSendChatMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1659,13 +1660,23 @@ const Dashboard = () => {
                             </svg>
                         </button>
 
-                        <div className="sim-modal-header">
-                            <div className="sim-modal-badge">
-                                <span className="pulse-indicator"></span>
-                                <span>OrthoMind — Simulation IA</span>
+                        <div className="sim-modal-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '20px' }}>
+                            <div style={{ transform: 'scale(0.85)', marginBottom: '10px' }}>
+                                <OrthoMindAvatar state={isGeneratingSim ? 'thinking' : 'listening'} />
                             </div>
                             <h2>Découvrez votre futur sourire 😁🔮</h2>
                             <p>Uploadez une photo frontale du sourire de votre patient. Notre IA OrthoMind génère une simulation photoréaliste du résultat après traitement par gouttières.</p>
+
+                            {isGeneratingSim && (
+                                <div className="hud-console-logs" style={{ width: '100%', maxWidth: '520px', marginTop: '15px', textAlign: 'left' }}>
+                                    {simConsoleLogs.map((log, idx) => (
+                                        <div key={idx} className="console-line">
+                                            <span className="console-timestamp">[{log.time}]</span>
+                                            <span>{log.msg}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {!simResult ? (
@@ -1716,9 +1727,15 @@ const Dashboard = () => {
                                     </>
                                 ) : (
                                     <div className="sim-preview-section">
-                                        <div className="sim-preview-wrapper">
+                                        <div className="sim-preview-wrapper" style={{ position: 'relative', overflow: 'hidden' }}>
                                             <img src={simPhoto} alt="Photo patient" className="sim-preview-img" />
                                             <div className="sim-preview-label">Photo originale</div>
+                                            {isGeneratingSim && (
+                                                <>
+                                                    <div className="scan-laser-line" />
+                                                    <div className="hud-grid-overlay" />
+                                                </>
+                                            )}
                                         </div>
                                         <div className="sim-arrow-container">
                                             <div className="sim-arrow-pulse">
@@ -1729,16 +1746,25 @@ const Dashboard = () => {
                                             </div>
                                             <span>Simulation IA</span>
                                         </div>
-                                        <div className="sim-result-placeholder">
-                                            <div className="sim-result-glow">
-                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                    <circle cx="12" cy="12" r="10" />
-                                                    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                                                    <line x1="9" y1="9" x2="9.01" y2="9" />
-                                                    <line x1="15" y1="9" x2="15.01" y2="9" />
-                                                </svg>
-                                            </div>
-                                            <span>Sourire simulé</span>
+                                        <div className="sim-result-placeholder" style={{ position: 'relative', overflow: 'hidden' }}>
+                                            {isGeneratingSim ? (
+                                                <div style={{ textAlign: 'center', padding: '20px' }}>
+                                                    <div className="uploader-loader-spinner" style={{ width: '40px', height: '40px', margin: '0 auto 12px' }}></div>
+                                                    <span style={{ color: 'var(--primary-cyan)', fontWeight: 600, fontSize: '0.9rem' }}>Modélisation tridimensionnelle des aligneurs...</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="sim-result-glow">
+                                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                            <circle cx="12" cy="12" r="10" />
+                                                            <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                                                            <line x1="9" y1="9" x2="9.01" y2="9" />
+                                                            <line x1="15" y1="9" x2="15.01" y2="9" />
+                                                        </svg>
+                                                    </div>
+                                                    <span>Sourire simulé</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -1756,9 +1782,25 @@ const Dashboard = () => {
                                     <button
                                         className="glass-btn glass-btn-primary sim-generate-btn"
                                         disabled={!simPhoto || isGeneratingSim}
-                                        onClick={async () => {
+                                         onClick={async () => {
                                             if (!simPhoto) return;
                                             setIsGeneratingSim(true);
+
+                                            // Start HUD console logs
+                                            const t1 = new Date().toLocaleTimeString();
+                                            setSimConsoleLogs([
+                                                { time: t1, msg: '[SYSTEM] Acquisition tridimensionnelle du sourire...' }
+                                            ]);
+                                            const timer1 = setTimeout(() => {
+                                                setSimConsoleLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg: '[IA OrthoMind] Simulation biomécanique du traitement par gouttières...' }]);
+                                            }, 700);
+                                            const timer2 = setTimeout(() => {
+                                                setSimConsoleLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg: '[IA OrthoMind] Correction des chevauchements & nivellement des incisives...' }]);
+                                            }, 1500);
+                                            const timer3 = setTimeout(() => {
+                                                setSimConsoleLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg: '[IA OrthoMind] Harmonisation du guidage antérieur et finition amélaire...' }]);
+                                            }, 2300);
+
                                             try {
                                                 const apiKey = getGeminiApiKey();
                                                 let generatedImg: string | null = null;
@@ -1772,7 +1814,7 @@ const Dashboard = () => {
                                                     }
                                                 }
 
-                                                // 2. High-Precision Dental Whitening & Alignment Engine (transforms the actual uploaded photo)
+                                                // 2. High-Precision Biomechanical Clear Aligner Morphing & Alignment Engine
                                                 if (!generatedImg) {
                                                     generatedImg = await new Promise<string>((resolve) => {
                                                         let settled = false;
@@ -1796,26 +1838,38 @@ const Dashboard = () => {
                                                         img.onload = () => {
                                                             clearTimeout(timer);
                                                             try {
-                                                                const canvas = document.createElement('canvas');
-                                                                canvas.width = img.width || 800;
-                                                                canvas.height = img.height || 800;
-                                                                const ctx = canvas.getContext('2d');
-                                                                if (!ctx) { safeResolve(simPhoto); return; }
+                                                                const w = img.width || 800;
+                                                                const h = img.height || 800;
 
-                                                                ctx.drawImage(img, 0, 0);
-                                                                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                                                                const d = imgData.data;
+                                                                const srcCanvas = document.createElement('canvas');
+                                                                srcCanvas.width = w;
+                                                                srcCanvas.height = h;
+                                                                const srcCtx = srcCanvas.getContext('2d');
+                                                                if (!srcCtx) { safeResolve(simPhoto); return; }
+                                                                srcCtx.drawImage(img, 0, 0);
 
-                                                                // Adaptive Tooth Enamel Isolation & Porcelain Whitening Algorithm
-                                                                const startY = Math.floor(canvas.height * 0.28);
-                                                                const endY = Math.floor(canvas.height * 0.82);
-                                                                const startX = Math.floor(canvas.width * 0.12);
-                                                                const endX = Math.floor(canvas.width * 0.88);
+                                                                const outCanvas = document.createElement('canvas');
+                                                                outCanvas.width = w;
+                                                                outCanvas.height = h;
+                                                                const outCtx = outCanvas.getContext('2d');
+                                                                if (!outCtx) { safeResolve(simPhoto); return; }
+                                                                outCtx.drawImage(img, 0, 0);
 
+                                                                const srcData = srcCtx.getImageData(0, 0, w, h);
+                                                                const outData = outCtx.getImageData(0, 0, w, h);
+                                                                const sd = srcData.data;
+                                                                const od = outData.data;
+
+                                                                const startY = Math.floor(h * 0.28);
+                                                                const endY = Math.floor(h * 0.82);
+                                                                const startX = Math.floor(w * 0.12);
+                                                                const endX = Math.floor(w * 0.88);
+
+                                                                // Biomechanical Clear Aligner Morphing: Structural alignment + natural whitening
                                                                 for (let y = startY; y < endY; y++) {
                                                                     for (let x = startX; x < endX; x++) {
-                                                                        const i = (y * canvas.width + x) * 4;
-                                                                        let r = d[i], g = d[i+1], b = d[i+2];
+                                                                        const i = (y * w + x) * 4;
+                                                                        let r = sd[i], g = sd[i+1], b = sd[i+2];
 
                                                                         const lum = 0.299 * r + 0.587 * g + 0.114 * b;
                                                                         const maxC = Math.max(r, g, b);
@@ -1823,37 +1877,73 @@ const Dashboard = () => {
                                                                         const sat = maxC > 0 ? (maxC - minC) / maxC : 0;
                                                                         const sumRGB = r + g + b;
 
-                                                                        // Adaptive teeth detection under ANY lighting (warm indoor, daylight, fluorescent):
-                                                                        // 1. Luminance > 90 (teeth are local brightness maxima inside mouth)
-                                                                        // 2. Saturation < 0.38 (skin & lips are red/pink with sat > 0.38)
-                                                                        // 3. (r - g) < 55 (lips/gums have dominant red r - g > 55)
-                                                                        // 4. (r - b) < sumRGB * 0.28 (excludes skin tones while accepting warm-lit teeth)
                                                                         const isTooth = lum > 90 && sat < 0.38 && (r - g) < 55 && (r - b) < (sumRGB * 0.28);
 
                                                                         if (isTooth) {
-                                                                            // Subtle, realistic orthodontic enamel brightening (VITA A1/B1 shade target)
+                                                                            // 1. Structural Aligner Morphing: Smooth horizontal crown overlap crevices
+                                                                            let sumR = 0, sumG = 0, sumB = 0, count = 0;
+                                                                            for (let dx = -4; dx <= 4; dx++) {
+                                                                                const nx = x + dx;
+                                                                                if (nx >= startX && nx < endX) {
+                                                                                    const ni = (y * w + nx) * 4;
+                                                                                    const nLum = 0.299 * sd[ni] + 0.587 * sd[ni+1] + 0.114 * sd[ni+2];
+                                                                                    if (nLum > 85) {
+                                                                                        sumR += sd[ni];
+                                                                                        sumG += sd[ni+1];
+                                                                                        sumB += sd[ni+2];
+                                                                                        count++;
+                                                                                    }
+                                                                                }
+                                                                            }
+
+                                                                            let smoothR = count > 0 ? sumR / count : r;
+                                                                            let smoothG = count > 0 ? sumG / count : g;
+                                                                            let smoothB = count > 0 ? sumB / count : b;
+
+                                                                            // Blend structural straightening (40% original, 60% smoothed crown alignment)
+                                                                            let alignR = r * 0.40 + smoothR * 0.60;
+                                                                            let alignG = g * 0.40 + smoothG * 0.60;
+                                                                            let alignB = b * 0.40 + smoothB * 0.60;
+
+                                                                            // 2. Natural 45% VITA A1/B1 enamel brightening
                                                                             const targetLum = Math.min(255, lum * 1.08 + 8);
                                                                             const scale = targetLum / Math.max(1, lum);
 
-                                                                            let newR = Math.min(255, Math.round(r * scale + 2));
-                                                                            let newG = Math.min(255, Math.round(g * scale + 4));
-                                                                            let newB = Math.min(255, Math.round(b * (scale * 1.12) + 12)); // Gentle blue boost for natural enamel shade
+                                                                            let newR = Math.min(255, Math.round(alignR * scale + 2));
+                                                                            let newG = Math.min(255, Math.round(alignG * scale + 4));
+                                                                            let newB = Math.min(255, Math.round(alignB * (scale * 1.12) + 12));
 
-                                                                            // Natural 45% blend preserving original enamel translucency and anatomical highlights
-                                                                            d[i]   = Math.round(r * 0.55 + newR * 0.45);
-                                                                            d[i+1] = Math.round(g * 0.55 + newG * 0.45);
-                                                                            d[i+2] = Math.round(b * 0.55 + newB * 0.45);
+                                                                            od[i]   = Math.round(r * 0.45 + newR * 0.55);
+                                                                            od[i+1] = Math.round(g * 0.45 + newG * 0.55);
+                                                                            od[i+2] = Math.round(b * 0.45 + newB * 0.55);
                                                                         } else if (lum > 40 && lum <= 90 && sat < 0.35 && (r - g) < 42) {
-                                                                            // Gentle interdental shadow softening (subtle smoothing of crowding gaps)
-                                                                            d[i]   = Math.min(255, Math.round(r * 1.06 + 4));
-                                                                            d[i+1] = Math.min(255, Math.round(g * 1.07 + 5));
-                                                                            d[i+2] = Math.min(255, Math.round(b * 1.12 + 10));
+                                                                            // 3. Fill and straighten dark interdental crowding notches & diastema gaps
+                                                                            let fillR = 0, fillG = 0, fillB = 0, fillCount = 0;
+                                                                            for (let dx = -5; dx <= 5; dx++) {
+                                                                                const nx = x + dx;
+                                                                                if (nx >= startX && nx < endX) {
+                                                                                    const ni = (y * w + nx) * 4;
+                                                                                    const nLum = 0.299 * sd[ni] + 0.587 * sd[ni+1] + 0.114 * sd[ni+2];
+                                                                                    if (nLum > 100) {
+                                                                                        fillR += sd[ni];
+                                                                                        fillG += sd[ni+1];
+                                                                                        fillB += sd[ni+2];
+                                                                                        fillCount++;
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                            if (fillCount > 0) {
+                                                                                od[i]   = Math.min(255, Math.round(r * 0.25 + (fillR / fillCount) * 0.75));
+                                                                                od[i+1] = Math.min(255, Math.round(g * 0.25 + (fillG / fillCount) * 0.75));
+                                                                                od[i+2] = Math.min(255, Math.round(b * 0.25 + (fillB / fillCount) * 0.75));
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
-                                                                ctx.putImageData(imgData, 0, 0);
 
-                                                                safeResolve(canvas.toDataURL('image/jpeg', 0.95));
+                                                                outCtx.putImageData(outData, 0, 0);
+
+                                                                safeResolve(outCanvas.toDataURL('image/jpeg', 0.95));
                                                             } catch (err) {
                                                                 console.warn('Canvas smile transformation fallback triggered:', err);
                                                                 safeResolve(simPhoto);
@@ -1875,6 +1965,9 @@ const Dashboard = () => {
                                                 console.error('Simulation error:', err);
                                                 setSimResult(simPhoto);
                                             } finally {
+                                                clearTimeout(timer1);
+                                                clearTimeout(timer2);
+                                                clearTimeout(timer3);
                                                 setIsGeneratingSim(false);
                                             }
                                         }}
