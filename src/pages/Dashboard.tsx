@@ -1865,7 +1865,10 @@ const Dashboard = () => {
                                                                 const startX = Math.floor(w * 0.12);
                                                                 const endX = Math.floor(w * 0.88);
 
-                                                                // Biomechanical Clear Aligner Morphing: Structural alignment + natural whitening
+                                                                // Clear Aligner Treatment Engine: Tooth straightening, whitening & clear aligner plastic tray + attachments
+                                                                let minToothX = w, maxToothX = 0;
+                                                                let minToothY = h, maxToothY = 0;
+
                                                                 for (let y = startY; y < endY; y++) {
                                                                     for (let x = startX; x < endX; x++) {
                                                                         const i = (y * w + x) * 4;
@@ -1880,7 +1883,12 @@ const Dashboard = () => {
                                                                         const isTooth = lum > 90 && sat < 0.38 && (r - g) < 55 && (r - b) < (sumRGB * 0.28);
 
                                                                         if (isTooth) {
-                                                                            // 1. Structural Aligner Morphing: Smooth horizontal crown overlap crevices
+                                                                            if (x < minToothX) minToothX = x;
+                                                                            if (x > maxToothX) maxToothX = x;
+                                                                            if (y < minToothY) minToothY = y;
+                                                                            if (y > maxToothY) maxToothY = y;
+
+                                                                            // 1. Smooth horizontal crown overlap crevices & straighten alignment
                                                                             let sumR = 0, sumG = 0, sumB = 0, count = 0;
                                                                             for (let dx = -4; dx <= 4; dx++) {
                                                                                 const nx = x + dx;
@@ -1900,24 +1908,23 @@ const Dashboard = () => {
                                                                             let smoothG = count > 0 ? sumG / count : g;
                                                                             let smoothB = count > 0 ? sumB / count : b;
 
-                                                                            // Blend structural straightening (40% original, 60% smoothed crown alignment)
-                                                                            let alignR = r * 0.40 + smoothR * 0.60;
-                                                                            let alignG = g * 0.40 + smoothG * 0.60;
-                                                                            let alignB = b * 0.40 + smoothB * 0.60;
+                                                                            let alignR = r * 0.30 + smoothR * 0.70;
+                                                                            let alignG = g * 0.30 + smoothG * 0.70;
+                                                                            let alignB = b * 0.30 + smoothB * 0.70;
 
-                                                                            // 2. Natural 45% VITA A1/B1 enamel brightening
-                                                                            const targetLum = Math.min(255, lum * 1.08 + 8);
+                                                                            // 2. Natural VITA A1 porcelain whitening
+                                                                            const targetLum = Math.min(255, lum * 1.10 + 10);
                                                                             const scale = targetLum / Math.max(1, lum);
 
                                                                             let newR = Math.min(255, Math.round(alignR * scale + 2));
                                                                             let newG = Math.min(255, Math.round(alignG * scale + 4));
-                                                                            let newB = Math.min(255, Math.round(alignB * (scale * 1.12) + 12));
+                                                                            let newB = Math.min(255, Math.round(alignB * (scale * 1.14) + 14));
 
-                                                                            od[i]   = Math.round(r * 0.45 + newR * 0.55);
-                                                                            od[i+1] = Math.round(g * 0.45 + newG * 0.55);
-                                                                            od[i+2] = Math.round(b * 0.45 + newB * 0.55);
+                                                                            od[i]   = Math.round(r * 0.35 + newR * 0.65);
+                                                                            od[i+1] = Math.round(g * 0.35 + newG * 0.65);
+                                                                            od[i+2] = Math.round(b * 0.35 + newB * 0.65);
                                                                         } else if (lum > 40 && lum <= 90 && sat < 0.35 && (r - g) < 42) {
-                                                                            // 3. Fill and straighten dark interdental crowding notches & diastema gaps
+                                                                            // 3. Fill and straighten dark interdental crowding gaps
                                                                             let fillR = 0, fillG = 0, fillB = 0, fillCount = 0;
                                                                             for (let dx = -5; dx <= 5; dx++) {
                                                                                 const nx = x + dx;
@@ -1933,12 +1940,94 @@ const Dashboard = () => {
                                                                                 }
                                                                             }
                                                                             if (fillCount > 0) {
-                                                                                od[i]   = Math.min(255, Math.round(r * 0.25 + (fillR / fillCount) * 0.75));
-                                                                                od[i+1] = Math.min(255, Math.round(g * 0.25 + (fillG / fillCount) * 0.75));
-                                                                                od[i+2] = Math.min(255, Math.round(b * 0.25 + (fillB / fillCount) * 0.75));
+                                                                                od[i]   = Math.min(255, Math.round(r * 0.20 + (fillR / fillCount) * 0.80));
+                                                                                od[i+1] = Math.min(255, Math.round(g * 0.20 + (fillG / fillCount) * 0.80));
+                                                                                od[i+2] = Math.min(255, Math.round(b * 0.20 + (fillB / fillCount) * 0.80));
                                                                             }
                                                                         }
                                                                     }
+                                                                }
+
+                                                                outCtx.putImageData(outData, 0, 0);
+
+                                                                // 4. Render Transparent Polyurethane Aligner Trays & Composite Attachments over the patient's teeth
+                                                                if (minToothX < maxToothX && minToothY < maxToothY) {
+                                                                    const toothW = maxToothX - minToothX;
+                                                                    const toothH = maxToothY - minToothY;
+
+                                                                    outCtx.save();
+
+                                                                    // A. Polyurethane Specular Sheen (Gouttière thermoformée translucide)
+                                                                    outCtx.globalCompositeOperation = 'screen';
+                                                                    const alignerGrad = outCtx.createLinearGradient(0, minToothY - 4, 0, maxToothY + 4);
+                                                                    alignerGrad.addColorStop(0, 'rgba(255, 255, 255, 0.32)');
+                                                                    alignerGrad.addColorStop(0.3, 'rgba(200, 245, 255, 0.20)');
+                                                                    alignerGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.26)');
+                                                                    alignerGrad.addColorStop(1, 'rgba(180, 235, 255, 0.18)');
+
+                                                                    outCtx.fillStyle = alignerGrad;
+                                                                    outCtx.beginPath();
+                                                                    if (typeof outCtx.roundRect === 'function') {
+                                                                        outCtx.roundRect(minToothX - 5, minToothY - 5, toothW + 10, toothH + 10, 12);
+                                                                    } else {
+                                                                        outCtx.rect(minToothX - 5, minToothY - 5, toothW + 10, toothH + 10);
+                                                                    }
+                                                                    outCtx.fill();
+
+                                                                    // B. Gingival Aligner Margin Trimlines (Découpe festonnée de la gouttière)
+                                                                    outCtx.globalCompositeOperation = 'source-over';
+                                                                    outCtx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+                                                                    outCtx.lineWidth = 2.0;
+                                                                    outCtx.shadowColor = 'rgba(0, 242, 254, 0.5)';
+                                                                    outCtx.shadowBlur = 5;
+
+                                                                    // Upper aligner margin
+                                                                    outCtx.beginPath();
+                                                                    outCtx.moveTo(minToothX - 4, minToothY + 4);
+                                                                    const numScallops = 6;
+                                                                    const scallopW = toothW / numScallops;
+                                                                    for (let s = 0; s < numScallops; s++) {
+                                                                        const sx = minToothX + s * scallopW;
+                                                                        const midX = sx + scallopW / 2;
+                                                                        const endX = sx + scallopW;
+                                                                        outCtx.quadraticCurveTo(midX, minToothY - 5, endX, minToothY + 2);
+                                                                    }
+                                                                    outCtx.stroke();
+
+                                                                    // Lower aligner margin
+                                                                    outCtx.beginPath();
+                                                                    outCtx.moveTo(minToothX - 4, maxToothY - 4);
+                                                                    for (let s = 0; s < numScallops; s++) {
+                                                                        const sx = minToothX + s * scallopW;
+                                                                        const midX = sx + scallopW / 2;
+                                                                        const endX = sx + scallopW;
+                                                                        outCtx.quadraticCurveTo(midX, maxToothY + 5, endX, maxToothY - 2);
+                                                                    }
+                                                                    outCtx.stroke();
+
+                                                                    // C. Orthodontic Composite Attachments (Taquets d'alignement)
+                                                                    const attachmentPositions = [
+                                                                        { x: minToothX + toothW * 0.20, y: minToothY + toothH * 0.38 },
+                                                                        { x: minToothX + toothW * 0.33, y: minToothY + toothH * 0.42 },
+                                                                        { x: minToothX + toothW * 0.67, y: minToothY + toothH * 0.42 },
+                                                                        { x: minToothX + toothW * 0.80, y: minToothY + toothH * 0.38 },
+                                                                        { x: minToothX + toothW * 0.28, y: minToothY + toothH * 0.68 },
+                                                                        { x: minToothX + toothW * 0.72, y: minToothY + toothH * 0.68 }
+                                                                    ];
+
+                                                                    attachmentPositions.forEach(att => {
+                                                                        outCtx.fillStyle = 'rgba(250, 248, 242, 0.85)';
+                                                                        outCtx.beginPath();
+                                                                        outCtx.arc(att.x, att.y, 4.0, 0, Math.PI * 2);
+                                                                        outCtx.fill();
+
+                                                                        outCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                                                                        outCtx.beginPath();
+                                                                        outCtx.arc(att.x - 1.2, att.y - 1.2, 1.5, 0, Math.PI * 2);
+                                                                        outCtx.fill();
+                                                                    });
+
+                                                                    outCtx.restore();
                                                                 }
 
                                                                 outCtx.putImageData(outData, 0, 0);
