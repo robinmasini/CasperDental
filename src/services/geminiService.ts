@@ -687,38 +687,49 @@ Réponds de façon structurée en français, en utilisant du formatage Markdown 
     }
 };
 
-// Generate a photorealistic post-treatment smile simulation using Gemini API / Imagen 3 API
+// Generate a photorealistic post-treatment smile simulation using Gemini API + AI Image Engine
 export const generateSmileSimulationWithGemini = async (simPhotoBase64: string): Promise<string | null> => {
     const apiKey = getGeminiApiKey();
-    if (!apiKey) return null;
 
-    try {
-        // 1. Analyze the uploaded smile photo with Gemini Vision API (gemini-2.5-flash / gemini-1.5-flash) to extract clinical features
-        const imagePart = base64ToGenerativePart(simPhotoBase64);
-        const visionPrompt = `Analyse cette photo de dentition du patient et décris en 1 phrase en anglais les caractéristiques visuelles principales du patient pour générer une photo de sourire parfait après aligneurs (ex: "man with beard and blue shirt, smiling with clear aligned white teeth, natural lighting"). Sépare par des virgules sans autre commentaire.`;
+    let featureDescription = "patient smiling with perfectly aligned, straight, white, clean teeth after clear aligners, light blue background";
 
-        const visionBody = {
-            contents: [
-                {
-                    parts: [
-                        { text: visionPrompt },
-                        imagePart
-                    ]
-                }
-            ]
-        };
-
-        const visionResult = await executeGeminiCall('generateContent', visionBody, apiKey);
-        const featureDescription = visionResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        console.log('Gemini Vision feature description for simulation:', featureDescription);
-
-        // 2. Call Imagen 3 API with prompt informed by Gemini Vision description
-        const prompt = `A close-up photorealistic medical dental portrait of a patient ${featureDescription ? featureDescription : ''} smiling with perfectly aligned, straight, white, clean teeth after invisible clear aligner orthodontic treatment, natural dental lighting, high resolution 8k`;
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 7000);
-
+    // 1. Analyze the uploaded smile photo with Gemini Vision API (gemini-2.5-flash / gemini-1.5-flash) to extract patient facial features
+    if (apiKey) {
         try {
+            const imagePart = base64ToGenerativePart(simPhotoBase64);
+            const visionPrompt = `Analyse cette photo de dentition du patient et décris en 1 phrase en anglais les caractéristiques visuelles principales du visage (ex: "30 year old man with beard and mustache, light blue shirt, brown hair") pour conserver son identité visuelle tout en simulant un alignement dentaire parfait par gouttières invisibles. Rends uniquement la description en anglais séparée par des virgules.`;
+
+            const visionBody = {
+                contents: [
+                    {
+                        parts: [
+                            { text: visionPrompt },
+                            imagePart
+                        ]
+                    }
+                ]
+            };
+
+            const visionResult = await executeGeminiCall('generateContent', visionBody, apiKey);
+            const geminiText = visionResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (geminiText.trim()) {
+                featureDescription = geminiText.trim();
+            }
+            console.log('Gemini Vision feature description for simulation:', featureDescription);
+        } catch (err) {
+            console.warn('Gemini vision feature extraction skipped:', err);
+        }
+    }
+
+    // Construct high-precision prompt combining Gemini Vision description + clear aligner orthodontic outcome
+    const prompt = `A close-up photorealistic medical dental portrait of a ${featureDescription}, smiling with perfectly aligned, straight, white, clean porcelain teeth after invisible clear aligner orthodontic treatment, natural dental lighting, 8k resolution, professional clinic photography`;
+
+    // 2. Try Imagen 3 API if key configured
+    if (apiKey) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+
             const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -728,38 +739,36 @@ export const generateSmileSimulationWithGemini = async (simPhotoBase64: string):
                     parameters: { sampleCount: 1, aspectRatio: "1:1" }
                 })
             });
+            clearTimeout(timeoutId);
             if (resp.ok) {
                 const data = await resp.json();
-                const b64 = data.predictions?.[0]?.bytesBase64Encoded;
-                clearTimeout(timeoutId);
+                const b64 = data.predictions?.[0]?.bytesBase64Encoded || data.generatedImages?.[0]?.image?.imageBytes;
                 if (b64) return `data:image/jpeg;base64,${b64}`;
             }
         } catch (e) {
-            console.warn('Imagen predict endpoint skipped:', e);
+            console.warn('Imagen 3 predict API skipped:', e);
         }
+    }
 
-        try {
-            const resp2 = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                signal: controller.signal,
-                body: JSON.stringify({
-                    prompt,
-                    config: { numberOfImages: 1, outputMimeType: "image/jpeg", aspectRatio: "1:1" }
-                })
-            });
-            clearTimeout(timeoutId);
-            if (resp2.ok) {
-                const data2 = await resp2.json();
-                const b64 = data2.generatedImages?.[0]?.image?.imageBytes;
-                if (b64) return `data:image/jpeg;base64,${b64}`;
-            }
-        } catch (e) {
-            console.warn('Imagen generateImages endpoint skipped:', e);
-        }
+    // 3. High-Resolution AI Photorealistic Smile Generation (Gemini-guided FLUX engine)
+    try {
+        const seed = Math.floor(Math.random() * 1000000);
+        const fluxUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=800&nologo=true&seed=${seed}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+        const fluxResp = await fetch(fluxUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
-    } catch (err) {
-        console.warn('Gemini vision & image generation API call skipped:', err);
+        if (fluxResp.ok) {
+            const blob = await fluxResp.blob();
+            return await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+            });
+        }
+    } catch (fluxErr) {
+        console.warn('FLUX AI smile generation skipped:', fluxErr);
     }
 
     return null;
