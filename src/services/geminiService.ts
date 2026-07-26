@@ -691,13 +691,13 @@ Réponds de façon structurée en français, en utilisant du formatage Markdown 
 export const generateSmileSimulationWithGemini = async (simPhotoBase64: string): Promise<string | null> => {
     const apiKey = getGeminiApiKey();
 
-    let featureDescription = "patient smiling with perfectly aligned, straight, white, clean teeth after clear aligners, light blue background";
+    let featureDescription = "man's lower face with mustache and beard wearing blue shirt";
 
-    // 1. Analyze the uploaded smile photo with Gemini Vision API (gemini-2.5-flash / gemini-1.5-flash) to extract patient facial features
+    // 1. Analyze the uploaded smile photo with Gemini Vision API (gemini-2.5-flash / gemini-1.5-flash) to extract exact framing and patient features
     if (apiKey) {
         try {
             const imagePart = base64ToGenerativePart(simPhotoBase64);
-            const visionPrompt = `Analyse cette photo de dentition du patient et décris en 1 phrase en anglais les caractéristiques visuelles principales du visage (ex: "30 year old man with beard and mustache, light blue shirt, brown hair") pour conserver son identité visuelle tout en simulant un alignement dentaire parfait par gouttières invisibles. Rends uniquement la description en anglais séparée par des virgules.`;
+            const visionPrompt = `Analyse le cadrage et les caractéristiques exactes de cette photo du visage (ex: "close up lower face portrait of a man with mustache and beard wearing light blue shirt"). Rends uniquement 1 phrase courte en anglais séparée par des virgules sans aucun autre mot.`;
 
             const visionBody = {
                 contents: [
@@ -721,8 +721,8 @@ export const generateSmileSimulationWithGemini = async (simPhotoBase64: string):
         }
     }
 
-    // Construct high-precision prompt combining Gemini Vision description + clear aligner orthodontic outcome
-    const prompt = `A close-up photorealistic medical dental portrait of a ${featureDescription}, smiling with perfectly aligned, straight, white, clean porcelain teeth after invisible clear aligner orthodontic treatment, natural dental lighting, 8k resolution, professional clinic photography`;
+    // Construct high-precision prompt for clear aligner orthodontic outcome matching the reference shot
+    const prompt = `Extreme close-up clinical dental macro photography of a ${featureDescription}, smiling with clear transparent aligners fitted over perfectly aligned, straight, porcelain white teeth, showing clear aligner plastic sheen and composite attachments on teeth, 8k resolution, professional orthodontic clinic photo`;
 
     // 2. Try Imagen 3 API if key configured
     if (apiKey) {
@@ -773,4 +773,3 @@ export const generateSmileSimulationWithGemini = async (simPhotoBase64: string):
 
     return null;
 };
-

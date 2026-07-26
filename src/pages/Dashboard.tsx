@@ -1801,6 +1801,9 @@ const Dashboard = () => {
                                                 setSimConsoleLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg: '[IA OrthoMind] Harmonisation du guidage antérieur et finition amélaire...' }]);
                                             }, 2300);
 
+                                            // Ensure a realistic 4.5s clinical scanning & AI generation experience
+                                            const minProcessPromise = new Promise((resolve) => setTimeout(resolve, 4500));
+
                                             try {
                                                 const apiKey = getGeminiApiKey();
                                                 let generatedImg: string | null = null;
@@ -1813,6 +1816,9 @@ const Dashboard = () => {
                                                         console.warn('Gemini smile simulation service skipped:', e);
                                                     }
                                                 }
+
+                                                // Wait for the scanning HUD animation sequence to complete 4.5s
+                                                await minProcessPromise;
 
                                                 // 2. High-Precision Biomechanical Clear Aligner Morphing & Alignment Engine
                                                 if (!generatedImg) {
