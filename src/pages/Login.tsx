@@ -48,7 +48,7 @@ const Login = () => {
                 {/* Login Card */}
                 <div className="login-card">
                     <div className="login-header">
-                        <h1>Connexion à votre Espace Praticien</h1>
+                        <h1>Connexion à votre Espace</h1>
                         <p>Accédez à votre tableau de bord Casper Dental</p>
                     </div>
 

@@ -1231,7 +1231,7 @@ const Dashboard = () => {
                                         </a>
                                         <div className="banner-subtext">
                                             <p>Ravi de vous revoir !</p>
-                                            <p>Consultez votre Espace Praticien</p>
+                                            <p>{isPatientAccount ? 'Consultez votre Espace Patient' : 'Consultez votre Espace Praticien'}</p>
                                         </div>
                                         <div className="banner-date-section">
                                             <p className="date-caption">Date d'aujourd'hui</p>
