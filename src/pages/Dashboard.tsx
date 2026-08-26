@@ -122,6 +122,7 @@ const Dashboard = () => {
     const [simResult, setSimResult] = useState<string | null>(null);
     const [simDragOver, setSimDragOver] = useState(false);
     const [simConsoleLogs, setSimConsoleLogs] = useState<{ time: string; msg: string }[]>([]);
+    const [simErrorMessage, setSimErrorMessage] = useState<string | null>(null);
 
     const handleSendChatMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1663,6 +1664,34 @@ const Dashboard = () => {
                             <h2>Découvrez votre futur sourire 😁🔮</h2>
                             <p>Uploadez une photo frontale du sourire de votre patient. Notre IA OrthoMind génère une simulation photoréaliste du résultat après traitement par gouttières.</p>
 
+                            {simErrorMessage && (
+                                <div className="sim-error-banner" style={{
+                                    background: 'rgba(239, 68, 68, 0.15)',
+                                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                                    color: '#f87171',
+                                    padding: '14px 18px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.92rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    margin: '15px 0',
+                                    width: '100%',
+                                    maxWidth: '520px',
+                                    textAlign: 'left'
+                                }}>
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ flexShrink: 0 }}>
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="8" x2="12" y2="12" />
+                                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
+                                    <div>
+                                        <strong style={{ display: 'block', marginBottom: '2px', color: '#ef4444' }}>Fonctionnalité non disponible</strong>
+                                        <span>{simErrorMessage}</span>
+                                    </div>
+                                </div>
+                            )}
+
                             {isGeneratingSim && (
                                 <div className="hud-console-logs" style={{ width: '100%', maxWidth: '520px', marginTop: '15px', textAlign: 'left' }}>
                                     {simConsoleLogs.map((log, idx) => (
@@ -1778,289 +1807,11 @@ const Dashboard = () => {
                                     <button
                                         className="glass-btn glass-btn-primary sim-generate-btn"
                                         disabled={!simPhoto || isGeneratingSim}
-                                         onClick={async () => {
+                                        onClick={() => {
                                             if (!simPhoto) return;
-                                            setIsGeneratingSim(true);
-
-                                            // Start HUD console logs
-                                            const t1 = new Date().toLocaleTimeString();
-                                            setSimConsoleLogs([
-                                                { time: t1, msg: '[SYSTEM] Acquisition tridimensionnelle du sourire...' }
-                                            ]);
-                                            const timer1 = setTimeout(() => {
-                                                setSimConsoleLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg: '[IA OrthoMind] Simulation biomécanique du traitement par gouttières...' }]);
-                                            }, 700);
-                                            const timer2 = setTimeout(() => {
-                                                setSimConsoleLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg: '[IA OrthoMind] Correction des chevauchements & nivellement des incisives...' }]);
-                                            }, 1500);
-                                            const timer3 = setTimeout(() => {
-                                                setSimConsoleLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg: '[IA OrthoMind] Harmonisation du guidage antérieur et finition amélaire...' }]);
-                                            }, 2300);
-
-                                            // Ensure a realistic 4.5s clinical scanning & AI generation experience
-                                            const minProcessPromise = new Promise((resolve) => setTimeout(resolve, 4500));
-
-                                            try {
-                                                const apiKey = getGeminiApiKey();
-                                                let generatedImg: string | null = null;
-
-                                                // 1. Try Gemini Vision & Imagen API if API key is configured
-                                                if (apiKey) {
-                                                    try {
-                                                        generatedImg = await generateSmileSimulationWithGemini(simPhoto);
-                                                    } catch (e) {
-                                                        console.warn('Gemini smile simulation service skipped:', e);
-                                                    }
-                                                }
-
-                                                // Wait for the scanning HUD animation sequence to complete 4.5s
-                                                await minProcessPromise;
-
-                                                // 2. High-Precision Biomechanical Clear Aligner Morphing & Alignment Engine
-                                                if (!generatedImg) {
-                                                    generatedImg = await new Promise<string>((resolve) => {
-                                                        let settled = false;
-                                                        const safeResolve = (res: string) => {
-                                                            if (!settled) {
-                                                                settled = true;
-                                                                resolve(res);
-                                                            }
-                                                        };
-
-                                                        // Hard timeout safety (4s)
-                                                        const timer = setTimeout(() => {
-                                                            safeResolve(simPhoto);
-                                                        }, 4000);
-
-                                                        const img = new Image();
-                                                        if (!simPhoto.startsWith('data:')) {
-                                                            img.crossOrigin = 'anonymous';
-                                                        }
-
-                                                        img.onload = () => {
-                                                            clearTimeout(timer);
-                                                            try {
-                                                                const w = img.width || 800;
-                                                                const h = img.height || 800;
-
-                                                                const srcCanvas = document.createElement('canvas');
-                                                                srcCanvas.width = w;
-                                                                srcCanvas.height = h;
-                                                                const srcCtx = srcCanvas.getContext('2d');
-                                                                if (!srcCtx) { safeResolve(simPhoto); return; }
-                                                                srcCtx.drawImage(img, 0, 0);
-
-                                                                const outCanvas = document.createElement('canvas');
-                                                                outCanvas.width = w;
-                                                                outCanvas.height = h;
-                                                                const outCtx = outCanvas.getContext('2d');
-                                                                if (!outCtx) { safeResolve(simPhoto); return; }
-                                                                outCtx.drawImage(img, 0, 0);
-
-                                                                const srcData = srcCtx.getImageData(0, 0, w, h);
-                                                                const outData = outCtx.getImageData(0, 0, w, h);
-                                                                const sd = srcData.data;
-                                                                const od = outData.data;
-
-                                                                const startY = Math.floor(h * 0.28);
-                                                                const endY = Math.floor(h * 0.82);
-                                                                const startX = Math.floor(w * 0.12);
-                                                                const endX = Math.floor(w * 0.88);
-
-                                                                // Clear Aligner Treatment Engine: Tooth straightening, whitening & clear aligner plastic tray + attachments
-                                                                let minToothX = w, maxToothX = 0;
-                                                                let minToothY = h, maxToothY = 0;
-
-                                                                for (let y = startY; y < endY; y++) {
-                                                                    for (let x = startX; x < endX; x++) {
-                                                                        const i = (y * w + x) * 4;
-                                                                        let r = sd[i], g = sd[i+1], b = sd[i+2];
-
-                                                                        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-                                                                        const maxC = Math.max(r, g, b);
-                                                                        const minC = Math.min(r, g, b);
-                                                                        const sat = maxC > 0 ? (maxC - minC) / maxC : 0;
-                                                                        const sumRGB = r + g + b;
-
-                                                                        const isTooth = lum > 90 && sat < 0.38 && (r - g) < 55 && (r - b) < (sumRGB * 0.28);
-
-                                                                        if (isTooth) {
-                                                                            if (x < minToothX) minToothX = x;
-                                                                            if (x > maxToothX) maxToothX = x;
-                                                                            if (y < minToothY) minToothY = y;
-                                                                            if (y > maxToothY) maxToothY = y;
-
-                                                                            // 1. Smooth horizontal crown overlap crevices & straighten alignment
-                                                                            let sumR = 0, sumG = 0, sumB = 0, count = 0;
-                                                                            for (let dx = -4; dx <= 4; dx++) {
-                                                                                const nx = x + dx;
-                                                                                if (nx >= startX && nx < endX) {
-                                                                                    const ni = (y * w + nx) * 4;
-                                                                                    const nLum = 0.299 * sd[ni] + 0.587 * sd[ni+1] + 0.114 * sd[ni+2];
-                                                                                    if (nLum > 85) {
-                                                                                        sumR += sd[ni];
-                                                                                        sumG += sd[ni+1];
-                                                                                        sumB += sd[ni+2];
-                                                                                        count++;
-                                                                                    }
-                                                                                }
-                                                                            }
-
-                                                                            let smoothR = count > 0 ? sumR / count : r;
-                                                                            let smoothG = count > 0 ? sumG / count : g;
-                                                                            let smoothB = count > 0 ? sumB / count : b;
-
-                                                                            let alignR = r * 0.30 + smoothR * 0.70;
-                                                                            let alignG = g * 0.30 + smoothG * 0.70;
-                                                                            let alignB = b * 0.30 + smoothB * 0.70;
-
-                                                                            // 2. Natural VITA A1 porcelain whitening
-                                                                            const targetLum = Math.min(255, lum * 1.10 + 10);
-                                                                            const scale = targetLum / Math.max(1, lum);
-
-                                                                            let newR = Math.min(255, Math.round(alignR * scale + 2));
-                                                                            let newG = Math.min(255, Math.round(alignG * scale + 4));
-                                                                            let newB = Math.min(255, Math.round(alignB * (scale * 1.14) + 14));
-
-                                                                            od[i]   = Math.round(r * 0.35 + newR * 0.65);
-                                                                            od[i+1] = Math.round(g * 0.35 + newG * 0.65);
-                                                                            od[i+2] = Math.round(b * 0.35 + newB * 0.65);
-                                                                        } else if (lum > 40 && lum <= 90 && sat < 0.35 && (r - g) < 42) {
-                                                                            // 3. Fill and straighten dark interdental crowding gaps
-                                                                            let fillR = 0, fillG = 0, fillB = 0, fillCount = 0;
-                                                                            for (let dx = -5; dx <= 5; dx++) {
-                                                                                const nx = x + dx;
-                                                                                if (nx >= startX && nx < endX) {
-                                                                                    const ni = (y * w + nx) * 4;
-                                                                                    const nLum = 0.299 * sd[ni] + 0.587 * sd[ni+1] + 0.114 * sd[ni+2];
-                                                                                    if (nLum > 100) {
-                                                                                        fillR += sd[ni];
-                                                                                        fillG += sd[ni+1];
-                                                                                        fillB += sd[ni+2];
-                                                                                        fillCount++;
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                            if (fillCount > 0) {
-                                                                                od[i]   = Math.min(255, Math.round(r * 0.20 + (fillR / fillCount) * 0.80));
-                                                                                od[i+1] = Math.min(255, Math.round(g * 0.20 + (fillG / fillCount) * 0.80));
-                                                                                od[i+2] = Math.min(255, Math.round(b * 0.20 + (fillB / fillCount) * 0.80));
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-
-                                                                outCtx.putImageData(outData, 0, 0);
-
-                                                                // 4. Render Transparent Polyurethane Aligner Trays & Composite Attachments over the patient's teeth
-                                                                if (minToothX < maxToothX && minToothY < maxToothY) {
-                                                                    const toothW = maxToothX - minToothX;
-                                                                    const toothH = maxToothY - minToothY;
-
-                                                                    outCtx.save();
-
-                                                                    // A. Polyurethane Specular Sheen (Gouttière thermoformée translucide)
-                                                                    outCtx.globalCompositeOperation = 'screen';
-                                                                    const alignerGrad = outCtx.createLinearGradient(0, minToothY - 4, 0, maxToothY + 4);
-                                                                    alignerGrad.addColorStop(0, 'rgba(255, 255, 255, 0.32)');
-                                                                    alignerGrad.addColorStop(0.3, 'rgba(200, 245, 255, 0.20)');
-                                                                    alignerGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.26)');
-                                                                    alignerGrad.addColorStop(1, 'rgba(180, 235, 255, 0.18)');
-
-                                                                    outCtx.fillStyle = alignerGrad;
-                                                                    outCtx.beginPath();
-                                                                    if (typeof outCtx.roundRect === 'function') {
-                                                                        outCtx.roundRect(minToothX - 5, minToothY - 5, toothW + 10, toothH + 10, 12);
-                                                                    } else {
-                                                                        outCtx.rect(minToothX - 5, minToothY - 5, toothW + 10, toothH + 10);
-                                                                    }
-                                                                    outCtx.fill();
-
-                                                                    // B. Gingival Aligner Margin Trimlines (Découpe festonnée de la gouttière)
-                                                                    outCtx.globalCompositeOperation = 'source-over';
-                                                                    outCtx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
-                                                                    outCtx.lineWidth = 2.0;
-                                                                    outCtx.shadowColor = 'rgba(0, 242, 254, 0.5)';
-                                                                    outCtx.shadowBlur = 5;
-
-                                                                    // Upper aligner margin
-                                                                    outCtx.beginPath();
-                                                                    outCtx.moveTo(minToothX - 4, minToothY + 4);
-                                                                    const numScallops = 6;
-                                                                    const scallopW = toothW / numScallops;
-                                                                    for (let s = 0; s < numScallops; s++) {
-                                                                        const sx = minToothX + s * scallopW;
-                                                                        const midX = sx + scallopW / 2;
-                                                                        const endX = sx + scallopW;
-                                                                        outCtx.quadraticCurveTo(midX, minToothY - 5, endX, minToothY + 2);
-                                                                    }
-                                                                    outCtx.stroke();
-
-                                                                    // Lower aligner margin
-                                                                    outCtx.beginPath();
-                                                                    outCtx.moveTo(minToothX - 4, maxToothY - 4);
-                                                                    for (let s = 0; s < numScallops; s++) {
-                                                                        const sx = minToothX + s * scallopW;
-                                                                        const midX = sx + scallopW / 2;
-                                                                        const endX = sx + scallopW;
-                                                                        outCtx.quadraticCurveTo(midX, maxToothY + 5, endX, maxToothY - 2);
-                                                                    }
-                                                                    outCtx.stroke();
-
-                                                                    // C. Orthodontic Composite Attachments (Taquets d'alignement)
-                                                                    const attachmentPositions = [
-                                                                        { x: minToothX + toothW * 0.20, y: minToothY + toothH * 0.38 },
-                                                                        { x: minToothX + toothW * 0.33, y: minToothY + toothH * 0.42 },
-                                                                        { x: minToothX + toothW * 0.67, y: minToothY + toothH * 0.42 },
-                                                                        { x: minToothX + toothW * 0.80, y: minToothY + toothH * 0.38 },
-                                                                        { x: minToothX + toothW * 0.28, y: minToothY + toothH * 0.68 },
-                                                                        { x: minToothX + toothW * 0.72, y: minToothY + toothH * 0.68 }
-                                                                    ];
-
-                                                                    attachmentPositions.forEach(att => {
-                                                                        outCtx.fillStyle = 'rgba(250, 248, 242, 0.85)';
-                                                                        outCtx.beginPath();
-                                                                        outCtx.arc(att.x, att.y, 4.0, 0, Math.PI * 2);
-                                                                        outCtx.fill();
-
-                                                                        outCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-                                                                        outCtx.beginPath();
-                                                                        outCtx.arc(att.x - 1.2, att.y - 1.2, 1.5, 0, Math.PI * 2);
-                                                                        outCtx.fill();
-                                                                    });
-
-                                                                    outCtx.restore();
-                                                                }
-
-                                                                outCtx.putImageData(outData, 0, 0);
-
-                                                                safeResolve(outCanvas.toDataURL('image/jpeg', 0.95));
-                                                            } catch (err) {
-                                                                console.warn('Canvas smile transformation fallback triggered:', err);
-                                                                safeResolve(simPhoto);
-                                                            }
-                                                        };
-
-                                                        img.onerror = (err) => {
-                                                            clearTimeout(timer);
-                                                            console.warn('Sim photo image load error:', err);
-                                                            safeResolve(simPhoto);
-                                                        };
-
-                                                        img.src = simPhoto;
-                                                    });
-                                                }
-
-                                                setSimResult(generatedImg);
-                                            } catch (err: any) {
-                                                console.error('Simulation error:', err);
-                                                setSimResult(simPhoto);
-                                            } finally {
-                                                clearTimeout(timer1);
-                                                clearTimeout(timer2);
-                                                clearTimeout(timer3);
-                                                setIsGeneratingSim(false);
-                                            }
+                                            const msg = "Cette fonctionnalité n'est pas encore disponible.";
+                                            setSimErrorMessage(msg);
+                                            alert(`⚠️ ${msg}`);
                                         }}
                                     >
                                         {isGeneratingSim ? (
