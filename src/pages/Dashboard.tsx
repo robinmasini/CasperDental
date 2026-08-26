@@ -104,10 +104,24 @@ const Dashboard = () => {
         return (saved as any) || 'analyse';
     });
 
+    const isPatientAccount = (user?.email || '').toLowerCase().trim() === 'test@patient.com' || user?.profession === 'Patient OrthoMind' || user?.specialty === 'Espace Patient';
+
+    const handleTabClick = (tab: 'analyse' | 'patients' | 'knowledge' | 'config') => {
+        if (isPatientAccount && tab !== 'analyse') {
+            alert('Fonctionnalité à venir...');
+            return;
+        }
+        setActiveTab(tab);
+    };
+
     // Save active tab to localStorage on changes to survive refreshes
     useEffect(() => {
+        if (isPatientAccount && activeTab !== 'analyse') {
+            setActiveTab('analyse');
+            return;
+        }
         localStorage.setItem('casper_active_tab', activeTab);
-    }, [activeTab]);
+    }, [activeTab, isPatientAccount]);
 
     // Modals state for OrthoMind and History
     const [showOrthoMindModal, setShowOrthoMindModal] = useState(false);
@@ -1096,13 +1110,9 @@ const Dashboard = () => {
                         <div className="logo-shimmer-wrapper" style={{ position: 'relative', display: 'inline-block' }}>
                             <img src={orthomindLogo} alt="OrthoMind Logo" style={{ height: '130px', objectFit: 'contain', display: 'block' }} />
                         </div>
-                    </div>
-                </div>
-
-                <nav className="sidebar-menu">
-                    <button 
+                                       <button 
                         className={`sidebar-nav-btn ${activeTab === 'analyse' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('analyse')}
+                        onClick={() => handleTabClick('analyse')}
                     >
                         <img 
                             src={orthomindNavIcon} 
@@ -1121,7 +1131,7 @@ const Dashboard = () => {
 
                     <button 
                         className={`sidebar-nav-btn ${activeTab === 'patients' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('patients')}
+                        onClick={() => handleTabClick('patients')}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -1134,7 +1144,7 @@ const Dashboard = () => {
 
                     <button 
                         className={`sidebar-nav-btn ${activeTab === 'knowledge' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('knowledge')}
+                        onClick={() => handleTabClick('knowledge')}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
@@ -1145,7 +1155,13 @@ const Dashboard = () => {
 
                     <button 
                         className="sidebar-nav-btn"
-                        onClick={() => setShowHistoryModal(true)}
+                        onClick={() => {
+                            if (isPatientAccount) {
+                                alert('Fonctionnalité à venir...');
+                                return;
+                            }
+                            setShowHistoryModal(true);
+                        }}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--primary-blue)' }}>
                             <circle cx="12" cy="12" r="10" />
@@ -1156,12 +1172,14 @@ const Dashboard = () => {
 
                     <button 
                         className={`sidebar-nav-btn ${activeTab === 'config' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('config')}
+                        onClick={() => handleTabClick('config')}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <circle cx="12" cy="12" r="3" />
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                         </svg>
+                        Configuration / API
+                    </button>/svg>
                         Configuration / API
                     </button>
                 </nav>
@@ -2184,32 +2202,32 @@ const Dashboard = () => {
                     <button 
                         className="mobile-navbar-tab-btn" 
                         style={{ left: '0%', width: '22%' }}
-                        onClick={() => setActiveTab('analyse')}
+                        onClick={() => handleTabClick('analyse')}
                         title="Analyse Clinique"
                     />
                     <button 
                         className="mobile-navbar-tab-btn" 
                         style={{ left: '22%', width: '18%' }}
-                        onClick={() => setActiveTab('patients')}
+                        onClick={() => handleTabClick('patients')}
                         title="Liste de patients"
                     />
                     {/* Center Hexagon defaults to Clinical Analysis */}
                     <button 
                         className="mobile-navbar-tab-btn" 
                         style={{ left: '40%', width: '20%' }}
-                        onClick={() => setActiveTab('analyse')}
+                        onClick={() => handleTabClick('analyse')}
                         title="Casper Logo"
                     />
                     <button 
                         className="mobile-navbar-tab-btn" 
                         style={{ left: '60%', width: '18%' }}
-                        onClick={() => setActiveTab('knowledge')}
+                        onClick={() => handleTabClick('knowledge')}
                         title="Connaissances PDF"
                     />
                     <button 
                         className="mobile-navbar-tab-btn" 
                         style={{ left: '78%', width: '22%' }}
-                        onClick={() => setActiveTab('config')}
+                        onClick={() => handleTabClick('config')}
                         title="Configuration / API"
                     />
                 </div>
