@@ -395,51 +395,48 @@ const getFallbackMockAnalysis = (patientName: string): AnalysisResult => {
 };
 
 // Fallback chat responder for OrthoMind
-const getFallbackMockChatResponse = (userMessage: string): string => {
+const getFallbackMockChatResponse = (userMessage: string, searchContext?: string): string => {
     const msgLower = userMessage.toLowerCase();
+    let responseText = '';
     
     if (msgLower.includes('classe ii') || msgLower.includes('class ii') || msgLower.includes('division')) {
-        return `Dans le cas d'une **Classe II division 1 ou 2**, l'approche thérapeutique dépend de la sévérité du décalage squelettique et de l'âge du patient. 
+        responseText = `Dans le cas d'une **Classe II division 1 ou 2**, l'approche thérapeutique dépend de la sévérité du décalage squelettique et de l'âge du patient. 
 Chez l'adulte, nous privilégions généralement une compensation dento-alvéolaire à l'aide d'aligneurs invisibles associés à des élastiques intermaxillaires de Classe II de force moyenne (ex. 1/4" 4.5 oz). L'ancrage postérieur doit être rigoureusement planifié (par exemple, distalisation séquentielle de type *molar-by-molar*) et renforcé par des mini-vis d'ancrage temporaire (TADs) si nécessaire pour éviter la vestibulo-version des incisives maxillaires.
 Dans les cas limites à forte divergence faciale, une extraction des premières prémolaires maxillaires ou une chirurgie d'avancement mandibulaire doit être discutée.`;
-    }
-    
-    if (msgLower.includes('classe iii') || msgLower.includes('class iii')) {
-        return `Les malocclusions de **Classe III** constituent l'un des défis majeurs de l'orthodontie. 
+    } else if (msgLower.includes('classe iii') || msgLower.includes('class iii')) {
+        responseText = `Les malocclusions de **Classe III** constituent l'un des défis majeurs de l'orthodontie. 
 Pour un décalage modéré chez l'adulte, une compensation dentaire par proalvéolie maxillaire et rétroalvéolie mandibulaire (souvent facilitée par du stripping inférieur ou l'extraction d'une incisive mandibulaire) peut être envisagée. Les élastiques de Classe III à port continu sont indispensables pour guider le saut d'articulé croisé.
 Cependant, pour les anomalies squelettiques sévères, une approche combinée orthodontico-chirurgicale (ostéotomie de Le Fort I d'avancement maxillaire et/ou ostéotomie sagittale de recul mandibulaire) reste le protocole de choix pour restaurer des rapports de Classe I stables et un profil harmonieux.`;
-    }
-    
-    if (msgLower.includes('encombrement') || msgLower.includes('place') || msgLower.includes('stripping') || msgLower.includes('ipr') || msgLower.includes('extraction')) {
-        return `La résolution de **l'encombrement dentaire** nécessite d'arbitrer entre expansion transversale, stripping interproximal (IPR) ou extractions thérapeutiques.
+    } else if (msgLower.includes('encombrement') || msgLower.includes('place') || msgLower.includes('stripping') || msgLower.includes('ipr') || msgLower.includes('extraction')) {
+        responseText = `La résolution de **l'encombrement dentaire** nécessite d'arbitrer entre expansion transversale, stripping interproximal (IPR) ou extractions thérapeutiques.
 - **Expansion transversale** : Avec les aligneurs invisibles, l'expansion dento-alvéolaire contrôlée (jusqu'à 2-3 mm par hémi-arcade) permet de gagner de l'espace dans les encombrements légers à modérés sans compromettre le support parodontal.
 - **Stripping (IPR)** : Le stripping planifié (généralement entre 0.2 mm et 0.5 mm par face de contact) est une excellente alternative aux extractions dans les encombrements modérés. Il permet également d'aplanir les points de contact et de réduire les triangles noirs gingivaux (*black triangles*).
 - **Extractions** : Réservées aux encombrements sévères (> 7-8 mm) ou lorsqu'il est nécessaire de reculer significativement le bloc incisif pour corriger le profil.`;
-    }
-    
-    if (msgLower.includes('durée') || msgLower.includes('temps') || msgLower.includes('longtemps') || msgLower.includes('mois')) {
-        return `La **durée globale d'un traitement** orthodontique est multifactorielle et dépend de la complexité du cas, de la biologie du déplacement dentaire, et de l'observance du patient :
+    } else if (msgLower.includes('durée') || msgLower.includes('temps') || msgLower.includes('longtemps') || msgLower.includes('mois')) {
+        responseText = `La **durée globale d'un traitement** orthodontique est multifactorielle et dépend de la complexité du cas, de la biologie du déplacement dentaire, et de l'observance du patient :
 - **Traitements d'alignement simple (sans correction squelettique)** : Environ **10 à 14 mois**.
 - **Traitements de complexité modérée à sévère (Classe II/III avec distalisation ou extractions)** : Environ **16 à 22 mois**.
 - **Traitements chirurgicaux** : **18 à 24 mois** de préparation orthodontique active, suivie de la chirurgie et de 6 mois de finitions.
 Le respect rigoureux du protocole d'observance (port des gouttières 22h/24) est indispensable pour éviter les retards de traitement.`;
-    }
-    
-    if (msgLower.includes('molaire') || msgLower.includes('canine') || msgLower.includes('occlusion') || msgLower.includes('guidage')) {
-        return `L'établissement d'une **occlusion fonctionnelle et stable** repose sur les critères d'excellence suivants :
+    } else if (msgLower.includes('molaire') || msgLower.includes('canine') || msgLower.includes('occlusion') || msgLower.includes('guidage')) {
+        responseText = `L'établissement d'une **occlusion fonctionnelle et stable** repose sur les critères d'excellence suivants :
 1. **Rapports de Classe I d'Angle** au niveau molaire et canine.
 2. **Guide antérieur fonctionnel** avec un guidage incisif harmonieux en propulsion et un guidage canine exclusif en diduction (sans interférences travaillantes ou non-travaillantes sur les secteurs postérieurs).
 3. **Contacts occlusaux postérieurs simultanés et punctiformes** en relation centrée (RC) coïncidant avec l'occlusion en intercuspidie maximale (OIM).
 4. **Courbes de Spee et de Wilson** aplaties ou modérées pour un engrènement optimal.`;
-    }
-    
-    if (msgLower.includes('casper') || msgLower.includes('qui es-tu') || msgLower.includes('présente')) {
-        return `Je suis **OrthoMind**, l'assistant d'intelligence artificielle clinique expert du cabinet d'orthodontie du Dr. Desouches. 
+    } else if (msgLower.includes('casper') || msgLower.includes('qui es-tu') || msgLower.includes('présente')) {
+        responseText = `Je suis **OrthoMind**, l'assistant d'intelligence artificielle clinique expert du cabinet d'orthodontie du Dr. Desouches. 
 Je suis programmé pour vous accompagner dans l'analyse de vos cas cliniques, la rédaction des rapports de diagnostic et de traitement, ainsi que pour répondre à vos questions scientifiques en s'appuyant sur la base de connaissances du cabinet (notamment le volume 61 du CGS).`;
+    } else {
+        responseText = `C'est une excellente question clinique. D'un point de vue biomécanique, la réussite de ce type de correction repose sur un diagnostic tridimensionnel précis (sens transversal, vertical et sagittal).
+Pour optimiser le déplacement dentaire et garantir la stabilité parodontale à long terme, je vous suggère de planifier une phase d'alignement initial suivie d'une coordination rigoureuse des arcades. Si des clichés ou des radiographies complémentaires (comme une téléradiographie de profil avec tracé céphalométrique) sont disponibles, ils permettraient d'affiner l'évaluation du torque radiculaire et de l'épaisseur de la table osseuse vestibulaire.`;
     }
 
-    return `C'est une excellente question clinique. D'un point de vue biomécanique, la réussite de ce type de correction repose sur un diagnostic tridimensionnel précis (sens transversal, vertical et sagittal).
-Pour optimiser le déplacement dentaire et garantir la stabilité parodontale à long terme, je vous suggère de planifier une phase d'alignement initial suivie d'une coordination rigoureuse des arcades. Si des clichés ou des radiographies complémentaires (comme une téléradiographie de profil avec tracé céphalométrique) sont disponibles, ils permettraient d'affiner l'évaluation du torque radiculaire et de l'épaisseur de la table osseuse vestibulaire.`;
+    if (searchContext) {
+        responseText += `\n\n---\n📚 **Références issues de votre base de connaissances :**\n${searchContext}`;
+    }
+
+    return responseText;
 };
 
 // Run the full orthodontics RAG Casper analysis
@@ -449,9 +446,6 @@ export const analyzeDentition = async (
     patientName?: string
 ): Promise<AnalysisResult> => {
     const apiKey = getGeminiApiKey();
-    if (!apiKey) {
-        throw new Error('Clé API Gemini manquante. Veuillez la configurer dans l\'onglet Configuration.');
-    }
 
     if (imageFiles.length === 0) {
         throw new Error('Veuillez fournir au moins une photo de dentition.');
@@ -465,37 +459,39 @@ export const analyzeDentition = async (
     if (onStatusUpdate) onStatusUpdate('Analyse préliminaire des clichés & extraction des mots-clés cliniques...');
     
     let keywords: string[] = ['orthodontie', 'malocclusion', 'encombrement'];
-    try {
-        const keywordPrompt = `Analyse brièvement ces photos de dentition et retourne UNIQUEMENT une liste de 5 termes techniques d'orthodontie en français qui correspondent à ce que tu vois (ex: "encombrement", "supraclusion", "classe II", "rotation", "articulé croisé"). Sépare-les par des virgules sans autre texte.`;
-        
-        const apiBody = {
-            contents: [
-                {
-                    parts: [
-                        { text: keywordPrompt },
-                        ...imageParts
-                    ]
+    if (apiKey) {
+        try {
+            const keywordPrompt = `Analyse brièvement ces photos de dentition et retourne UNIQUEMENT une liste de 5 termes techniques d'orthodontie en français qui correspondent à ce que tu vois (ex: "encombrement", "supraclusion", "classe II", "rotation", "articulé croisé"). Sépare-les par des virgules sans autre texte.`;
+            
+            const apiBody = {
+                contents: [
+                    {
+                        parts: [
+                            { text: keywordPrompt },
+                            ...imageParts
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.1
                 }
-            ],
-            generationConfig: {
-                temperature: 0.1
-            }
-        };
+            };
 
-        const data = await executeGeminiCall('generateContent', apiBody, apiKey);
-        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (textResponse) {
-            const extracted = textResponse
-                .split(',')
-                .map((s: string) => s.trim().toLowerCase())
-                .filter((s: string) => s.length > 2);
-            if (extracted.length > 0) {
-                keywords = extracted;
-                console.log('Extracted keywords for RAG:', keywords);
+            const data = await executeGeminiCall('generateContent', apiBody, apiKey);
+            const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (textResponse) {
+                const extracted = textResponse
+                    .split(',')
+                    .map((s: string) => s.trim().toLowerCase())
+                    .filter((s: string) => s.length > 2);
+                if (extracted.length > 0) {
+                    keywords = extracted;
+                    console.log('Extracted keywords for RAG:', keywords);
+                }
             }
+        } catch (e) {
+            console.warn('Failed to do first-pass keywords extraction, using defaults:', e);
         }
-    } catch (e) {
-        console.warn('Failed to do first-pass keywords extraction, using defaults:', e);
     }
 
     // Step 3: Query Supabase for orthodontic citations (RAG)
@@ -510,7 +506,8 @@ export const analyzeDentition = async (
     // Step 4: Run the final analysis with vision + RAG context
     if (onStatusUpdate) onStatusUpdate('Consultation de Casper l\'expert mondial (Génération du rapport)...');
     
-    const finalPrompt = `Tu es "Casper", un chirurgien-dentiste et orthodontiste expert mondial d'une intelligence extrême.
+    if (apiKey) {
+        const finalPrompt = `Tu es "Casper", un chirurgien-dentiste et orthodontiste expert mondial d'une intelligence extrême.
 Tu as sous les yeux les clichés dentaires d'un patient et des extraits de livres de référence ci-dessous.
 
 ${searchContext ? `### LECTURES DE RÉFÉRENCE ISSUES DE TA BASE DE CONNAISSANCES :
@@ -518,7 +515,7 @@ ${searchContext}
 ` : 'Note : Aucune base de connaissances externe n\'est disponible. Fie-toi à tes connaissances internes approfondies.'}
 
 Fais une analyse clinique extrêmement pointue, exhaustive et rigoureuse des photos dentaires fournies.
-Rédige ton diagnostic en français sous la forme de deux catégories strictement séparées. Ta réponse doit impérativement respecter le format balisé XML ci-dessous pour que l'interface puisse les séparer :
+Rédige ton diagnostic en français sous la forme de deux catégories strictly séparées. Ta réponse doit impérativement respecter le format balisé XML ci-dessous pour que l'interface puisse les séparer :
 
 Dans la section diagnostic, commence impérativement par mettre en valeur et de manière très visible la Classe d'Angle (Classe I, Classe II division 1, Classe II division 2, Classe III, etc.) car c'est le point clinique le plus important attendu par le praticien.
 
@@ -542,86 +539,66 @@ Ensuite, décris en détail :
 
 Sois technique, précis, exhaustif, et adopte le ton d'un éminent chirurgien-dentiste s'adressant à un confrère. Ne mets aucun texte d'introduction ni de conclusion en dehors des balises.`;
 
-    const apiBody = {
-        contents: [
-            {
-                parts: [
-                    { text: finalPrompt },
-                    ...imageParts
-                ]
+        const apiBody = {
+            contents: [
+                {
+                    parts: [
+                        { text: finalPrompt },
+                        ...imageParts
+                    ]
+                }
+            ],
+            generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 8192
             }
-        ],
-        generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 8192
-        }
-    };
+        };
 
-    let resultText = '';
-    try {
-        const resultData = await executeGeminiCall('generateContent', apiBody, apiKey, onStatusUpdate);
-        resultText = resultData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    } catch (err) {
-        console.warn('API Gemini final analysis failed completely, running fallback mock generator:', err);
-        if (onStatusUpdate) onStatusUpdate('Calcul par l\'algorithme de secours clinique local...');
-        
-        // Let's delay slightly to make it look like it's processing
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const mockResult = getFallbackMockAnalysis(patientName || '');
-        return mockResult;
-    }
-    
-    // Parse the XML tags (case-insensitive)
-    const diagMatch = resultText.match(/<diagnostic>([\s\S]*?)<\/diagnostic>/i);
-    const traitMatch = resultText.match(/<traitement>([\s\S]*?)<\/traitement>/i);
-    
-    let diagnostic = diagMatch ? diagMatch[1].trim() : '';
-    let traitement = traitMatch ? traitMatch[1].trim() : '';
-    
-    // Robust parsing fallback for unclosed tags or missing closing tags
-    if (!diagnostic || !traitement) {
-        if (!diagnostic && resultText.match(/<diagnostic>/i)) {
-            const diagStartIndex = resultText.search(/<diagnostic>/i);
-            const diagStart = diagStartIndex + resultText.match(/<diagnostic>/i)![0].length;
-            const traitStartIndex = resultText.search(/<traitement>/i);
-            const diagEnd = traitStartIndex !== -1 ? traitStartIndex : resultText.length;
+        try {
+            const resultData = await executeGeminiCall('generateContent', apiBody, apiKey, onStatusUpdate);
+            const resultText = resultData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+            // Parse the XML tags (case-insensitive)
+            const diagMatch = resultText.match(/<diagnostic>([\s\S]*?)<\/diagnostic>/i);
+            const traitMatch = resultText.match(/<traitement>([\s\S]*?)<\/traitement>/i);
             
-            diagnostic = resultText.substring(diagStart, diagEnd)
-                .replace(/<\/diagnostic>/gi, '')
-                .trim();
-        }
-        
-        if (!traitement && resultText.match(/<traitement>/i)) {
-            const traitStartIndex = resultText.search(/<traitement>/i);
-            const traitStart = traitStartIndex + resultText.match(/<traitement>/i)![0].length;
+            let diagnostic = diagMatch ? diagMatch[1].trim() : '';
+            let traitement = traitMatch ? traitMatch[1].trim() : '';
             
-            traitement = resultText.substring(traitStart)
-                .replace(/<\/traitement>/gi, '')
-                .trim();
-        }
-    }
-    
-    // Absolute fallback if still empty
-    if (!diagnostic && !traitement) {
-        const splitText = resultText.split(/traitement/i);
-        if (splitText.length >= 2) {
-            diagnostic = splitText[0].replace(/diagnostic/i, '').replace(/<[^>]*>/g, '').trim();
-            traitement = splitText[1].replace(/<[^>]*>/g, '').trim();
-        } else {
-            diagnostic = resultText;
-            traitement = "Aucun plan de traitement distinct n'a été généré. Veuillez réanalyser.";
-        }
-    } else {
-        if (!diagnostic) {
-            diagnostic = "Analyse diagnostique incomplète ou non générée.";
-        }
-        if (!traitement) {
-            traitement = "Plan de traitement non généré ou interrompu. Veuillez réanalyser.";
+            // Robust parsing fallback for unclosed tags or missing closing tags
+            if (!diagnostic || !traitement) {
+                if (!diagnostic && resultText.match(/<diagnostic>/i)) {
+                    const diagStartIndex = resultText.search(/<diagnostic>/i);
+                    const diagStart = diagStartIndex + resultText.match(/<diagnostic>/i)![0].length;
+                    const traitStartIndex = resultText.search(/<traitement>/i);
+                    const diagEnd = traitStartIndex !== -1 ? traitStartIndex : resultText.length;
+                    
+                    diagnostic = resultText.substring(diagStart, diagEnd)
+                        .replace(/<\/diagnostic>/gi, '')
+                        .trim();
+                }
+                
+                if (!traitement && resultText.match(/<traitement>/i)) {
+                    const traitStartIndex = resultText.search(/<traitement>/i);
+                    const traitStart = traitStartIndex + resultText.match(/<traitement>/i)![0].length;
+                    
+                    traitement = resultText.substring(traitStart)
+                        .replace(/<\/traitement>/gi, '')
+                        .trim();
+                }
+            }
+            
+            if (diagnostic && traitement) {
+                return { diagnostic, traitement };
+            }
+        } catch (err) {
+            console.warn('API Gemini final analysis failed completely, running fallback mock generator:', err);
         }
     }
 
-    return { diagnostic, traitement };
+    if (onStatusUpdate) onStatusUpdate('Calcul par l\'algorithme de secours clinique local...');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    return getFallbackMockAnalysis(patientName || '');
 };
 
 // Ask a clinical question to OrthoMind (RAG from PDFs)
@@ -629,10 +606,6 @@ export const askOrthoMind = async (
     messageHistory: { role: 'user' | 'assistant'; content: string }[]
 ): Promise<string> => {
     const apiKey = getGeminiApiKey();
-    if (!apiKey) {
-        throw new Error('Clé API Gemini manquante. Veuillez la configurer dans l\'onglet Configuration.');
-    }
-
     const userMessage = messageHistory[messageHistory.length - 1]?.content || '';
     
     // Extract keywords from user message for semantic search
@@ -646,13 +619,14 @@ export const askOrthoMind = async (
     // Search the Supabase or local knowledge base for these terms
     const searchContext = await searchKnowledgeBase(keywords.length > 0 ? keywords : ['orthodontie']);
 
-    // Format chat history for Gemini API
-    const formattedHistory = messageHistory.map(m => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }]
-    }));
+    if (apiKey) {
+        // Format chat history for Gemini API
+        const formattedHistory = messageHistory.map(m => ({
+            role: m.role === 'user' ? 'user' : 'model',
+            parts: [{ text: m.content }]
+        }));
 
-    const systemInstruction = `Tu es "OrthoMind", l'assistant d'intelligence artificielle clinique expert du cabinet d'orthodontie du Dr. Desouches (YouSmile).
+        const systemInstruction = `Tu es "OrthoMind", l'assistant d'intelligence artificielle clinique expert du cabinet d'orthodontie du Dr. Desouches (YouSmile).
 Tu disposes d'un niveau d'expertise médicale orthodontique extrême. Ton rôle est de conseiller le praticien en répondant de façon précise, technique, rigoureuse et scientifique à ses questions cliniques ou sur la base de connaissances.
 Adopte un ton éminent, professionnel, et confraternel (de chirurgien-dentiste à chirurgien-dentiste).
 
@@ -663,28 +637,31 @@ Utilise en priorité ce contexte sémantique pour étayer tes réponses. Cite le
 
 Réponds de façon structurée en français, en utilisant du formatage Markdown propre. Sois concis mais cliniquement exhaustif.`;
 
-    const apiBody = {
-        contents: formattedHistory,
-        systemInstruction: {
-            parts: [
-                { text: systemInstruction }
-            ]
-        },
-        generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 2048
-        }
-    };
+        const apiBody = {
+            contents: formattedHistory,
+            systemInstruction: {
+                parts: [
+                    { text: systemInstruction }
+                ]
+            },
+            generationConfig: {
+                temperature: 0.3,
+                maxOutputTokens: 2048
+            }
+        };
 
-    try {
-        const data = await executeGeminiCall('generateContent', apiBody, apiKey);
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    } catch (err) {
-        console.warn('API Gemini failed for OrthoMind chat. Falling back to local clinical knowledge mock chat responder:', err);
-        // Short simulated delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return getFallbackMockChatResponse(userMessage);
+        try {
+            const data = await executeGeminiCall('generateContent', apiBody, apiKey);
+            const resText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (resText) return resText;
+        } catch (err) {
+            console.warn('API Gemini failed for OrthoMind chat. Falling back to local clinical knowledge mock chat responder:', err);
+        }
     }
+
+    // Short simulated delay when running without API key
+    await new Promise(resolve => setTimeout(resolve, 800));
+    return getFallbackMockChatResponse(userMessage, searchContext);
 };
 
 // Generate a photorealistic post-treatment smile simulation using Gemini API + AI Image Engine

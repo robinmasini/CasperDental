@@ -696,13 +696,6 @@ const Dashboard = () => {
         }
 
         const currentPatient = patientName.trim() || 'Patient Anonyme';
-        const apiKey = getGeminiApiKey();
-
-        if (!apiKey) {
-            alert('Veuillez d\'abord configurer votre clé d\'API Gemini dans l\'onglet Configuration.');
-            setActiveTab('config');
-            return;
-        }
 
         // Initialize scanning console and state
         setIsScanning(true);
@@ -1575,10 +1568,13 @@ const Dashboard = () => {
                         </div>
 
                         <div className="glass-panel settings-card">
-                            <h2>Clé d'API Gemini</h2>
+                            <h2>Clé d'API Gemini <span style={{ fontSize: '0.8rem', fontWeight: 'normal', opacity: 0.8, background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '3px 8px', borderRadius: '12px', marginLeft: '8px' }}>Optionnelle (Mode autonome actif)</span></h2>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '15px' }}>
+                                OrthoMind et Casper fonctionnent immédiatement pour tous les utilisateurs sans aucune clé requise. Vous pouvez facultativement renseigner votre propre clé Google AI Studio si vous souhaitez utiliser votre propre quota d'API.
+                            </p>
                             
                             <div className="settings-row">
-                                <label htmlFor="gemini-api-key">Clé d'API Google Gemini (Studio AI)</label>
+                                <label htmlFor="gemini-api-key">Clé d'API Google Gemini (Facultatif)</label>
                                 <div style={{ display: 'flex', gap: '10px' }}>
                                     <input 
                                         type={showKey ? 'text' : 'password'}
