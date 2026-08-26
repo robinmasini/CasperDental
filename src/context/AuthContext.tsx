@@ -62,8 +62,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
             if (isMockAuth) {
                 const storedEmail = localStorage.getItem('casper_mock_user_email') || 'dr.desouches@yousmile.fr';
+                const isPatientTest = storedEmail.toLowerCase().trim() === 'test@patient.com';
+
                 const mockUser = {
-                    id: 'mock-user-id',
+                    id: isPatientTest ? 'mock-user-patient-test' : 'mock-user-id',
                     email: storedEmail,
                     app_metadata: {},
                     user_metadata: {},
@@ -72,12 +74,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 } as User;
                 
                 const mockProfile = {
-                    id: 'mock-user-id',
-                    name: 'Dr. Desouches',
+                    id: isPatientTest ? 'mock-user-patient-test' : 'mock-user-id',
+                    name: isPatientTest ? 'Patient Test' : 'Dr. Desouches',
                     email: storedEmail,
-                    rpps: '10100459812',
-                    profession: 'Chirurgien-Dentiste',
-                    specialty: 'Orthodontiste YouSmile'
+                    rpps: isPatientTest ? 'PATIENT-001' : '10100459812',
+                    profession: isPatientTest ? 'Patient OrthoMind' : 'Chirurgien-Dentiste',
+                    specialty: isPatientTest ? 'Espace Patient' : 'Orthodontiste YouSmile'
                 };
                 
                 setSupabaseUser(mockUser);
@@ -230,8 +232,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (err: any) {
             console.warn('Supabase login failed or timed out, using bypass:', err.message || err);
             
+            const isPatientTest = (email || '').toLowerCase().trim() === 'test@patient.com';
+
             const mockUser = {
-                id: 'mock-user-id',
+                id: isPatientTest ? 'mock-user-patient-test' : 'mock-user-id',
                 email: email || 'dr.desouches@yousmile.fr',
                 app_metadata: {},
                 user_metadata: {},
@@ -240,12 +244,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } as User;
             
             const mockProfile = {
-                id: 'mock-user-id',
-                name: 'Dr. Desouches',
+                id: isPatientTest ? 'mock-user-patient-test' : 'mock-user-id',
+                name: isPatientTest ? 'Patient Test' : 'Dr. Desouches',
                 email: email || 'dr.desouches@yousmile.fr',
-                rpps: '10100459812',
-                profession: 'Chirurgien-Dentiste',
-                specialty: 'Orthodontiste YouSmile'
+                rpps: isPatientTest ? 'PATIENT-001' : '10100459812',
+                profession: isPatientTest ? 'Patient OrthoMind' : 'Chirurgien-Dentiste',
+                specialty: isPatientTest ? 'Espace Patient' : 'Orthodontiste YouSmile'
             };
             
             setSupabaseUser(mockUser);
