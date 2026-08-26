@@ -1133,57 +1133,55 @@ const Dashboard = () => {
                         Analyse Clinique
                     </button>
 
-                    <button 
-                        className={`sidebar-nav-btn ${activeTab === 'patients' ? 'active' : ''}`}
-                        onClick={() => handleTabClick('patients')}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                        </svg>
-                        Liste de patients
-                    </button>
+                    {!isPatientAccount && (
+                        <>
+                            <button 
+                                className={`sidebar-nav-btn ${activeTab === 'patients' ? 'active' : ''}`}
+                                onClick={() => handleTabClick('patients')}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" />
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                </svg>
+                                Liste de patients
+                            </button>
 
-                    <button 
-                        className={`sidebar-nav-btn ${activeTab === 'knowledge' ? 'active' : ''}`}
-                        onClick={() => handleTabClick('knowledge')}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                        </svg>
-                        Connaissances PDF
-                    </button>
+                            <button 
+                                className={`sidebar-nav-btn ${activeTab === 'knowledge' ? 'active' : ''}`}
+                                onClick={() => handleTabClick('knowledge')}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                                    <path d="M22 3h-6a4 4 0 0 1 4 4v14a3 3 0 0 1 3-3h7z" />
+                                </svg>
+                                Connaissances PDF
+                            </button>
 
-                    <button 
-                        className="sidebar-nav-btn"
-                        onClick={() => {
-                            if (isPatientAccount) {
-                                alert('Fonctionnalité à venir...');
-                                return;
-                            }
-                            setShowHistoryModal(true);
-                        }}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--primary-blue)' }}>
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        Historique des Scans
-                    </button>
+                            <button 
+                                className="sidebar-nav-btn"
+                                onClick={() => setShowHistoryModal(true)}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--primary-blue)' }}>
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                                Historique des Scans
+                            </button>
 
-                    <button 
-                        className={`sidebar-nav-btn ${activeTab === 'config' ? 'active' : ''}`}
-                        onClick={() => handleTabClick('config')}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                        </svg>
-                        Configuration / API
-                    </button>
+                            <button 
+                                className={`sidebar-nav-btn ${activeTab === 'config' ? 'active' : ''}`}
+                                onClick={() => handleTabClick('config')}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                </svg>
+                                Configuration / API
+                            </button>
+                        </>
+                    )}
                 </nav>
 
                 <div className="sidebar-profile">
@@ -2174,66 +2172,68 @@ const Dashboard = () => {
             )}
 
             {/* Mobile Bottom Navigation Bar */}
-            <div className="mobile-bottom-navbar">
-                {/* Glow effect behind the active icon */}
-                <div className={`nav-background-glow pos-${activeTab}`} />
-                <div 
-                    className="mobile-navbar-image-container"
-                    style={{ 
-                        backgroundImage: `url(${
-                            activeTab === 'analyse' ? navbar1 :
-                            activeTab === 'patients' ? navbar2 :
-                            activeTab === 'knowledge' ? navbar3 :
-                            navbar4
-                        })`,
-                        WebkitMaskImage: `url(${
-                            activeTab === 'analyse' ? navbar1 :
-                            activeTab === 'patients' ? navbar2 :
-                            activeTab === 'knowledge' ? navbar3 :
-                            navbar4
-                        })`,
-                        maskImage: `url(${
-                            activeTab === 'analyse' ? navbar1 :
-                            activeTab === 'patients' ? navbar2 :
-                            activeTab === 'knowledge' ? navbar3 :
-                            navbar4
-                        })`
-                    }}
-                >
-                    {/* Invisible Clickable Overlays */}
-                    <button 
-                        className="mobile-navbar-tab-btn" 
-                        style={{ left: '0%', width: '22%' }}
-                        onClick={() => handleTabClick('analyse')}
-                        title="Analyse Clinique"
-                    />
-                    <button 
-                        className="mobile-navbar-tab-btn" 
-                        style={{ left: '22%', width: '18%' }}
-                        onClick={() => handleTabClick('patients')}
-                        title="Liste de patients"
-                    />
-                    {/* Center Hexagon defaults to Clinical Analysis */}
-                    <button 
-                        className="mobile-navbar-tab-btn" 
-                        style={{ left: '40%', width: '20%' }}
-                        onClick={() => handleTabClick('analyse')}
-                        title="Casper Logo"
-                    />
-                    <button 
-                        className="mobile-navbar-tab-btn" 
-                        style={{ left: '60%', width: '18%' }}
-                        onClick={() => handleTabClick('knowledge')}
-                        title="Connaissances PDF"
-                    />
-                    <button 
-                        className="mobile-navbar-tab-btn" 
-                        style={{ left: '78%', width: '22%' }}
-                        onClick={() => handleTabClick('config')}
-                        title="Configuration / API"
-                    />
+            {!isPatientAccount && (
+                <div className="mobile-bottom-navbar">
+                    {/* Glow effect behind the active icon */}
+                    <div className={`nav-background-glow pos-${activeTab}`} />
+                    <div 
+                        className="mobile-navbar-image-container"
+                        style={{ 
+                            backgroundImage: `url(${
+                                activeTab === 'analyse' ? navbar1 :
+                                activeTab === 'patients' ? navbar2 :
+                                activeTab === 'knowledge' ? navbar3 :
+                                navbar4
+                            })`,
+                            WebkitMaskImage: `url(${
+                                activeTab === 'analyse' ? navbar1 :
+                                activeTab === 'patients' ? navbar2 :
+                                activeTab === 'knowledge' ? navbar3 :
+                                navbar4
+                            })`,
+                            maskImage: `url(${
+                                activeTab === 'analyse' ? navbar1 :
+                                activeTab === 'patients' ? navbar2 :
+                                activeTab === 'knowledge' ? navbar3 :
+                                navbar4
+                            })`
+                        }}
+                    >
+                        {/* Invisible Clickable Overlays */}
+                        <button 
+                            className="mobile-navbar-tab-btn" 
+                            style={{ left: '0%', width: '22%' }}
+                            onClick={() => handleTabClick('analyse')}
+                            title="Analyse Clinique"
+                        />
+                        <button 
+                            className="mobile-navbar-tab-btn" 
+                            style={{ left: '22%', width: '18%' }}
+                            onClick={() => handleTabClick('patients')}
+                            title="Liste de patients"
+                        />
+                        {/* Center Hexagon defaults to Clinical Analysis */}
+                        <button 
+                            className="mobile-navbar-tab-btn" 
+                            style={{ left: '40%', width: '20%' }}
+                            onClick={() => handleTabClick('analyse')}
+                            title="Casper Logo"
+                        />
+                        <button 
+                            className="mobile-navbar-tab-btn" 
+                            style={{ left: '60%', width: '18%' }}
+                            onClick={() => handleTabClick('knowledge')}
+                            title="Connaissances PDF"
+                        />
+                        <button 
+                            className="mobile-navbar-tab-btn" 
+                            style={{ left: '78%', width: '22%' }}
+                            onClick={() => handleTabClick('config')}
+                            title="Configuration / API"
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };
