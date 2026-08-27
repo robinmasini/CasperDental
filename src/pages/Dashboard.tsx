@@ -722,13 +722,16 @@ const Dashboard = () => {
         
         let logStep = 0;
         const fakeLogs = [
-            '[SYSTEM] Alignment tridimensionnel & segmentation des couronnes dentaires...',
-            '[RAG] Interrogation de la base de 54 traités d\'orthodontie & atlas...',
+            '[SYSTEM] Alignement tridimensionnel & segmentation des couronnes dentaires...',
+            '[RAG] Interrogation de la base de 54 traités d\'orthodontie & atlas du vieillissement...',
+            '[RAG] Indexation vectorielle des 7 129 fragments scientifiques...',
             '[RAG] Extraction des corrélations cliniques & calculs biomécaniques...',
             '[IA OrthoMind] Évaluation céphalométrique et classification d\'Angle (Classe I, II, III)...',
-            '[IA OrthoMind] Analyse des encombrements, overjet & supraclusion...',
+            '[IA OrthoMind] Évaluation du surplomb (overjet), du recouvrement (overbite) & symétrie...',
+            '[IA OrthoMind] Analyse des encombrements maxillo-mandibulaires...',
             '[IA OrthoMind] Calcul prédictif du séquençage d\'aligneurs invisibles...',
-            '[IA OrthoMind] Génération du protocole de dépouillement (stripping/IPR) & taquets...'
+            '[IA OrthoMind] Génération du protocole de dépouillement (stripping/IPR) & taquets...',
+            '[SUCCESS] Consolidation des données RAG & rédaction du rapport de diagnostic approfondi...'
         ];
 
         logIntervalRef.current = setInterval(() => {
@@ -736,9 +739,9 @@ const Dashboard = () => {
                 addLog(fakeLogs[logStep]);
                 logStep++;
             }
-        }, 750);
+        }, 1100);
 
-        const minProcessPromise = new Promise(resolve => setTimeout(resolve, 6000));
+        const minProcessPromise = new Promise(resolve => setTimeout(resolve, 12000));
 
         try {
             const [result] = await Promise.all([

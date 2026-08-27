@@ -2046,10 +2046,105 @@
   }
 
   .results-panel {
-    padding: 16px 12px !important;
+    padding: 14px 10px !important;
+    margin-top: 15px !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .results-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding-bottom: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .results-patient-tag {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .results-patient-tag h2 {
+    font-size: 1.15rem !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .patient-badge {
+    font-size: 0.78rem !important;
+    padding: 4px 10px !important;
+  }
+
+  .results-tabs {
+    width: 100% !important;
+    display: flex !important;
+    box-sizing: border-box !important;
+    padding: 4px !important;
+    gap: 4px !important;
+  }
+
+  .results-tab-btn {
+    flex: 1 !important;
+    text-align: center !important;
+    padding: 8px 4px !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap !important;
+  }
+
+  .results-split-container {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .results-content-box {
+    padding: 14px 10px !important;
+    max-height: 60vh !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .results-content-box h3 {
+    font-size: 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .markdown-renderer {
+    font-size: 0.88rem !important;
+    line-height: 1.5 !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .markdown-renderer p,
+  .markdown-renderer li,
+  .markdown-renderer h1,
+  .markdown-renderer h2,
+  .markdown-renderer h3,
+  .markdown-renderer strong {
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    max-width: 100% !important;
+  }
+
+  .markdown-renderer ul,
+  .markdown-renderer ol {
+    padding-left: 16px !important;
   }
 
   .results-header-card h2 {
