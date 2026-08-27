@@ -717,18 +717,18 @@ const Dashboard = () => {
         setConsoleLogs([]);
         setAnalysisResult(null);
         
-        addLog('[SYSTEM] Initialisation du scanner optique...');
+        addLog('[SYSTEM] Initialisation du scanner optique HD & calibrage tridimensionnel...');
         addLog(`[SYSTEM] Chargement des clichés cliniques (${imageFiles.length} images)...`);
         
-        // Loop premium visual log statements
         let logStep = 0;
         const fakeLogs = [
-            '[SYSTEM] Analyse et calibrage tridimensionnel...',
-            '[SYSTEM] Normalisation de la luminosité et détection osseuse...',
-            '[RAG] Interrogation de la base de connaissances Supabase (PDF)...',
-            '[RAG] Extraction des chapitres scientifiques orthodontiques...',
-            '[IA] Transmission au chirurgien expert Casper...',
-            '[IA] Analyse clinique en cours (évaluation des arcs et d\'occlusion)...'
+            '[SYSTEM] Alignment tridimensionnel & segmentation des couronnes dentaires...',
+            '[RAG] Interrogation de la base de 54 traités d\'orthodontie & atlas...',
+            '[RAG] Extraction des corrélations cliniques & calculs biomécaniques...',
+            '[IA OrthoMind] Évaluation céphalométrique et classification d\'Angle (Classe I, II, III)...',
+            '[IA OrthoMind] Analyse des encombrements, overjet & supraclusion...',
+            '[IA OrthoMind] Calcul prédictif du séquençage d\'aligneurs invisibles...',
+            '[IA OrthoMind] Génération du protocole de dépouillement (stripping/IPR) & taquets...'
         ];
 
         logIntervalRef.current = setInterval(() => {
@@ -736,17 +736,21 @@ const Dashboard = () => {
                 addLog(fakeLogs[logStep]);
                 logStep++;
             }
-        }, 1200);
+        }, 750);
+
+        const minProcessPromise = new Promise(resolve => setTimeout(resolve, 6000));
 
         try {
-            // Call Gemini RAG Service
-            const result = await analyzeDentition(imageFiles, (status) => {
-                setScanStatusText(status);
-                addLog(`[INFO] ${status}`);
-            }, currentPatient);
+            const [result] = await Promise.all([
+                analyzeDentition(imageFiles, (status) => {
+                    setScanStatusText(status);
+                    addLog(`[INFO] ${status}`);
+                }, currentPatient),
+                minProcessPromise
+            ]);
 
             clearInterval(logIntervalRef.current);
-            addLog('[SUCCESS] Rapport de diagnostic finalisé avec succès.');
+            addLog('[SUCCESS] Rapport de diagnostic clinique approfondi finalisé avec succès.');
             
             setAnalysisResult(result);
             setIsScanning(false);

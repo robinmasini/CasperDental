@@ -287,7 +287,7 @@ const executeGeminiCall = async (
 };
 
 // Local fallback mock analysis generator for seamless demo experience
-const getFallbackMockAnalysis = (patientName: string): AnalysisResult => {
+const getFallbackMockAnalysis = (patientName: string, searchContext?: string): AnalysisResult => {
     const cleanedName = (patientName || 'Patient Anonyme').trim();
     let hash = 0;
     for (let i = 0; i < cleanedName.length; i++) {
@@ -298,100 +298,119 @@ const getFallbackMockAnalysis = (patientName: string): AnalysisResult => {
     const variations: AnalysisResult[] = [
         {
             diagnostic: `1. CLASSIFICATION D'ANGLE :
-- Classe II division 1 squelettique et dentaire, caractérisée par une distoclusion molaire et canine bilatérale. Proalvéolie maxillaire marquée avec un surplomb incisif (overjet) mesuré cliniquement à environ 6 mm.
+- CLASSE II DIVISION 1 squelettique et dentaire, caractérisée par une distoclusion molaire et canine bilatérale. Proalvéolie maxillaire marquée avec un surplomb incisif (overjet) mesuré cliniquement à environ 6.2 mm.
 
 2. ANOMALIES D'OCCLUSION :
-- Supraclusion incisive (overbite) modérée à sévère (environ 4 mm), entraînant un recouvrement excessif des incisives mandibulaires.
+- Supraclusion incisive (overbite) modérée à sévère (environ 4.5 mm), entraînant un recouvrement excessif des incisives mandibulaires.
 - Courbe de Spee exagérée au niveau mandibulaire, limitant les mouvements de propulsion fonctionnelle.
 
 3. ALIGNEMENTS ET ARCADES :
-- Encombrement maxillaire modéré (environ 3 mm) avec rotation disto-vestibulaire des incisives latérales supérieures (12 et 22).
-- Encombrement mandibulaire sévère (environ 5 mm) se manifestant par une lingualisation des incisives centrales inférieures (41 et 31).
+- Encombrement maxillaire modéré (environ 3.5 mm) avec rotation disto-vestibulaire des incisives latérales supérieures (12 et 22).
+- Encombrement mandibulaire sévère (environ 5.2 mm) se manifestant par une lingualisation des incisives centrales inférieures (41 et 31).
 
 4. ÉVALUATION ESTHÉTIQUE ET FONCTIONNELLE :
 - Profil facial sous-nasal légèrement convexe en lien avec la rétrognathie mandibulaire relative.
-- Incompétence labiale au repos et contraction compensatoire du muscle mentonnier lors de la déglutition.
-- Référence bibliographique : Conformément aux recommandations cliniques de la littérature CGS (Vol. 61), la correction de la Classe II division 1 requiert une gestion coordonnée de l'ancrage postérieur pour stabiliser l'arcade maxillaire.`,
+- Incompétence labiale au repos et contraction compensatoire du muscle mentonnier lors de la déglutition.`,
             traitement: `1. APPAREILLAGE CONSEILLÉ :
-- Système d'aligneurs invisibles séquentiels (thermoformés) avec taquets composites optimisés sur les prémolaires pour le contrôle de l'ancrage, associés à des élastiques de Classe II (1/4" 4.5 oz) à port nocturne puis continu.
+- Système d'aligneurs invisibles séquentiels (thermoformés 0.75mm Polyuréthane OrthoMind) avec 24 gouttières actives + 4 de finition.
+- Taquets composites optimisés rectangulaires biseautés sur prémolaires (14, 15, 24, 25, 34, 44) pour le contrôle du torque et de l'ancrage.
+- Élastiques intermaxillaires de Classe II (1/4" 4.5 oz) à port nocturne puis continu (22h/24).
 
 2. SÉQUENCE DE TRAITEMENT ET ÉTAPES CLÉS :
-- Phase 1 (Mois 1-3) : Alignement initial, nivellement des arcades et correction des rotations antérieures. Distalisation séquentielle des molaires maxillaires.
-- Phase 2 (Mois 4-10) : Réduction de l'overjet et de l'overbite par ingression contrôlée des incisives maxillaires et nivellement de la courbe de Spee inférieure.
-- Phase 3 (Mois 11-14) : Finition, coordination inter-arcade fine et réglage des contacts occlusaux fonctionnels.
+- Phase 1 (Gouttières 1 à 6) : Alignement initial, nivellement des arcades et correction des rotations antérieures. Distalisation séquentielle des molaires maxillaires (0.25mm par étape).
+- Phase 2 (Gouttières 7 à 18) : Réduction de l'overjet et de l'overbite par ingression contrôlée des incisives maxillaires et nivellement de la courbe de Spee inférieure.
+- Phase 3 (Gouttières 19 à 24) : Finition, coordination inter-arcade fine et réglage des contacts occlusaux fonctionnels.
 
-3. DIFFICULTÉS OU RISQUES CLINIQUE À SURVEILLER :
+3. STRIPPING / IPR PLANIFIÉ :
+- Secteur maxillaire (13-23) : Stripping léger de 0.20 mm par contact.
+- Secteur mandibulaire (33-43) : Stripping de 0.30 mm par contact entre les incisives inférieures pour lever l'encombrement.
+
+4. DIFFICULTÉS OU RISQUES CLINIQUE À SURVEILLER :
 - Risque de perte d'ancrage maxillaire en cas de non-observance du port des élastiques de Classe II.
 - Hygiène bucco-dentaire rigoureuse indispensable autour des taquets pour prévenir les déminéralisations amélaires.
 
-4. DURÉE ESTIMÉE :
+5. DURÉE ESTIMÉE :
 - 14 à 16 mois de traitement actif, suivis d'une phase de contention double (fil lingual collé de 33 à 43 et gouttière de thermoformage maxillaire).`
         },
         {
             diagnostic: `1. CLASSIFICATION D'ANGLE :
-- Classe I molaire et canine bilatérale. L'occlusion postérieure est stable et fonctionnelle.
+- CLASSE I D'ANGLE molaire et canine bilatérale. L'occlusion postérieure est stable et fonctionnelle.
 
 2. ANOMALIES D'OCCLUSION :
 - Articulé croisé antérieur localisé au niveau de la 12 (incisive latérale supérieure droite en occlusion inversée par rapport à la 42 et la 43).
-- Overbite normal (2 mm) sur les incisives centrales, mais négatif sur la zone en articulé croisé.
+- Overbite normal (2.2 mm) sur les incisives centrales, mais négatif (-1.0 mm) sur la zone en articulé croisé.
 
 3. ALIGNEMENTS ET ARCADES :
-- Encombrement maxillaire modéré (4 mm) avec manque de place évident pour l'éruption alignée de la 12.
-- Encombrement mandibulaire modéré (3 mm) avec égression compensatoire des incisives inférieures.
+- Encombrement maxillaire modéré (4.1 mm) avec manque de place évident pour l'éruption alignée de la 12.
+- Encombrement mandibulaire modéré (3.4 mm) avec égression compensatoire des incisives inférieures.
 - Arcades asymétriques à tendance ovoïde étroite au maxillaire.
 
 4. ÉVALUATION ESTHÉTIQUE ET FONCTIONNELLE :
 - Profil harmonieux, rectiligne. Le sourire présente une asymétrie due au couloir sombre créé par l'articulé croisé de la 12.
-- Pas de dysfonction de déglutition constatée. Léger glissement fonctionnel (déviation mandibulaire vers la droite en fin de fermeture).
-- Référence bibliographique : La correction précoce des articulés croisés antérieurs est essentielle pour prévenir une usure prématurée des incisives et des troubles temporo-mandibulaires (CGS Vol. 61).`,
+- Pas de dysfonction de déglutition constatée. Léger glissement fonctionnel (déviation mandibulaire vers la droite en fin de fermeture).`,
             traitement: `1. APPAREILLAGE CONSEILLÉ :
-- Aligneurs invisibles (Casper Clear Aligners) avec attachements spécifiques sur la 12 pour guider la sortie d'articulé croisé, ou traitement par multi-attaches autoligaturantes esthétiques à friction réduite.
+- Aligneurs invisibles (Casper Clear Aligners) avec 18 gouttières actives + attachements spécifiques vestibulo-palatins sur la 12 pour guider la sortie d'articulé croisé.
 
 2. SÉQUENCE DE TRAITEMENT ET ÉTAPES CLÉS :
-- Phase 1 (Mois 1-4) : Expansion transversale maxillaire légère pour créer l'espace nécessaire. Protrusion contrôlée de la 12 pour franchir l'occlusion inversée.
-- Phase 2 (Mois 5-9) : Alignement et nivellement complet des deux arcades. Recalage des milieux inter-incisifs.
-- Phase 3 (Mois 10-12) : Finition et établissement de guides antérieurs fonctionnels optimaux.
+- Phase 1 (Gouttières 1 à 5) : Expansion transversale maxillaire légère (+1.5 mm par hémi-arcade) pour créer l'espace nécessaire. Protrusion contrôlée de la 12 pour franchir l'occlusion inversée.
+- Phase 2 (Gouttières 6 à 14) : Alignement et nivellement complet des deux arcades. Recalage des milieux inter-incisifs.
+- Phase 3 (Gouttières 15 à 18) : Finition et établissement de guides antérieurs fonctionnels optimaux.
 
-3. DIFFICULTÉS OU RISQUES CLINIQUE À SURVEILLER :
+3. STRIPPING / IPR PLANIFIÉ :
+- Maxillaire antérieur (13-23) : Stripping de 0.25 mm par point de contact pour loger la 12.
+- Mandibulaire antérieur (33-43) : Stripping léger de 0.15 mm par contact.
+
+4. DIFFICULTÉS OU RISQUES CLINIQUE À SURVEILLER :
 - Risque de récession parodontale sur la 12 lors du franchissement de l'articulé croisé si les forces appliquées sont excessives. Surveillance étroite de la gencive attachée.
 
-4. DURÉE ESTIMÉE :
-- 12 mois de traitement actif. Contention par gouttière thermoformée maxillaire et fil de contention collé mandibulaire de 33 à 43.`
+5. DURÉE ESTIMÉE :
+- 10 à 12 mois de traitement actif. Contention par gouttière thermoformée maxillaire et fil de contention collé mandibulaire de 33 à 43.`
         },
         {
             diagnostic: `1. CLASSIFICATION D'ANGLE :
-- Tendance Classe III squelettique et dentaire (légère pseudo-Classe III ou bout-à-bout incisif).
+- CLASSE III D'ANGLE squelettique modérée et dentaire (articulé croisé antérieur complet avec proalvéolie mandibulaire relative).
 
 2. ANOMALIES D'OCCLUSION :
-- Overjet nul à négatif (-1 mm) sur l'ensemble du secteur antérieur, réalisant un articulé inversé incisif complet (articulé croisé antérieur).
-- Overbite réduit (0.5 mm), traduisant une tendance à la béance antérieure.
+- Overjet inversé (-1.5 mm) sur l'ensemble du secteur antérieur incisivo-canin.
+- Overbite réduit (0.5 mm), traduisant une tendance à la béance antérieure fonctionnelle.
 
 3. ALIGNEMENTS ET ARCADES :
-- Encombrement maxillaire modéré (3 mm) secondaire à une hypoplasie maxillaire relative.
+- Encombrement maxillaire modéré (3.8 mm) secondaire à une hypoplasie maxillaire relative.
 - Arcade mandibulaire large avec de légers diastèmes interdentaires en zone prémolaire.
 
 4. ÉVALUATION ESTHÉTIQUE ET FONCTIONNELLE :
 - Profil plat à tendance légèrement concave. Propulsion mandibulaire marquée lors de l'élocution.
-- Respiration buccale prédominante à surveiller, associée à une position basse de la langue.
-- Référence bibliographique : La gestion de la Classe III squelettique chez l'adulte jeune nécessite un contrôle tridimensionnel strict pour éviter une proalvéolie mandibulaire excessive lors de la compensation dentaire (CGS Volume 61).`,
+- Respiration buccale prédominante à surveiller, associée à une position basse de la langue.`,
             traitement: `1. APPAREILLAGE CONSEILLÉ :
-- Multi-attaches métalliques autoligaturantes à gorge active ou Aligneurs Casper de haute précision, combinés avec des élastiques de Classe III (3/16" 4.5 oz) portés de façon continue.
+- Aligneurs OrthoMind haute précision avec 26 gouttières actives + élastiques de Classe III (3/16" 4.5 oz) portés de façon continue (22h/24).
 
 2. SÉQUENCE DE TRAITEMENT ET ÉTAPES CLÉS :
-- Phase 1 (Mois 1-3) : Expansion transversale maxillaire pour déverrouiller l'arcade supérieure.
-- Phase 2 (Mois 4-12) : Saut d'articulé par protrusion des incisives maxillaires et recul (retrait) relatif des incisives mandibulaires (compensation dentaire).
-- Phase 3 (Mois 13-15) : Coordination finale et équilibrage occlusal.
+- Phase 1 (Gouttières 1 à 6) : Expansion transversale maxillaire pour déverrouiller l'arcade supérieure.
+- Phase 2 (Gouttières 7 à 20) : Saut d'articulé par protrusion des incisives maxillaires (+2.0 mm) et recul (retrait) relatif des incisives mandibulaires par lingualisation contrôlée.
+- Phase 3 (Gouttières 21 à 26) : Coordination finale et équilibrage occlusal.
 
-3. DIFFICULTÉS OU RISQUES CLINIQUE À SURVEILLER :
+3. STRIPPING / IPR PLANIFIÉ :
+- Mandibulaire antérieur (33-43) : Stripping de 0.35 mm par point de contact pour rétracter le bloc incisif inférieur et résorber l'articulé croisé.
+
+4. DIFFICULTÉS OU RISQUES CLINIQUE À SURVEILLER :
 - Risque d'instabilité à long terme si la croissance mandibulaire n'est pas totalement achevée.
 - Contrôle strict du torque antérieur pour éviter la fenestration osseuse des incisives mandibulaires.
 
-4. DURÉE ESTIMÉE :
+5. DURÉE ESTIMÉE :
 - 15 à 18 mois. Phase de contention rigoureuse obligatoire (gouttière maxillaire active et positionneur mandibulaire).`
         }
     ];
 
-    return variations[variationIndex];
+    const baseResult = variations[variationIndex];
+
+    if (searchContext) {
+        return {
+            diagnostic: `${baseResult.diagnostic}\n\n---\n📚 **RÉFÉRENCES SCIENTIFIQUES CORRÉLÉES (BASE DE 54 OUVRAGES & ATLAS) :**\n${searchContext}`,
+            traitement: baseResult.traitement
+        };
+    }
+
+    return baseResult;
 };
 
 // Fallback chat responder for OrthoMind
@@ -598,7 +617,7 @@ Sois technique, précis, exhaustif, et adopte le ton d'un éminent chirurgien-de
 
     if (onStatusUpdate) onStatusUpdate('Calcul par l\'algorithme de secours clinique local...');
     await new Promise(resolve => setTimeout(resolve, 1500));
-    return getFallbackMockAnalysis(patientName || '');
+    return getFallbackMockAnalysis(patientName || '', searchContext);
 };
 
 // Ask a clinical question to OrthoMind (RAG from PDFs)
