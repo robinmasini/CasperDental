@@ -923,26 +923,26 @@ Tu viens de recevoir la retranscription brute d'une consultation orale (dialogue
 ${searchContext ? `### LECTURES ET RÉFÉRENCES SCIENTIFIQUES ISSUES DE TA BASE DE CONNAISSANCES (54 Ouvrages PDF) :
 ${searchContext}` : 'Note : Fie-toi à tes connaissances cliniques approfondies en odontologie, parodontologie et orthodontie.'}
 
-⚠️ REGLES CLINIQUE & FILTRAGE STRICT :
-1. FILTRAGE HORS SUJET : Ignore les bavardages informels (météo, école, petites plaisanteries). Ne garde QUE les informations médicales et dentaires.
-2. SANTÉ PARODONTALE & GENCIVES (CRUCIAL) : Si le praticien ou le patient aborde des problèmes de gencives, d'inflammation, de tartre, de détartrage, de parodontite/gingivite, de sensibilité ou de dentifrice parodontal, TU DOIS OBLIGATOIREMENT CRÉER UNE SECTION SPÉCIFIQUE DÉDIÉE : "SANTÉ PARODONTALE & BILAN GINGIVAL". La santé parodontale est le préalable indispensable à tout soin dentaire et orthodontique !
-3. CLASSIFICATION D'ANGLE & ORTHODONTIE : Si la séance est principalement axée sur la parodontologie / l'hygiène / le détartrage et ne mentionne pas la Classe d'Angle ou les arcades, indique simplement de façon professionnelle que la Classification d'Angle sera complétée lors du bilan d'orthodontie, et mets en avant le bilan parodontal.
+⚠️ CONSIGNES DE JUSTESSE CLINIQUE & FIDÉLITÉ (SANS BIAIS NI TEXTE PARASITE) :
+1. OBJECTIVITÉ ET EXACITUDE : Ne retiens et n'extrais QUE les éléments cliniques et les consignes médicales RÉELLEMENT évoqués dans le dialogue oral. N'invente aucune pathologie qui n'a pas été mentionnée, et ne déforme aucun propos.
+2. EXCLUSION DES SUJETS ANNEXES : Ignore totalement les bavardages informels sans rapport avec la santé bucco-dentaire (météo, écoles, nouvelles personnelles).
+3. STRUCTURATION DYNAMIQUE ET NATURELLE : Adapte le diagnostic et le plan de traitement aux sujets RÉELLEMENT abordés lors de cette séance (ex: parodontologie, détartrage, hygiène, orthodontie, occlusion, alignement, douleur).
+4. ABSENCE DE PHRASES RIGIDES OU NÉGATIVES : NE RÉSORT PAS de phrases stéréotypées négatives pour les éléments non abordés (NE DIS PAS : "Le dialogue ne contient aucune donnée sur la Classe d'Angle..."). Si un domaine n'a pas été abordé dans la séance, concentre le compte-rendu uniquement sur ce qui a été réellement discuté et observé.
 
 Rédige ton rapport en français en respectant SCRUPULEUSEMENT la structure des balises XML suivantes :
 
 <diagnostic>
-(Rédige le diagnostic clinique. Inclut :
-1. ÉTAT PARODONTAL & BILAN GINGIVAL (Si mentionné : inflammation, tartre, gingivite, hygiène, détartrage préconisé, dentifrice parodontal)
-2. CLASSIFICATION D'ANGLE & OCCLUSION (Classe d'Angle si mentionnée ou note de suivi)
-3. MOTIF DE CONSULTATION & SYNTHÈSE DES DOLÉANCES
-4. ALIGNEMENTS, ARCADES ET ÉVALUATION FONCTIONNELLE)
+(Rédige la synthèse clinique exacte des faits observés et exprimés :
+- Synthèse des motifs et ébauches cliniques évoquées dans la séance (ex: état des gencives, tartre, sensibilité, hygiène, alignement, occlusion, etc. selon ce qui a été dit)
+- Diagnostic d'Angle ou occlusal SI et SEULEMENT SI mentionné ou pertinent
+- Bilan parodontal / gingival SI mentionné dans le dialogue)
 </diagnostic>
 
 <traitement>
-(Rédige la stratégie thérapeutique conseillée et le plan de traitement :
-1. SOINS ET TRAITEMENT PARODONTAL PRÉALABLE (Détartrage, surfaçage, prescription de dentifrice parodontal, conseils d'hygiène)
-2. PLAN DE TRAITEMENT DENTAIRE & ORTHODONTIQUE (Aligneurs, taquets, stripping si nécessaire)
-3. DURÉE ET SUIVI CONSULTATION)
+(Rédige la stratégie thérapeutique conseillée et les consignes transmises lors de la séance :
+- Actes et prescriptions décidés (ex: détartrage, dentifrice parodontal, hygiène, ou aligneurs/gouttières)
+- Étapes et conseils d'observance communiqués au patient
+- Suivi et prochaines consultations prévues)
 </traitement>
 
 Ne mets AUCUN texte en dehors des balises <diagnostic> et <traitement>.`;
