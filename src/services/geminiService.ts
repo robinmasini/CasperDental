@@ -890,7 +890,11 @@ Tu viens de recevoir la retranscription brute d'une consultation d'orthodontie o
 ${searchContext ? `### LECTURES ET RÉFÉRENCES SCIENTIFIQUES ISSUES DE TA BASE DE CONNAISSANCES (54 Ouvrages PDF) :
 ${searchContext}` : 'Note : Fie-toi à tes connaissances cliniques approfondies en orthodontie.'}
 
-Analyse minutieusement ce dialogue médical. Extrais le motif de consultation, les symptômes, les observations cliniques mentionnées oralement par le praticien, et élabore un diagnostic complet ainsi qu'un plan de traitement personnalisé.
+⚠️ REGLE DE FILTRAGE STRICTE (FILTRAGE DE POLITESSE & DIALOGUE HORS-SUJET) :
+Le dialogue audio comporte souvent des discussions informelles ou annexes qui sortent totalement du cadre médical (ex: demande de nouvelles de l'école des enfants, météo, projets de vacances, petites plaisanteries).
+TU DOIS IMPÉRATIVEMENT FILTRER ET IGNORER TOUT CE QUI EST HORS SUJET MEDICAL. Ne retiens UNIQUEMENT que les données cliniques, les doléances du patient relatives à ses dents/son sourire, les observations médicales du praticien et la stratégie d'orthodontie.
+
+Analyse minutieusement les seuls éléments médicaux de ce dialogue. Extrais le motif de consultation, les symptômes, les observations cliniques mentionnées oralement par le praticien, et élabore un diagnostic complet ainsi qu'un plan de traitement personnalisé.
 
 Rédige ton rapport en français en respectant SCRUPULEUSEMENT la structure des balises XML suivantes :
 
@@ -898,7 +902,7 @@ Rédige ton rapport en français en respectant SCRUPULEUSEMENT la structure des 
 (Rédige le diagnostic clinique. Commence impérativement par :
 1. CLASSIFICATION D'ANGLE : Détermine précisément la Classe d'Angle (Classe I, Classe II division 1/2, ou Classe III) et justifie-la à partir des indices du dialogue.
 Ensuite, détaille :
-- Motif de consultation & doléances du patient
+- Motif de consultation & doléances du patient (en excluant les sujets annexes non médicaux)
 - Anomalies d'occlusion (surplomb/overjet, recouvrement/overbite, articulé croisé)
 - Alignements et arcades (encombrements, rotations, diastèmes)
 - Évaluation fonctionnelle & esthétique)
