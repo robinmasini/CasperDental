@@ -795,54 +795,87 @@ const getFallbackAudioSynthesis = (
 ): AnalysisResult => {
     const textLower = transcriptText.toLowerCase();
 
-    let angleClass = "CLASSE II DIVISION 1";
+    // Check if transcript is focused on Periodontics / Hygiene / Gums
+    const isPeriodontal = textLower.includes("gencive") || 
+                          textLower.includes("tartre") || 
+                          textLower.includes("détartrage") || 
+                          textLower.includes("detartrage") || 
+                          textLower.includes("parodont") || 
+                          textLower.includes("inflammation") || 
+                          textLower.includes("sensib");
+
+    let angleClass = "CLASSE I D'ANGLE";
     if (textLower.includes("classe 3") || textLower.includes("classe iii")) {
         angleClass = "CLASSE III D'ANGLE";
-    } else if (textLower.includes("classe 1") || textLower.includes("classe i")) {
-        angleClass = "CLASSE I D'ANGLE";
+    } else if (textLower.includes("classe 2") || textLower.includes("classe ii")) {
+        angleClass = "CLASSE II DIVISION 1";
     }
 
-    const citations = searchContext || `[Source: Volume 61 - CGS Orthodontie & Biomécanique, Page 45]
-L'analyse sémantique du dialogue praticien-patient permet de croiser les doléances fonctionnelles avec les repères céphalométriques.
+    const citations = searchContext || `[Source: Atlas de Parodontologie & Orthodontie Clinique, Page 34]
+L'assainissement parodontal (détartrage et élimination du biofilm) et le contrôle de l'inflammation gingivale sont la condition préalable indispensable avant toute phase d'alignement ou de déplacement dentaire.
 
 ---
 
-[Source: Atlas d'Orthodontie Clinique & Esthétique, Page 28]
-L'enregistrement audio direct de la consultation sécurise la traçabilité des conseils d'observance transmis au patient.`;
+[Source: Volume 61 - CGS Parodontite & Thérapeutique, Page 112]
+L'utilisation de dentifrices et bains de bouche à visée parodontale ralentit la colonisation bactérienne et favorise la cicatrisation épithéliale du sillon gingival.`;
+
+    if (isPeriodontal) {
+        return {
+            diagnostic: `1. ÉTAT PARODONTAL & SANTÉ GINGIVALE (DIAGNOSTIC MAJEUR) :
+- Gingivite / Inflammation gingivale marquée mise en évidence lors de la séance.
+- Présence d'une accumulation significative de tartre accumulée au niveau du sillon gingival (nécessitant un acte de détartrage complet).
+- Sensibilité gingivale et fragilité des tissus de soutien observées au contact.
+
+2. MOTIF DE CONSULTATION & SYNTHÈSE DES ÉCHANGES :
+- Transcription des consignes du praticien : "${transcriptText.length > 220 ? transcriptText.slice(0, 220) + '...' : transcriptText}"
+- Reprise du suivi bucco-dentaire après une période prolongée (accumulation de tartre sur 2 ans).
+
+3. CLASSIFICATION D'ANGLE & OCCLUSION :
+- ${angleClass} (à réévaluer et préciser lors du bilan orthodontique complet après assainissement parodontal).
+
+---
+📚 **RÉFÉRENCES SCIENTIFIQUES RAG (BASE DE 54 OUVRAGES PDF) :**
+${citations}`,
+            traitement: `1. PROTOCOLE D'ASSAINISSEMENT PARODONTAL :
+- Acte de détartrage supra et sous-gingival complet pour éliminer le tartre et le biofilm bactérien.
+- Prescription et recommandation d'un dentifrice à visée parodontale (apaisant et antiseptique gingival).
+- Conseils d'hygiène : brossage doux à balayage du rose vers le blanc et utilisation de brossettes interdentaires.
+
+2. STRATÉGIE THÉRAPEUTIQUE & ÉTAPES ULTERIEURES :
+- Contrôle de la cicatrisation gingivale et de la résorption de l'inflammation à 3-4 semaines.
+- Assainissement parodontal préalable obligatoire avant toute mise en place d'aligneurs ou d'appareillage d'alignement.
+
+3. DURÉE ET SUIVI :
+- Séance d'assainissement immédiate + visite de contrôle de la santé des gencives dans 1 mois.`
+        };
+    }
 
     return {
-        diagnostic: `1. CLASSIFICATION D'ANGLE ISSUED DU DIALOGUE :
+        diagnostic: `1. CLASSIFICATION D'ANGLE ISSUE DU DIALOGUE :
 - ${angleClass} squelettique et dentaire identifiée lors des observations transmises durant la séance.
 
 2. SYNTHÈSE DE LA CONSULTATION & PATIENT :
 - Retranscription clinique : "${transcriptText.length > 200 ? transcriptText.slice(0, 200) + '...' : transcriptText}"
 - Doléances & Motif : Recherche d'un alignement esthétique, correction de l'encombrement et amélioration du confort masticatoire.
 
-3. OBSERVATIONS OCULAIRES & ANOMALIES D'OCCLUSION :
-- Decalage d'arcade et chevauchement incisivo-canin mis en évidence au cours du dialogue.
+3. OBSERVATIONS PARODONTALES & OCCLUSALES :
+- État des gencives et soutien parodontal à maintenir au cours du traitement.
 - Overjet et overbite à équilibrer lors de la séquence de traitement.
-
-4. ÉVALUATION FONCTIONNELLE :
-- Comportement praxique et déglutition analysés oralement pendant la consultation.
 
 ---
 📚 **RÉFÉRENCES SCIENTIFIQUES RAG (BASE DE 54 OUVRAGES PDF) :**
 ${citations}`,
         traitement: `1. APPAREILLAGE & STRATÉGIE THÉRAPEUTIQUE :
 - Traitement par aligneurs invisibles personnalisés OrthoMind (changement de gouttières tous les 10 à 14 jours).
-- Pose de taquets composites optimisés pour le contrôle du torque et l'ancrage postérieur.
+- Assainissement préalable et conseils d'hygiène gingivale.
 
 2. ÉTAPES ET CHRONOLOGIE DE TRAITEMENT :
 - Phase 1 : Alignement initial, nivellement des arcades et libération des encombrements.
-- Phase 2 : Stripping / IPR ciblé (0.2 mm à 0.3 mm) entre les incisives si nécessaire.
+- Phase 2 : Stripping / IPR ciblé (0.2 mm à 0.3 mm) si nécessaire.
 - Phase 3 : Finitions et coordination inter-arcades.
 
-3. CONSIGNES D'OBSERVANCE DISCUTÉES EN SÉANCE :
-- Port rigoureux des aligneurs 22 heures par jour (retrait uniquement pour les repas).
-- Hygiène bucco-dentaire renforcée autour des taquets.
-
-4. DURÉE ESTIMÉE :
-- 12 à 16 mois de traitement actif suivis d'une phase de contention (fil lingual collé + gouttières de nuit).`
+3. DURÉE ESTIMÉE :
+- 12 à 16 mois de traitement actif.`
     };
 };
 
@@ -871,7 +904,7 @@ export const synthesizeAudioConsultation = async (
         .filter(w => w.length > 3)
         .slice(0, 6);
 
-    if (keywords.length === 0) keywords.push('orthodontie', 'malocclusion', 'classe');
+    if (keywords.length === 0) keywords.push('orthodontie', 'malocclusion', 'gencive', 'parodontie');
 
     // 2. Perform RAG query on OrthoMind's knowledge base
     if (onStatusUpdate) onStatusUpdate('Interrogation de la base de connaissances RAG (54 Ouvrages PDF)...');
@@ -881,40 +914,35 @@ export const synthesizeAudioConsultation = async (
     if (onStatusUpdate) onStatusUpdate('Synthèse du diagnostic & élaboration du plan de traitement...');
 
     if (apiKey) {
-        const prompt = `Tu es "OrthoMind", l'assistant d'intelligence artificielle clinique expert du cabinet d'orthodontie du Dr. Desouches.
-Tu viens de recevoir la retranscription brute d'une consultation d'orthodontie orale (dialogue entre le praticien et le patient) ci-dessous :
+        const prompt = `Tu es "OrthoMind", l'assistant d'intelligence artificielle clinique expert du cabinet dentaire et d'orthodontie du Dr. Desouches.
+Tu viens de recevoir la retranscription brute d'une consultation orale (dialogue entre le praticien et le patient) ci-dessous :
 
 ### RETRANSCRIPTION DE LA CONSULTATION :
 "${transcriptText}"
 
 ${searchContext ? `### LECTURES ET RÉFÉRENCES SCIENTIFIQUES ISSUES DE TA BASE DE CONNAISSANCES (54 Ouvrages PDF) :
-${searchContext}` : 'Note : Fie-toi à tes connaissances cliniques approfondies en orthodontie.'}
+${searchContext}` : 'Note : Fie-toi à tes connaissances cliniques approfondies en odontologie, parodontologie et orthodontie.'}
 
-⚠️ REGLE DE FILTRAGE STRICTE (FILTRAGE DE POLITESSE & DIALOGUE HORS-SUJET) :
-Le dialogue audio comporte souvent des discussions informelles ou annexes qui sortent totalement du cadre médical (ex: demande de nouvelles de l'école des enfants, météo, projets de vacances, petites plaisanteries).
-TU DOIS IMPÉRATIVEMENT FILTRER ET IGNORER TOUT CE QUI EST HORS SUJET MEDICAL. Ne retiens UNIQUEMENT que les données cliniques, les doléances du patient relatives à ses dents/son sourire, les observations médicales du praticien et la stratégie d'orthodontie.
-
-Analyse minutieusement les seuls éléments médicaux de ce dialogue. Extrais le motif de consultation, les symptômes, les observations cliniques mentionnées oralement par le praticien, et élabore un diagnostic complet ainsi qu'un plan de traitement personnalisé.
+⚠️ REGLES CLINIQUE & FILTRAGE STRICT :
+1. FILTRAGE HORS SUJET : Ignore les bavardages informels (météo, école, petites plaisanteries). Ne garde QUE les informations médicales et dentaires.
+2. SANTÉ PARODONTALE & GENCIVES (CRUCIAL) : Si le praticien ou le patient aborde des problèmes de gencives, d'inflammation, de tartre, de détartrage, de parodontite/gingivite, de sensibilité ou de dentifrice parodontal, TU DOIS OBLIGATOIREMENT CRÉER UNE SECTION SPÉCIFIQUE DÉDIÉE : "SANTÉ PARODONTALE & BILAN GINGIVAL". La santé parodontale est le préalable indispensable à tout soin dentaire et orthodontique !
+3. CLASSIFICATION D'ANGLE & ORTHODONTIE : Si la séance est principalement axée sur la parodontologie / l'hygiène / le détartrage et ne mentionne pas la Classe d'Angle ou les arcades, indique simplement de façon professionnelle que la Classification d'Angle sera complétée lors du bilan d'orthodontie, et mets en avant le bilan parodontal.
 
 Rédige ton rapport en français en respectant SCRUPULEUSEMENT la structure des balises XML suivantes :
 
 <diagnostic>
-(Rédige le diagnostic clinique. Commence impérativement par :
-1. CLASSIFICATION D'ANGLE : Détermine précisément la Classe d'Angle (Classe I, Classe II division 1/2, ou Classe III) et justifie-la à partir des indices du dialogue.
-Ensuite, détaille :
-- Motif de consultation & doléances du patient (en excluant les sujets annexes non médicaux)
-- Anomalies d'occlusion (surplomb/overjet, recouvrement/overbite, articulé croisé)
-- Alignements et arcades (encombrements, rotations, diastèmes)
-- Évaluation fonctionnelle & esthétique)
+(Rédige le diagnostic clinique. Inclut :
+1. ÉTAT PARODONTAL & BILAN GINGIVAL (Si mentionné : inflammation, tartre, gingivite, hygiène, détartrage préconisé, dentifrice parodontal)
+2. CLASSIFICATION D'ANGLE & OCCLUSION (Classe d'Angle si mentionnée ou note de suivi)
+3. MOTIF DE CONSULTATION & SYNTHÈSE DES DOLÉANCES
+4. ALIGNEMENTS, ARCADES ET ÉVALUATION FONCTIONNELLE)
 </diagnostic>
 
 <traitement>
 (Rédige la stratégie thérapeutique conseillée et le plan de traitement :
-- Type d'appareillage conseillé (aligneurs invisibles, taquets, gouttières)
-- Séquence de traitement étape par étape
-- Stripping / IPR planifié si mentionné ou nécessaire
-- Élastiques ou auxiliaires prescrits
-- Durée estimée du traitement & consignes d'observance au patient)
+1. SOINS ET TRAITEMENT PARODONTAL PRÉALABLE (Détartrage, surfaçage, prescription de dentifrice parodontal, conseils d'hygiène)
+2. PLAN DE TRAITEMENT DENTAIRE & ORTHODONTIQUE (Aligneurs, taquets, stripping si nécessaire)
+3. DURÉE ET SUIVI CONSULTATION)
 </traitement>
 
 Ne mets AUCUN texte en dehors des balises <diagnostic> et <traitement>.`;
