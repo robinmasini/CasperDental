@@ -9,6 +9,7 @@ import {
     TranscriptionProvider
 } from '../services/transcriptionService';
 import { synthesizeAudioConsultation, AnalysisResult } from '../services/geminiService';
+import logoSeul from '../assets/logo-seul.png';
 
 interface AudioConsultationProps {
     patientName?: string;
@@ -422,10 +423,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 <div className="audio-controls-row">
                     {recordingState === 'idle' || recordingState === 'stopped' ? (
                         <button className="btn-audio-primary start-btn" onClick={handleStartRecording}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <circle cx="12" cy="12" r="10" />
-                                <polygon points="10 8 16 12 10 16 10 8" />
-                            </svg>
+                            <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
                             Démarrer la consultation audio
                         </button>
                     ) : (
@@ -524,13 +522,11 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 <div className="synthesis-cta-banner">
                     <div className="synthesis-cta-info">
                         <div className="synthesis-cta-icon-box">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                            </svg>
+                            <img src={logoSeul} alt="OrthoMind" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
                         </div>
                         <div className="synthesis-cta-text">
                             <h3>
-                                ⚡ Synthétiser la Séance d'Orthodontie
+                                Synthétiser la Séance d'Orthodontie
                             </h3>
                             <p>
                                 Analyse le dialogue oral, croise les observations avec les <strong>54 ouvrages scientifiques d'OrthoMind RAG</strong> et génère le diagnostic et le plan de traitement du patient.
@@ -550,7 +546,8 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                             </>
                         ) : (
                             <>
-                                ✨ Lancer la Synthèse Clinique & Plan de Traitement
+                                <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                                Lancer la Synthèse Clinique
                             </>
                         )}
                     </button>
