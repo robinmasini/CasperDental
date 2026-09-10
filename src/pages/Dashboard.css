@@ -1893,16 +1893,27 @@
   margin: 18px 0 24px;
 }
 
-/* Grille : 2 cols sur desktop, 1 col stricte sur mobile */
+/* Grille : Centré quand pas de résultat, 2 cols sur desktop quand résultats, 1 col sur mobile */
 .analyse-grid {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.analyse-grid .merged-panel {
+  width: 100%;
+  max-width: 580px;
+}
+
+.analyse-grid:has(.results-panel) {
   display: grid;
   grid-template-columns: 420px 1fr;
   gap: 30px;
   align-items: start;
 }
 
-.analyse-grid:has(.results-panel) {
-  grid-template-columns: 420px 1fr;
+.analyse-grid:has(.results-panel) .merged-panel {
+  max-width: none;
 }
 
 @media (max-width: 1024px) {
@@ -2199,3 +2210,14 @@
     max-width: 100% !important;
   }
 }
+
+/* ===== CONSULTATION AUDIO TAB LAYOUT ===== */
+.audio-tab-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+

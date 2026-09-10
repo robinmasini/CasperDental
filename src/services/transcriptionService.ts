@@ -1,0 +1,385 @@
+/**
+ * Transcription & Audio Service for OrthoMind — Consultation Audio
+ * Handles:
+ * 1. Web Speech API (Browser native live transcription)
+ * 2. MediaRecorder API for capturing audio blobs
+ * 3. Modular connector for OpenAI Whisper / Groq Whisper / Mistral Audio APIs
+ * 4. Orthodontic terms auto-formatter
+ */
+
+// Extend Window interface for Web Speech API cross-browser support
+declare global {
+    interface Window {
+        SpeechRecognition: any;
+        webkitSpeechRecognition: any;
+    }
+}
+
+export type TranscriptionProvider = 'webspeech' | 'whisper-openai' | 'whisper-groq' | 'mistral';
+
+export interface TranscriptionConfig {
+    provider: TranscriptionProvider;
+    apiKey?: string;
+    language?: string; // Default 'fr-FR'
+}
+
+export interface AudioVisualizerData {
+    volume: number; // 0 to 100
+    frequencies: Uint8Array;
+}
+
+/**
+ * Check if the browser supports Speech Recognition natively
+ */
+export const isSpeechRecognitionSupported = (): boolean => {
+    return typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+};
+
+/**
+ * Check if browser supports audio recording (MediaRecorder)
+ */
+export const isMediaRecorderSupported = (): boolean => {
+    return typeof navigator !== 'undefined' && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia;
+};
+
+/**
+ * Instantiate and configure Web Speech Recognition engine
+ */
+export class SpeechTranscriber {
+    private recognition: any = null;
+    private isListening: boolean = false;
+    private finalTranscript: string = '';
+    private onResultCallback?: (interimText: string, fullTranscript: string) => void;
+    private onErrorCallback?: (errorMsg: string) => void;
+    private onEndCallback?: () => void;
+
+    constructor(language: string = 'fr-FR') {
+        const SpeechClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechClass) {
+            this.recognition = new SpeechClass();
+            this.recognition.continuous = true;
+            this.recognition.interimResults = true;
+            this.recognition.lang = language;
+            this.recognition.maxAlternatives = 1;
+
+            this.recognition.onresult = (event: any) => {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcriptPiece = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        this.finalTranscript += (this.finalTranscript ? ' ' : '') + transcriptPiece.trim();
+                    } else {
+                        interimTranscript += transcriptPiece;
+                    }
+                }
+                if (this.onResultCallback) {
+                    const currentDisplay = (this.finalTranscript + ' ' + interimTranscript).trim();
+                    this.onResultCallback(interimTranscript, currentDisplay);
+                }
+            };
+
+            this.recognition.onerror = (event: any) => {
+                console.warn('Speech recognition error:', event.error);
+                if (event.error === 'no-speech') return;
+                if (this.onErrorCallback) {
+                    this.onErrorCallback(`Erreur de reconnaissance vocale: ${event.error}`);
+                }
+            };
+
+            this.recognition.onend = () => {
+                // Auto-restart if user didn't explicitly stop it (handles browser timeout)
+                if (this.isListening) {
+                    try {
+                        this.recognition.start();
+                    } catch (e) {
+                        this.isListening = false;
+                        if (this.onEndCallback) this.onEndCallback();
+                    }
+                } else {
+                    if (this.onEndCallback) this.onEndCallback();
+                }
+            };
+        }
+    }
+
+    public start(
+        onResult: (interimText: string, fullTranscript: string) => void,
+        onError?: (errorMsg: string) => void,
+        onEnd?: () => void
+    ) {
+        if (!this.recognition) {
+            if (onError) onError('Votre navigateur ne prend pas en charge la reconnaissance vocale Web Speech.');
+            return;
+        }
+        this.onResultCallback = onResult;
+        this.onErrorCallback = onError;
+        this.onEndCallback = onEnd;
+        this.isListening = true;
+        try {
+            this.recognition.start();
+        } catch (e) {
+            console.warn('Speech recognition already active or error starting:', e);
+        }
+    }
+
+    public pause() {
+        this.isListening = false;
+        if (this.recognition) {
+            try {
+                this.recognition.stop();
+            } catch (e) {}
+        }
+    }
+
+    public resume() {
+        if (this.recognition && !this.isListening) {
+            this.isListening = true;
+            try {
+                this.recognition.start();
+            } catch (e) {}
+        }
+    }
+
+    public stop(): string {
+        this.isListening = false;
+        if (this.recognition) {
+            try {
+                this.recognition.stop();
+            } catch (e) {}
+        }
+        return this.finalTranscript;
+    }
+
+    public reset() {
+        this.finalTranscript = '';
+    }
+
+    public setTranscript(text: string) {
+        this.finalTranscript = text;
+    }
+
+    public getTranscript(): string {
+        return this.finalTranscript;
+    }
+}
+
+/**
+ * Audio Recorder Manager using HTML5 MediaRecorder & AudioContext for visualizer
+ */
+export class AudioRecorder {
+    private mediaRecorder: MediaRecorder | null = null;
+    private audioChunks: Blob[] = [];
+    private stream: MediaStream | null = null;
+    private audioContext: AudioContext | null = null;
+    private analyser: AnalyserNode | null = null;
+    private animFrameId: number | null = null;
+    private onVolumeCallback?: (volume: number) => void;
+
+    public async start(onVolume?: (volume: number) => void): Promise<void> {
+        this.onVolumeCallback = onVolume;
+        this.audioChunks = [];
+
+        this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // Setup MediaRecorder
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
+            ? 'audio/webm' 
+            : MediaRecorder.isTypeSupported('audio/mp4') 
+                ? 'audio/mp4' 
+                : 'audio/wav';
+
+        this.mediaRecorder = new MediaRecorder(this.stream, { mimeType });
+        this.mediaRecorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+                this.audioChunks.push(event.data);
+            }
+        };
+
+        this.mediaRecorder.start(500); // collect 500ms chunks
+
+        // Setup AudioContext for live frequency / volume visualization
+        try {
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioContextClass) {
+                this.audioContext = new AudioContextClass();
+                const source = this.audioContext.createMediaStreamSource(this.stream);
+                this.analyser = this.audioContext.createAnalyser();
+                this.analyser.fftSize = 64;
+                source.connect(this.analyser);
+
+                this.trackVolume();
+            }
+        } catch (err) {
+            console.warn('Could not initialize AudioContext visualizer:', err);
+        }
+    }
+
+    private trackVolume() {
+        if (!this.analyser || !this.onVolumeCallback) return;
+        const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+        
+        const update = () => {
+            if (!this.analyser) return;
+            this.analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            const volume = Math.min(100, Math.round((average / 255) * 100 * 2.5)); // scaled for visibility
+            if (this.onVolumeCallback) {
+                this.onVolumeCallback(volume);
+            }
+            this.animFrameId = requestAnimationFrame(update);
+        };
+        update();
+    }
+
+    public pause() {
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+            this.mediaRecorder.pause();
+        }
+    }
+
+    public resume() {
+        if (this.mediaRecorder && this.mediaRecorder.state === 'paused') {
+            this.mediaRecorder.resume();
+        }
+    }
+
+    public stop(): Promise<{ blob: Blob; url: string }> {
+        return new Promise((resolve) => {
+            if (this.animFrameId) {
+                cancelAnimationFrame(this.animFrameId);
+                this.animFrameId = null;
+            }
+
+            if (this.audioContext) {
+                this.audioContext.close().catch(() => {});
+                this.audioContext = null;
+            }
+
+            if (!this.mediaRecorder) {
+                resolve({ blob: new Blob(), url: '' });
+                return;
+            }
+
+            this.mediaRecorder.onstop = () => {
+                const mimeType = this.mediaRecorder?.mimeType || 'audio/webm';
+                const audioBlob = new Blob(this.audioChunks, { type: mimeType });
+                const audioUrl = URL.createObjectURL(audioBlob);
+
+                // Stop microphone tracks
+                if (this.stream) {
+                    this.stream.getTracks().forEach((track) => track.stop());
+                    this.stream = null;
+                }
+
+                resolve({ blob: audioBlob, url: audioUrl });
+            };
+
+            if (this.mediaRecorder.state !== 'inactive') {
+                this.mediaRecorder.stop();
+            } else {
+                const mimeType = this.mediaRecorder.mimeType || 'audio/webm';
+                const audioBlob = new Blob(this.audioChunks, { type: mimeType });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                resolve({ blob: audioBlob, url: audioUrl });
+            }
+        });
+    }
+}
+
+/**
+ * Transcribe Audio Blob using external Whisper or Groq API
+ */
+export const transcribeAudioWithAPI = async (
+    audioBlob: Blob,
+    provider: TranscriptionProvider,
+    apiKey?: string
+): Promise<string> => {
+    if (!apiKey) {
+        throw new Error('Une clé d\'API est requise pour utiliser le transcripteur externe.');
+    }
+
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'consultation_audio.webm');
+    formData.append('model', provider === 'whisper-groq' ? 'whisper-large-v3-turbo' : 'whisper-1');
+    formData.append('language', 'fr');
+
+    let endpoint = 'https://api.openai.com/v1/audio/transcriptions';
+    if (provider === 'whisper-groq') {
+        endpoint = 'https://api.groq.com/openai/v1/audio/transcriptions';
+    } else if (provider === 'mistral') {
+        endpoint = 'https://api.mistral.ai/v1/audio/transcriptions';
+    }
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+        },
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const errorJson = await response.json().catch(() => ({}));
+        throw new Error(errorJson.error?.message || `Erreur API Transcription (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.text || '';
+};
+
+/**
+ * Format orthodontic & clinical vocabulary in transcribed text
+ */
+export const formatOrthodonticTranscript = (rawText: string): string => {
+    if (!rawText) return '';
+
+    let text = rawText;
+
+    // Formatting rules for common orthodontic terms & numbers
+    const replacements: [RegExp, string][] = [
+        [/\bclasse 1\b/gi, 'Classe I'],
+        [/\bclasse 2\b/gi, 'Classe II'],
+        [/\bclasse 3\b/gi, 'Classe III'],
+        [/\bclasse i division 1\b/gi, 'Classe I div 1'],
+        [/\bclasse ii division 1\b/gi, 'Classe II div 1'],
+        [/\bclasse ii division 2\b/gi, 'Classe II div 2'],
+        [/\bclasse iii division 1\b/gi, 'Classe III div 1'],
+        [/\bipr\b/gi, 'IPR (Stripping)'],
+        [/\boverjet\b/gi, 'Overjet (Surplomb)'],
+        [/\boverbite\b/gi, 'Overbite (Recouvrement)'],
+        [/\bgouttiere\b/gi, 'gouttière'],
+        [/\bgouttieres\b/gi, 'gouttières'],
+        [/\baligneur\b/gi, 'aligneur'],
+        [/\baligneurs\b/gi, 'aligneurs'],
+        [/\btaquets?\b/gi, 'taquets'],
+        [/\belastique\b/gi, 'élastique'],
+        [/\belastiques\b/gi, 'élastiques'],
+        [/\bencombrement\b/gi, 'encombrement'],
+        [/\bsupraclusie\b/gi, 'supraclusie'],
+        [/\binfraclusie\b/gi, 'infraclusie'],
+        [/\bocclusion\b/gi, 'occlusion'],
+        [/\bmaxillaire\b/gi, 'maxillaire'],
+        [/\bmandibulaire\b/gi, 'mandibulaire'],
+        [/\bcanine\b/gi, 'canine'],
+        [/\bcanines\b/gi, 'canines'],
+        [/\bmolaire\b/gi, 'molaire'],
+        [/\bmolaires\b/gi, 'molaires'],
+        [/\bpremolaire\b/gi, 'prémolaire'],
+        [/\bpremolaires\b/gi, 'prémolaires'],
+        [/\bincisive\b/gi, 'incisive'],
+        [/\bincisives\b/gi, 'incisives'],
+    ];
+
+    for (const [regex, replacement] of replacements) {
+        text = text.replace(regex, replacement);
+    }
+
+    // Capitalize first letter of sentences
+    text = text.replace(/(?:^|\.\s+)([a-z])/g, (m) => m.toUpperCase());
+
+    return text;
+};

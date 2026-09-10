@@ -6,6 +6,7 @@ import { supabase, uploadDentalPhoto } from '../lib/supabase';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import { analyzeDentition, getGeminiApiKey, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
+import { AudioConsultation } from '../components/AudioConsultation';
 import defaultBookData from '../assets/cgs_volume_61.json';
 import orthomindLogo from '../assets/orthomind-logo.png';
 import logoSeul from '../assets/logo-seul.png';
@@ -98,7 +99,7 @@ const Dashboard = () => {
     const currentDate = currentDateRaw.charAt(0).toUpperCase() + currentDateRaw.slice(1);
     
     // Tabs state
-    const [activeTab, setActiveTab] = useState<'analyse' | 'patients' | 'knowledge' | 'config'>(() => {
+    const [activeTab, setActiveTab] = useState<'analyse' | 'audio' | 'patients' | 'knowledge' | 'config'>(() => {
         const saved = localStorage.getItem('casper_active_tab');
         if (saved === 'orthomind' || saved === 'history') return 'analyse';
         return (saved as any) || 'analyse';
@@ -106,7 +107,7 @@ const Dashboard = () => {
 
     const isPatientAccount = (user?.email || '').toLowerCase().trim() === 'test@patient.com' || user?.profession === 'Patient OrthoMind' || user?.specialty === 'Espace Patient';
 
-    const handleTabClick = (tab: 'analyse' | 'patients' | 'knowledge' | 'config') => {
+    const handleTabClick = (tab: 'analyse' | 'audio' | 'patients' | 'knowledge' | 'config') => {
         if (isPatientAccount && tab !== 'analyse') {
             alert('Fonctionnalité à venir...');
             return;
@@ -245,6 +246,12 @@ const Dashboard = () => {
     const [chatAvatarState, setChatAvatarState] = useState<OrthoMindState>('idle');
     const [isChatTyping, setIsChatTyping] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
+
+    // Handler to bridge Consultation Audio transcript into OrthoMind AI Assistant
+    const handleAudioTranscriptToOrthoMind = (transcriptText: string) => {
+        setShowOrthoMindModal(true);
+        setChatInputValue(`Voici la retranscription vocale de la consultation d'orthodontie du patient :\n\n"${transcriptText}"\n\nMerci de me faire une synthèse clinique structurée avec les observations clés et la stratégie thérapeutique recommandée.`);
+    };
 
     // Clinical Analysis Avatar State
     const [analysisAvatarState, setAnalysisAvatarState] = useState<OrthoMindState>('idle');
@@ -1149,6 +1156,19 @@ const Dashboard = () => {
                         Analyse Clinique
                     </button>
 
+                    <button 
+                        className={`sidebar-nav-btn ${activeTab === 'audio' ? 'active' : ''}`}
+                        onClick={() => handleTabClick('audio')}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeTab === 'audio' ? 'var(--primary-cyan)' : 'inherit' }}>
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                            <line x1="12" y1="19" x2="12" y2="23" />
+                            <line x1="8" y1="23" x2="16" y2="23" />
+                        </svg>
+                        Consultation Audio
+                    </button>
+
                     {!isPatientAccount && (
                         <>
                             <button 
@@ -1372,114 +1392,105 @@ const Dashboard = () => {
                                 </button>
                             </div>
 
-                            {analysisResult ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                                    <div ref={resultsRef} className="glass-panel results-panel" style={{ margin: 0 }}>
-                                        
-                                        {/* Certified Medical Badge */}
-                                        <div className="certified-report-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '20px', background: 'rgba(0, 242, 254, 0.06)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '14px', padding: '12px 18px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--primary-cyan)', fontWeight: 700, fontSize: '0.9rem' }}>
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                                    <polyline points="9 12 11 14 15 10"/>
-                                                </svg>
-                                                Rapport Clinique Officiel Certifié — OrthoMind AI
-                                            </div>
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                                                RAG 54 Ouvrages PDF Validé ✓
-                                            </span>
+                            {analysisResult && (
+                                <div ref={resultsRef} className="glass-panel results-panel" style={{ margin: 0 }}>
+                                    
+                                    {/* Certified Medical Badge */}
+                                    <div className="certified-report-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '20px', background: 'rgba(0, 242, 254, 0.06)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '14px', padding: '12px 18px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--primary-cyan)', fontWeight: 700, fontSize: '0.9rem' }}>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                                <polyline points="9 12 11 14 15 10"/>
+                                            </svg>
+                                            Rapport Clinique Officiel Certifié — OrthoMind AI
+                                        </div>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                            RAG 54 Ouvrages PDF Validé ✓
+                                        </span>
+                                    </div>
+
+                                    <div className="results-header-row">
+                                        <div className="results-patient-tag">
+                                            <h2>Diagnostic & Plan Thérapeutique</h2>
+                                            <div className="patient-badge">Patient: {patientName || 'Anonyme'}</div>
                                         </div>
 
-                                        <div className="results-header-row">
-                                            <div className="results-patient-tag">
-                                                <h2>Diagnostic & Plan Thérapeutique</h2>
-                                                <div className="patient-badge">Patient: {patientName || 'Anonyme'}</div>
-                                            </div>
-
-                                            {/* Metrics Chips */}
-                                            <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
-                                                <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem' }}>Confiance: 98%</span>
-                                                <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem' }}>Source: RAG Indexed</span>
-                                            </div>
-
-                                            <div className="results-tabs">
-                                                <button 
-                                                    className={`results-tab-btn ${activeResultTab === 'diag' ? 'active' : ''}`}
-                                                    onClick={() => setActiveResultTab('diag')}
-                                                >
-                                                    Diagnostic
-                                                </button>
-                                                <button 
-                                                    className={`results-tab-btn ${activeResultTab === 'treat' ? 'active' : ''}`}
-                                                    onClick={() => setActiveResultTab('treat')}
-                                                >
-                                                    Plan de Traitement
-                                                </button>
-                                            </div>
+                                        {/* Metrics Chips */}
+                                        <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
+                                            <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem' }}>Confiance: 98%</span>
+                                            <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem' }}>Source: RAG Indexed</span>
                                         </div>
 
-                                        <div className="results-split-container">
-                                            {activeResultTab === 'diag' ? (
-                                                <div className="results-content-box" style={{ gridColumn: '1 / -1' }}>
-                                                    <h3>
-                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-cyan)" strokeWidth="2.5">
-                                                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                                                            <polyline points="14 2 14 8 20 8" />
-                                                        </svg>
-                                                        Diagnostic & Observations Cliniques
-                                                    </h3>
-                                                    <div 
-                                                        className="markdown-renderer"
-                                                        dangerouslySetInnerHTML={{ __html: formatReportText(analysisResult.diagnostic) }}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="results-content-box" style={{ gridColumn: '1 / -1' }}>
-                                                    <h3>
-                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" strokeWidth="2.5">
-                                                            <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                                                            <polyline points="2 17 12 22 22 17" />
-                                                            <polyline points="2 12 12 17 22 12" />
-                                                        </svg>
-                                                        Stratégie Thérapeutique Conseillée
-                                                    </h3>
-                                                    <div 
-                                                        className="markdown-renderer"
-                                                        dangerouslySetInnerHTML={{ __html: formatReportText(analysisResult.traitement) }}
-                                                    />
-                                                </div>
-                                            )}
+                                        <div className="results-tabs">
+                                            <button 
+                                                className={`results-tab-btn ${activeResultTab === 'diag' ? 'active' : ''}`}
+                                                onClick={() => setActiveResultTab('diag')}
+                                            >
+                                                Diagnostic
+                                            </button>
+                                            <button 
+                                                className={`results-tab-btn ${activeResultTab === 'treat' ? 'active' : ''}`}
+                                                onClick={() => setActiveResultTab('treat')}
+                                            >
+                                                Plan de Traitement
+                                            </button>
                                         </div>
                                     </div>
 
-                                    {/* OrthoMind Simulation CTA */}
-                                    <div className="simulation-cta-wrapper" style={{ margin: 0 }}>
-                                        <div
-                                            className="simulation-cta-banner"
-                                            onClick={() => setShowSimulationModal(true)}
-                                            role="button"
-                                            tabIndex={0}
-                                            onKeyDown={(e) => e.key === 'Enter' && setShowSimulationModal(true)}
-                                        >
-                                            <img src="/cta-om.png" alt="Découvrez votre futur sourire" className="simulation-cta-img" />
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="simulation-cta-wrapper" style={{ margin: 0 }}>
-                                    <div
-                                        className="simulation-cta-banner"
-                                        onClick={() => setShowSimulationModal(true)}
-                                        role="button"
-                                        tabIndex={0}
-                                        onKeyDown={(e) => e.key === 'Enter' && setShowSimulationModal(true)}
-                                    >
-                                        <img src="/cta-om.png" alt="Découvrez votre futur sourire" className="simulation-cta-img" />
+                                    <div className="results-split-container">
+                                        {activeResultTab === 'diag' ? (
+                                            <div className="results-content-box" style={{ gridColumn: '1 / -1' }}>
+                                                <h3>
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-cyan)" strokeWidth="2.5">
+                                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                                        <polyline points="14 2 14 8 20 8" />
+                                                    </svg>
+                                                    Diagnostic & Observations Cliniques
+                                                </h3>
+                                                <div 
+                                                    className="markdown-renderer"
+                                                    dangerouslySetInnerHTML={{ __html: formatReportText(analysisResult.diagnostic) }}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="results-content-box" style={{ gridColumn: '1 / -1' }}>
+                                                <h3>
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" strokeWidth="2.5">
+                                                        <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                                                        <polyline points="2 17 12 22 22 17" />
+                                                        <polyline points="2 12 12 17 22 12" />
+                                                    </svg>
+                                                    Stratégie Thérapeutique Conseillée
+                                                </h3>
+                                                <div 
+                                                    className="markdown-renderer"
+                                                    dangerouslySetInnerHTML={{ __html: formatReportText(analysisResult.traitement) }}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
                         </div>
+
+                        {/* Consultation Audio Card — Positionné à la place du CTA sous l'analyse */}
+                        <div style={{ marginTop: '25px', width: '100%' }}>
+                            <AudioConsultation 
+                                patientName={patientName} 
+                                onSendToOrthoMind={handleAudioTranscriptToOrthoMind} 
+                            />
+                        </div>
                     </>
+                )}
+
+                {/* TAB: CONSULTATION AUDIO (STANDALONE) */}
+                {activeTab === 'audio' && (
+                    <div className="audio-tab-layout">
+                        <AudioConsultation 
+                            patientName={patientName} 
+                            onSendToOrthoMind={handleAudioTranscriptToOrthoMind} 
+                        />
+                    </div>
                 )}
 
                 {activeTab === 'patients' && (
