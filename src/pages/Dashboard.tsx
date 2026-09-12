@@ -9,6 +9,7 @@ import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import { AudioConsultation } from '../components/AudioConsultation';
 import defaultBookData from '../assets/cgs_volume_61.json';
 import orthomindLogo from '../assets/orthomind-logo.png';
+import logoSeul from '../assets/logo-seul.png';
 import Patients from './Patients';
 import PatientSelector from '../components/PatientSelector';
 import { Patient } from '../services/patientService';
