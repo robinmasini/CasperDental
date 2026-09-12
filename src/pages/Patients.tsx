@@ -74,6 +74,14 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [loadingAppointments, setLoadingAppointments] = useState(false);
     const [showSmsModal, setShowSmsModal] = useState(false);
     const [patientAnalyses, setPatientAnalyses] = useState<any[]>([]);
+    const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
+
+    const toggleSessionExpanded = (sessionKey: string) => {
+        setExpandedSessionIds(prev => ({
+            ...prev,
+            [sessionKey]: !prev[sessionKey]
+        }));
+    };
 
     // Fetch patients from Supabase
     useEffect(() => {
@@ -122,7 +130,6 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             try {
                 const localHistory = localStorage.getItem('casper_mock_history');
                 const historyItems = localHistory ? JSON.parse(localHistory) : [];
-                const patientNameLower = `${selectedPatient.nom} ${selectedPatient.prenom}`.toLowerCase();
                 const matched = historyItems.filter((item: any) => {
                     const itemName = (item.patient_name || '').toLowerCase();
                     return itemName.includes(selectedPatient.nom.toLowerCase()) || 
@@ -130,6 +137,14 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                            item.patient_id === selectedPatient.id;
                 });
                 setPatientAnalyses(matched);
+
+                // Default: Open the first/latest session automatically as a drawer
+                if (matched.length > 0) {
+                    const firstKey = matched[0].id || 'session-0';
+                    setExpandedSessionIds({ [firstKey]: true });
+                } else {
+                    setExpandedSessionIds({});
+                }
             } catch (e) {
                 console.error('Error filtering patient diagnostics:', e);
             }
@@ -397,22 +412,39 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="patient-diagnostics-history-list" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div className="patient-diagnostics-history-list" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                                         {patientAnalyses.map((ana, idx) => {
                                             const isAudio = ana.type === 'audio' || Boolean(ana.transcript);
+                                            const sessionKey = ana.id || `session-${idx}`;
+                                            const isExpanded = Boolean(expandedSessionIds[sessionKey]);
+
                                             return (
                                                 <div 
-                                                    key={idx} 
+                                                    key={sessionKey} 
                                                     style={{ 
-                                                        background: 'rgba(15, 23, 42, 0.65)', 
-                                                        border: `1px solid ${isAudio ? 'rgba(0, 242, 254, 0.3)' : 'rgba(255, 255, 255, 0.12)'}`, 
-                                                        borderRadius: '16px', 
-                                                        padding: '20px',
-                                                        boxShadow: isAudio ? '0 4px 20px rgba(0, 242, 254, 0.06)' : 'none'
+                                                        background: isExpanded ? 'rgba(15, 23, 42, 0.75)' : 'rgba(15, 23, 42, 0.45)', 
+                                                        border: `1px solid ${isExpanded ? 'rgba(0, 242, 254, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`, 
+                                                        borderRadius: '14px', 
+                                                        overflow: 'hidden',
+                                                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                        boxShadow: isExpanded ? '0 8px 30px rgba(0, 242, 254, 0.08)' : 'none'
                                                     }}
                                                 >
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    {/* Drawer Header Bar - Retract & Expand Trigger */}
+                                                    <div 
+                                                        onClick={() => toggleSessionExpanded(sessionKey)}
+                                                        style={{ 
+                                                            display: 'flex', 
+                                                            justifyContent: 'space-between', 
+                                                            alignItems: 'center', 
+                                                            padding: '14px 18px',
+                                                            cursor: 'pointer',
+                                                            background: isExpanded ? 'rgba(0, 242, 254, 0.06)' : 'rgba(255, 255, 255, 0.02)',
+                                                            borderBottom: isExpanded ? '1px solid rgba(0, 242, 254, 0.2)' : 'none',
+                                                            userSelect: 'none'
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                                                             <span style={{ 
                                                                 background: isAudio ? 'linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(124, 58, 237, 0.2))' : 'rgba(255, 255, 255, 0.08)',
                                                                 color: isAudio ? 'var(--primary-cyan)' : '#e2e8f0',
@@ -424,46 +456,73 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                                             }}>
                                                                 {isAudio ? '🎤 Consultation Audio & Synthèse RAG' : '📷 Diagnostic Clichés Photos'}
                                                             </span>
-                                                            <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>
+                                                            <strong style={{ color: '#ffffff', fontSize: '0.94rem' }}>
                                                                 Séance du {new Date(ana.created_at).toLocaleDateString('fr-FR')} à {new Date(ana.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                                             </strong>
                                                         </div>
-                                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                                                            Réf: #{ana.id?.slice(-6)}
-                                                        </span>
-                                                    </div>
 
-                                                    {/* Diagnostic Content */}
-                                                    <div style={{ marginBottom: '12px' }}>
-                                                        <h5 style={{ color: 'var(--primary-cyan)', margin: '0 0 6px 0', fontSize: '0.86rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                            📋 Diagnostic & Observations :
-                                                        </h5>
-                                                        <p style={{ fontSize: '0.86rem', color: '#cbd5e1', whiteSpace: 'pre-line', margin: 0, lineHeight: '1.5' }}>
-                                                            {ana.diagnostic_text}
-                                                        </p>
-                                                    </div>
-
-                                                    {/* Traitement Content if present */}
-                                                    {ana.traitement_text && (
-                                                        <div style={{ marginBottom: '12px', background: 'rgba(0, 242, 254, 0.04)', padding: '12px', borderRadius: '10px', borderLeft: '3px solid var(--primary-cyan)' }}>
-                                                            <h5 style={{ color: 'var(--primary-blue)', margin: '0 0 6px 0', fontSize: '0.86rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                                💊 Plan Thérapeutique Conseillé :
-                                                            </h5>
-                                                            <p style={{ fontSize: '0.85rem', color: '#e2e8f0', whiteSpace: 'pre-line', margin: 0, lineHeight: '1.5' }}>
-                                                                {ana.traitement_text}
-                                                            </p>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Transcript if present */}
-                                                    {ana.transcript && (
-                                                        <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '10px 14px', borderRadius: '10px', marginTop: '10px' }}>
-                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                                                                🗣️ Verbatim / Retranscription Audio de la consultation :
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                                                Réf: #{ana.id?.slice(-6)}
                                                             </span>
-                                                            <p style={{ fontSize: '0.82rem', color: '#94a3b8', fontStyle: 'italic', margin: 0 }}>
-                                                                "{ana.transcript}"
-                                                            </p>
+                                                            
+                                                            {/* Flèche vers le bas / haut à droite */}
+                                                            <div style={{
+                                                                background: isExpanded ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                                                                color: isExpanded ? 'var(--primary-cyan)' : 'var(--text-secondary)',
+                                                                border: `1px solid ${isExpanded ? 'rgba(0, 242, 254, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
+                                                                borderRadius: '50%',
+                                                                width: '30px',
+                                                                height: '30px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                fontSize: '0.82rem',
+                                                                fontWeight: 700,
+                                                                transition: 'transform 0.25s ease, background 0.2s ease',
+                                                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                                                            }}>
+                                                                ▼
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Retractable Drawer Content */}
+                                                    {isExpanded && (
+                                                        <div style={{ padding: '18px', background: 'rgba(10, 16, 29, 0.4)' }}>
+                                                            {/* Diagnostic Content */}
+                                                            <div style={{ marginBottom: '14px' }}>
+                                                                <h5 style={{ color: 'var(--primary-cyan)', margin: '0 0 6px 0', fontSize: '0.86rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                    📋 Diagnostic & Observations :
+                                                                </h5>
+                                                                <p style={{ fontSize: '0.86rem', color: '#cbd5e1', whiteSpace: 'pre-line', margin: 0, lineHeight: '1.6' }}>
+                                                                    {ana.diagnostic_text}
+                                                                </p>
+                                                            </div>
+
+                                                            {/* Traitement Content if present */}
+                                                            {ana.traitement_text && (
+                                                                <div style={{ marginBottom: '14px', background: 'rgba(0, 242, 254, 0.04)', padding: '12px 14px', borderRadius: '10px', borderLeft: '3px solid var(--primary-cyan)' }}>
+                                                                    <h5 style={{ color: 'var(--primary-blue)', margin: '0 0 6px 0', fontSize: '0.86rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                        💊 Plan Thérapeutique Conseillé :
+                                                                    </h5>
+                                                                    <p style={{ fontSize: '0.85rem', color: '#e2e8f0', whiteSpace: 'pre-line', margin: 0, lineHeight: '1.6' }}>
+                                                                        {ana.traitement_text}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Transcript if present */}
+                                                            {ana.transcript && (
+                                                                <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '12px 14px', borderRadius: '10px', marginTop: '10px' }}>
+                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                                                                        🗣️ Verbatim / Retranscription Audio de la consultation :
+                                                                    </span>
+                                                                    <p style={{ fontSize: '0.82rem', color: '#94a3b8', fontStyle: 'italic', margin: 0, lineHeight: '1.5' }}>
+                                                                        "{ana.transcript}"
+                                                                    </p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
