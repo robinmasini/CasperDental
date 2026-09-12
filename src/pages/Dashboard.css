@@ -1893,27 +1893,23 @@
   margin: 18px 0 24px;
 }
 
-/* Grille : Centré quand pas de résultat, 2 cols sur desktop quand résultats, 1 col sur mobile */
+/* Grille : 2 colonnes sur Bureau (Gauche: Upload photo, Droite: Consultation Audio), 1 col sur mobile */
 .analyse-grid {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 430px 1fr;
+  gap: 28px;
+  align-items: start;
   width: 100%;
 }
 
 .analyse-grid .merged-panel {
   width: 100%;
-  max-width: 580px;
-}
-
-.analyse-grid:has(.results-panel) {
-  display: grid;
-  grid-template-columns: 420px 1fr;
-  gap: 30px;
-  align-items: start;
-}
-
-.analyse-grid:has(.results-panel) .merged-panel {
   max-width: none;
+}
+
+.analyse-right-column {
+  width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 1024px) {
@@ -1934,9 +1930,9 @@
     overflow-x: hidden !important;
   }
 
-  .analyse-grid,
-  .analyse-grid:has(.results-panel) {
-    grid-template-columns: 1fr !important;
+  .analyse-grid {
+    display: flex !important;
+    flex-direction: column !important;
     width: 100% !important;
     max-width: 100% !important;
     gap: 20px !important;
