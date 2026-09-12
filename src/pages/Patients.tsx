@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Patient, getPatients } from '../services/patientService';
 import { getAppointmentsByPatientId, Appointment as DBAppointment } from '../services/appointmentService';
 import PatientForm from '../components/PatientForm';
+import PatientPortal from './PatientPortal';
 import './Patients.css';
 
 interface DisplayPatient {
@@ -73,6 +74,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([]);
     const [loadingAppointments, setLoadingAppointments] = useState(false);
     const [showSmsModal, setShowSmsModal] = useState(false);
+    const [showImmersionModal, setShowImmersionModal] = useState(false);
     const [patientAnalyses, setPatientAnalyses] = useState<any[]>([]);
     const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
 
@@ -212,9 +214,19 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             </p>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
                             <button className="btn-cancel" onClick={() => setShowSmsModal(false)}>
                                 Fermer
+                            </button>
+                            <button
+                                className="transcript-action-btn"
+                                style={{ borderColor: 'rgba(0, 242, 254, 0.5)', color: 'var(--primary-cyan)', padding: '8px 12px', fontSize: '0.82rem' }}
+                                onClick={() => {
+                                    setShowSmsModal(false);
+                                    setShowImmersionModal(true);
+                                }}
+                            >
+                                👁️ Immersion Vision Patient →
                             </button>
                             <button
                                 className="btn-sms-submit"
@@ -226,6 +238,18 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 📲 Confirmer l'envoi du SMS
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Patient Portal Immersion Modal */}
+            {showImmersionModal && selectedPatient && (
+                <div className="patient-form-overlay" onClick={() => setShowImmersionModal(false)} style={{ zIndex: 1100, padding: '20px' }}>
+                    <div style={{ width: '100%', maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                        <PatientPortal
+                            patientData={selectedPatient}
+                            onCloseImmersion={() => setShowImmersionModal(false)}
+                        />
                     </div>
                 </div>
             )}
@@ -308,13 +332,21 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             </div>
                         </div>
 
-                        <div className="patient-header-right" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <div className="patient-header-right" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                             <button
                                 className="transcript-action-btn"
                                 style={{ borderColor: 'rgba(0, 242, 254, 0.4)', color: 'var(--primary-cyan)', padding: '8px 14px', fontSize: '0.85rem' }}
                                 onClick={() => setShowSmsModal(true)}
                             >
                                 📲 SMS Vonage : Lien Patient
+                            </button>
+
+                            <button
+                                className="transcript-action-btn"
+                                style={{ borderColor: 'rgba(124, 58, 237, 0.5)', color: '#a78bfa', padding: '8px 14px', fontSize: '0.85rem' }}
+                                onClick={() => setShowImmersionModal(true)}
+                            >
+                                👁️ Immersion Vision Patient
                             </button>
 
                             {onSelectPatientForAnalysis && (
@@ -338,10 +370,17 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         </div>
                         <div className="info-section">
                             <h4>📲 Portail Patient Externe</h4>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lien généré propre au patient :</p>
-                            <code style={{ fontSize: '0.75rem', color: 'var(--primary-cyan)' }}>
+                            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Lien généré propre au patient :</p>
+                            <code style={{ fontSize: '0.75rem', color: 'var(--primary-cyan)', display: 'block', marginBottom: '8px' }}>
                                 orthomind.app/patient/suivi-{selectedPatient.id.slice(-6)}
                             </code>
+                            <button
+                                className="transcript-action-btn"
+                                style={{ width: '100%', borderColor: 'rgba(0, 242, 254, 0.5)', color: 'var(--primary-cyan)', padding: '6px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                onClick={() => setShowImmersionModal(true)}
+                            >
+                                👁️ Immersion Vision Patient →
+                            </button>
                         </div>
                         <div className="info-section">
                             <h4>⚠️ Allergies</h4>

@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
+import PatientPortal from './pages/PatientPortal';
 
 function App() {
   console.log('App function executing');
@@ -12,6 +13,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Landing />} />
+          <Route path="/patient/suivi-:id" element={<PatientPortal />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
