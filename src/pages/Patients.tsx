@@ -265,6 +265,16 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             {/* Right Panel - Patient Details */}
             {selectedPatient ? (
                 <div className="patient-details-panel">
+                    {/* Explicit Espace Praticien Header Banner */}
+                    <div style={{ background: 'rgba(0, 242, 254, 0.05)', border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '12px', padding: '10px 16px', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary-cyan)', fontSize: '0.82rem', fontWeight: 700 }}>
+                            <span style={{ fontSize: '1rem' }}>🔒</span> ESPACE PRATICIEN — FICHE PATIENT CONFIDENTIELLE (Partagée Cabinet)
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            Dossier consultable par l'équipe du cabinet • Lien SMS Vonage généré pour le patient
+                        </div>
+                    </div>
+
                     {/* Patient Header */}
                     <div className="patient-header">
                         <div className="patient-header-left">
@@ -312,8 +322,8 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             <p style={{ color: 'var(--primary-cyan)', fontWeight: 600 }}>{selectedPatient.telephone || 'Non renseigné'}</p>
                         </div>
                         <div className="info-section">
-                            <h4>📲 Portail Patient</h4>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lien généré sécurisé :</p>
+                            <h4>📲 Portail Patient Externe</h4>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lien généré propre au patient :</p>
                             <code style={{ fontSize: '0.75rem', color: 'var(--primary-cyan)' }}>
                                 orthomind.app/patient/suivi-{selectedPatient.id.slice(-6)}
                             </code>
@@ -324,7 +334,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         </div>
                         <div className="info-section">
                             <h4>🩺 Contacts médicaux</h4>
-                            <p>Praticien : {selectedPatient.praticien}</p>
+                            <p>Praticien référant : {selectedPatient.praticien}</p>
                         </div>
                     </div>
 
@@ -340,7 +350,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             className={`tab ${activeTab === 'synthese' ? 'active' : ''}`}
                             onClick={() => setActiveTab('synthese')}
                         >
-                            SYNTHÈSE
+                            SYNTHÈSE GLOBALE
                         </button>
                         <button
                             className={`tab ${activeTab === 'rdv' ? 'active' : ''}`}
@@ -361,7 +371,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         {activeTab === 'diagnostic' && (
                             <div className="diagnostic-content">
                                 <div className="diagnostic-header">
-                                    <h4>Diagnostics & Analyses Cliniques associés</h4>
+                                    <h4>Diagnostics & Consultation Audio de {selectedPatient.nom} {selectedPatient.prenom}</h4>
                                     {onSelectPatientForAnalysis && (
                                         <button
                                             className="transcript-action-btn"
@@ -387,22 +397,78 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="patient-diagnostics-history-list" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                        {patientAnalyses.map((ana, idx) => (
-                                            <div key={idx} style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '14px', padding: '16px' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                                    <strong style={{ color: 'var(--primary-cyan)', fontSize: '0.9rem' }}>
-                                                        Analyse du {new Date(ana.created_at).toLocaleDateString('fr-FR')} à {new Date(ana.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                                    </strong>
-                                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                                                        {ana.images?.length || 0} photo(s)
-                                                    </span>
+                                    <div className="patient-diagnostics-history-list" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        {patientAnalyses.map((ana, idx) => {
+                                            const isAudio = ana.type === 'audio' || Boolean(ana.transcript);
+                                            return (
+                                                <div 
+                                                    key={idx} 
+                                                    style={{ 
+                                                        background: 'rgba(15, 23, 42, 0.65)', 
+                                                        border: `1px solid ${isAudio ? 'rgba(0, 242, 254, 0.3)' : 'rgba(255, 255, 255, 0.12)'}`, 
+                                                        borderRadius: '16px', 
+                                                        padding: '20px',
+                                                        boxShadow: isAudio ? '0 4px 20px rgba(0, 242, 254, 0.06)' : 'none'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                            <span style={{ 
+                                                                background: isAudio ? 'linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(124, 58, 237, 0.2))' : 'rgba(255, 255, 255, 0.08)',
+                                                                color: isAudio ? 'var(--primary-cyan)' : '#e2e8f0',
+                                                                border: isAudio ? '1px solid rgba(0, 242, 254, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+                                                                padding: '4px 10px',
+                                                                borderRadius: '20px',
+                                                                fontSize: '0.78rem',
+                                                                fontWeight: 700
+                                                            }}>
+                                                                {isAudio ? '🎤 Consultation Audio & Synthèse RAG' : '📷 Diagnostic Clichés Photos'}
+                                                            </span>
+                                                            <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>
+                                                                Séance du {new Date(ana.created_at).toLocaleDateString('fr-FR')} à {new Date(ana.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                            </strong>
+                                                        </div>
+                                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                                            Réf: #{ana.id?.slice(-6)}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Diagnostic Content */}
+                                                    <div style={{ marginBottom: '12px' }}>
+                                                        <h5 style={{ color: 'var(--primary-cyan)', margin: '0 0 6px 0', fontSize: '0.86rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                            📋 Diagnostic & Observations :
+                                                        </h5>
+                                                        <p style={{ fontSize: '0.86rem', color: '#cbd5e1', whiteSpace: 'pre-line', margin: 0, lineHeight: '1.5' }}>
+                                                            {ana.diagnostic_text}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Traitement Content if present */}
+                                                    {ana.traitement_text && (
+                                                        <div style={{ marginBottom: '12px', background: 'rgba(0, 242, 254, 0.04)', padding: '12px', borderRadius: '10px', borderLeft: '3px solid var(--primary-cyan)' }}>
+                                                            <h5 style={{ color: 'var(--primary-blue)', margin: '0 0 6px 0', fontSize: '0.86rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                💊 Plan Thérapeutique Conseillé :
+                                                            </h5>
+                                                            <p style={{ fontSize: '0.85rem', color: '#e2e8f0', whiteSpace: 'pre-line', margin: 0, lineHeight: '1.5' }}>
+                                                                {ana.traitement_text}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Transcript if present */}
+                                                    {ana.transcript && (
+                                                        <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '10px 14px', borderRadius: '10px', marginTop: '10px' }}>
+                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                                                                🗣️ Verbatim / Retranscription Audio de la consultation :
+                                                            </span>
+                                                            <p style={{ fontSize: '0.82rem', color: '#94a3b8', fontStyle: 'italic', margin: 0 }}>
+                                                                "{ana.transcript}"
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <p style={{ fontSize: '0.85rem', color: '#cbd5e1', whiteSpace: 'pre-line', maxHeight: '120px', overflow: 'hidden' }}>
-                                                    {ana.diagnostic_text}
-                                                </p>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -410,10 +476,42 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
                         {activeTab === 'synthese' && (
                             <div className="synthese-content">
-                                <h4>Synthèse patient</h4>
-                                <div className="synthese-empty">
-                                    Synthèse automatique générée par OrthoMind RAG disponible lors des séances.
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                    <h4 style={{ margin: 0 }}>Synthèse Globale & Historique Médical du Patient</h4>
+                                    <span style={{ fontSize: '0.8rem', background: 'rgba(0, 242, 254, 0.1)', color: 'var(--primary-cyan)', padding: '4px 10px', borderRadius: '14px', fontWeight: 600 }}>
+                                        Dossier Praticien OrthoMind
+                                    </span>
                                 </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '14px', padding: '16px' }}>
+                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Diagnostic & Consultations Audio</span>
+                                        <strong style={{ fontSize: '1.4rem', color: 'var(--primary-cyan)' }}>{patientAnalyses.length} séance(s)</strong>
+                                    </div>
+                                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '14px', padding: '16px' }}>
+                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Praticien Référent</span>
+                                        <strong style={{ fontSize: '1.05rem', color: '#ffffff' }}>{selectedPatient.praticien}</strong>
+                                    </div>
+                                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '14px', padding: '16px' }}>
+                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Portail Patient Lien SMS</span>
+                                        <strong style={{ fontSize: '0.9rem', color: '#10b981' }}>✓ Vonage Activé</strong>
+                                    </div>
+                                </div>
+
+                                {patientAnalyses.length > 0 ? (
+                                    <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '16px', padding: '20px' }}>
+                                        <h5 style={{ color: 'var(--primary-cyan)', marginTop: 0, marginBottom: '10px', fontSize: '0.95rem' }}>
+                                            💡 Résumé Synthétique de la dernière consultation :
+                                        </h5>
+                                        <p style={{ fontSize: '0.88rem', color: '#e2e8f0', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-line' }}>
+                                            {patientAnalyses[0].diagnostic_text}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="synthese-empty">
+                                        Aucune consultation audio ni diagnostic n'a encore été effectué pour ce patient. Lancez un nouveau diagnostic depuis le bouton ci-dessus.
+                                    </div>
+                                )}
                             </div>
                         )}
 

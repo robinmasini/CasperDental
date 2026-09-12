@@ -1407,7 +1407,9 @@ const Dashboard = () => {
                             <div className="analyse-right-column">
                                 <AudioConsultation 
                                     patientName={patientName} 
+                                    selectedPatientId={selectedPatientObj?.id}
                                     onSendToOrthoMind={handleAudioTranscriptToOrthoMind} 
+                                    onViewPatientFile={() => handleTabClick('patients')}
                                 />
                             </div>
                         </div>
@@ -1500,7 +1502,9 @@ const Dashboard = () => {
                     <div className="audio-tab-layout">
                         <AudioConsultation 
                             patientName={patientName} 
+                            selectedPatientId={selectedPatientObj?.id}
                             onSendToOrthoMind={handleAudioTranscriptToOrthoMind} 
+                            onViewPatientFile={() => handleTabClick('patients')}
                         />
                     </div>
                 )}

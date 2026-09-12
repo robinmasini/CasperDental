@@ -13,7 +13,9 @@ import logoSeul from '../assets/logo-seul.png';
 
 interface AudioConsultationProps {
     patientName?: string;
+    selectedPatientId?: string;
     onSendToOrthoMind?: (transcriptText: string) => void;
+    onViewPatientFile?: (patientId?: string) => void;
 }
 
 interface ReflectionStep {
@@ -64,7 +66,9 @@ const CLINICAL_REFLECTION_STEPS: ReflectionStep[] = [
 
 export const AudioConsultation: React.FC<AudioConsultationProps> = ({
     patientName = '',
-    onSendToOrthoMind
+    selectedPatientId = '',
+    onSendToOrthoMind,
+    onViewPatientFile
 }) => {
     // Recording & State
     const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'paused' | 'stopped' | 'transcribing'>('idle');
@@ -88,6 +92,40 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
     const [synthesisResult, setSynthesisResult] = useState<AnalysisResult | null>(null);
     const [activeSynthesisTab, setActiveSynthesisTab] = useState<'diag' | 'treat'>('diag');
     const [isReportCopied, setIsReportCopied] = useState<boolean>(false);
+    const [isSavedToPatient, setIsSavedToPatient] = useState<boolean>(false);
+    const [savedMessage, setSavedMessage] = useState<string>('');
+
+    // Save synthesis directly to the patient's medical record for cabinet access
+    const saveSynthesisToPatientRecord = (result: AnalysisResult, pName: string, pId?: string, audioTranscript?: string) => {
+        try {
+            const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
+            const localHistory = JSON.parse(localHistoryStr);
+            const targetName = pName.trim() || 'Patient Anonyme';
+            
+            const newEntry = {
+                id: 'mock-analysis-audio-' + Date.now(),
+                patient_name: targetName,
+                patient_id: pId || '',
+                type: 'audio',
+                created_at: new Date().toISOString(),
+                images: [],
+                diagnostic_text: result.diagnostic,
+                traitement_text: result.traitement,
+                transcript: audioTranscript || transcript || ''
+            };
+            
+            // Prevent exact duplicates
+            const exists = localHistory.some((h: any) => h.diagnostic_text === result.diagnostic && h.patient_name === targetName);
+            if (!exists) {
+                localHistory.unshift(newEntry);
+                localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
+            }
+            setIsSavedToPatient(true);
+            setSavedMessage(`✓ Synthèse rattachée avec succès à la Fiche Patient de ${targetName}`);
+        } catch (e) {
+            console.error('Failed to save audio synthesis to patient record:', e);
+        }
+    };
 
     // Reflection Engine State
     const [reflectionStepIndex, setReflectionStepIndex] = useState<number>(0);
@@ -347,6 +385,9 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             await new Promise(res => setTimeout(res, 400));
             setSynthesisResult(result);
             setStatusMessage('✓ Synthèse clinique et plan de traitement générés avec succès !');
+
+            // Auto-save to patient record in cabinet workspace
+            saveSynthesisToPatientRecord(result, patientName, selectedPatientId, textToAnalyze);
 
             // Scroll smoothly to report
             setTimeout(() => {
@@ -792,6 +833,28 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                                 {isReportCopied ? '✓ Compte-Rendu Copié !' : '📋 Copier le Rapport'}
                             </button>
 
+                            <button 
+                                className="btn-audio-primary" 
+                                style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+                                onClick={() => {
+                                    if (synthesisResult) {
+                                        saveSynthesisToPatientRecord(synthesisResult, patientName, selectedPatientId, transcript);
+                                    }
+                                }}
+                            >
+                                {isSavedToPatient ? '✓ Enregistré dans Fiche Patient' : '💾 Enregistrer dans Fiche Patient'}
+                            </button>
+
+                            {onViewPatientFile && (
+                                <button
+                                    className="transcript-action-btn"
+                                    style={{ borderColor: 'rgba(0, 242, 254, 0.5)', color: 'var(--primary-cyan)' }}
+                                    onClick={() => onViewPatientFile(selectedPatientId)}
+                                >
+                                    👁️ Voir la Fiche Patient ({patientName || 'Praticien'})
+                                </button>
+                            )}
+
                             {onSendToOrthoMind && (
                                 <button className="transcript-action-btn" style={{ borderColor: 'rgba(0, 242, 254, 0.4)', color: 'var(--primary-cyan)' }} onClick={() => onSendToOrthoMind(transcript)}>
                                     🚀 Ouvrir dans l'Assistant OrthoMind
@@ -799,6 +862,23 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                             )}
                         </div>
                     </div>
+
+                    {/* Patient Record Sync Notice */}
+                    {savedMessage && (
+                        <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', padding: '12px 16px', marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                            <div style={{ color: '#10b981', fontWeight: 600, fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>🔒</span> {savedMessage}
+                            </div>
+                            {onViewPatientFile && (
+                                <button
+                                    onClick={() => onViewPatientFile(selectedPatientId)}
+                                    style={{ background: '#10b981', color: '#090d16', border: 'none', borderRadius: '8px', padding: '6px 12px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}
+                                >
+                                    Consulter dans l'Espace Praticien →
+                                </button>
+                            )}
+                        </div>
+                    )}
 
                     {/* Content Box */}
                     <div className="synthesis-content-box">
