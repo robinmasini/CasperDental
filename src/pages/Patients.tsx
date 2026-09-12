@@ -59,7 +59,11 @@ const convertToDisplayPatient = (patient: Patient): DisplayPatient => ({
     praticien: patient.praticien || 'Cabinet'
 });
 
-const Patients = () => {
+interface PatientsProps {
+    onSelectPatientForAnalysis?: (patientName: string) => void;
+}
+
+const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [patients, setPatients] = useState<DisplayPatient[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -68,6 +72,8 @@ const Patients = () => {
     const [showForm, setShowForm] = useState(false);
     const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([]);
     const [loadingAppointments, setLoadingAppointments] = useState(false);
+    const [showSmsModal, setShowSmsModal] = useState(false);
+    const [patientAnalyses, setPatientAnalyses] = useState<any[]>([]);
 
     // Fetch patients from Supabase
     useEffect(() => {
@@ -84,7 +90,7 @@ const Patients = () => {
         fetchPatients();
     }, []);
 
-    // Fetch appointments when selected patient changes
+    // Fetch appointments & diagnostics when selected patient changes
     useEffect(() => {
         const fetchPatientAppointments = async () => {
             if (!selectedPatient) return;
@@ -110,7 +116,27 @@ const Patients = () => {
                 setLoadingAppointments(false);
             }
         };
+
+        const loadPatientDiagnostics = () => {
+            if (!selectedPatient) return;
+            try {
+                const localHistory = localStorage.getItem('casper_mock_history');
+                const historyItems = localHistory ? JSON.parse(localHistory) : [];
+                const patientNameLower = `${selectedPatient.nom} ${selectedPatient.prenom}`.toLowerCase();
+                const matched = historyItems.filter((item: any) => {
+                    const itemName = (item.patient_name || '').toLowerCase();
+                    return itemName.includes(selectedPatient.nom.toLowerCase()) || 
+                           itemName.includes(selectedPatient.prenom.toLowerCase()) ||
+                           item.patient_id === selectedPatient.id;
+                });
+                setPatientAnalyses(matched);
+            } catch (e) {
+                console.error('Error filtering patient diagnostics:', e);
+            }
+        };
+
         fetchPatientAppointments();
+        loadPatientDiagnostics();
     }, [selectedPatient]);
 
     const filteredPatients = patients.filter(p =>
@@ -127,7 +153,7 @@ const Patients = () => {
         }
     };
 
-    const handlePatientCreated = (patient: Patient) => {
+    const handlePatientCreated = (patient: Patient, smsSent?: boolean) => {
         const displayPatient = convertToDisplayPatient(patient);
         setPatients(prev => [displayPatient, ...prev]);
         setSelectedPatient(displayPatient);
@@ -144,11 +170,56 @@ const Patients = () => {
                 />
             )}
 
+            {/* Vonage SMS Modal Preview */}
+            {showSmsModal && selectedPatient && (
+                <div className="patient-form-overlay" onClick={() => setShowSmsModal(false)}>
+                    <div className="patient-form-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', padding: '30px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ color: 'var(--primary-cyan)', margin: 0, fontSize: '1.1rem' }}>
+                                📲 SMS Vonage — Lien d'accès personnel
+                            </h3>
+                            <button className="close-btn" onClick={() => setShowSmsModal(false)}>×</button>
+                        </div>
+
+                        <div style={{ background: 'rgba(0, 242, 254, 0.08)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
+                            <div style={{ fontSize: '0.85rem', color: '#ffffff', fontWeight: 700, marginBottom: '6px' }}>
+                                Sender ID configuré : <span style={{ color: 'var(--primary-cyan)' }}>OrthoMind</span>
+                            </div>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                                Destinataire : <strong>{selectedPatient.nom} {selectedPatient.prenom}</strong> ({selectedPatient.telephone || '06 XX XX XX XX'})
+                            </div>
+                        </div>
+
+                        <div style={{ background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Aperçu du SMS transmis au patient :</span>
+                            <p style={{ fontSize: '0.88rem', color: '#e2e8f0', margin: 0, lineHeight: '1.5' }}>
+                                "Bonjour {selectedPatient.prenom}, voici votre lien personnel et sécurisé pour votre suivi orthodontique OrthoMind : https://orthomind.app/patient/suivi-{selectedPatient.id.slice(-8)}"
+                            </p>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button className="btn-cancel" onClick={() => setShowSmsModal(false)}>
+                                Fermer
+                            </button>
+                            <button
+                                className="btn-sms-submit"
+                                onClick={() => {
+                                    alert(`✓ SMS envoyé avec succès à ${selectedPatient.prenom} via Vonage !`);
+                                    setShowSmsModal(false);
+                                }}
+                            >
+                                📲 Confirmer l'envoi du SMS
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Left Panel - Patient List */}
             <div className="patients-list-panel">
                 <div className="patients-header">
                     <button className="btn-add-patient" onClick={() => setShowForm(true)}>
-                        + Ajouter patient
+                        + Nouveau Patient
                     </button>
                 </div>
                 <div className="patients-search">
@@ -207,36 +278,53 @@ const Patients = () => {
                                     <span>•</span>
                                     <span>Suivi par {selectedPatient.praticien}</span>
                                     <span>•</span>
-                                    <span>N° interne: {selectedPatient.numeroInterne}</span>
+                                    <span>N° dossier: {selectedPatient.numeroDossier.slice(-8)}</span>
                                 </div>
                             </div>
                         </div>
-                        <div className="patient-header-right">
-                            <div className="patient-dossier-number">
-                                <span className="label">N° de dossier</span>
-                                <span className="value">{selectedPatient.numeroDossier.slice(-8)}</span>
-                            </div>
+
+                        <div className="patient-header-right" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <button
+                                className="transcript-action-btn"
+                                style={{ borderColor: 'rgba(0, 242, 254, 0.4)', color: 'var(--primary-cyan)', padding: '8px 14px', fontSize: '0.85rem' }}
+                                onClick={() => setShowSmsModal(true)}
+                            >
+                                📲 SMS Vonage : Lien Patient
+                            </button>
+
+                            {onSelectPatientForAnalysis && (
+                                <button
+                                    className="btn-audio-primary"
+                                    style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+                                    onClick={() => onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`)}
+                                >
+                                    ⚡ Lancer Diagnostic
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     {/* Patient Info Sections */}
                     <div className="patient-info-grid">
                         <div className="info-section">
-                            <h4>📧 Contact</h4>
+                            <h4>📧 Contact & Portable</h4>
                             <p>{selectedPatient.email || 'Non renseigné'}</p>
-                            <p>{selectedPatient.telephone || 'Non renseigné'}</p>
+                            <p style={{ color: 'var(--primary-cyan)', fontWeight: 600 }}>{selectedPatient.telephone || 'Non renseigné'}</p>
+                        </div>
+                        <div className="info-section">
+                            <h4>📲 Portail Patient</h4>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lien généré sécurisé :</p>
+                            <code style={{ fontSize: '0.75rem', color: 'var(--primary-cyan)' }}>
+                                orthomind.app/patient/suivi-{selectedPatient.id.slice(-6)}
+                            </code>
                         </div>
                         <div className="info-section">
                             <h4>⚠️ Allergies</h4>
                             <p>{selectedPatient.allergies || 'Aucune allergie connue'}</p>
                         </div>
                         <div className="info-section">
-                            <h4>👨‍👩‍👧 Famille</h4>
-                            <p>Non renseigné</p>
-                        </div>
-                        <div className="info-section">
                             <h4>🩺 Contacts médicaux</h4>
-                            <p>Dentiste référent</p>
+                            <p>Praticien : {selectedPatient.praticien}</p>
                         </div>
                     </div>
 
@@ -246,7 +334,7 @@ const Patients = () => {
                             className={`tab ${activeTab === 'diagnostic' ? 'active' : ''}`}
                             onClick={() => setActiveTab('diagnostic')}
                         >
-                            DIAGNOSTIC
+                            DIAGNOSTICS & CONFERENCES ({patientAnalyses.length})
                         </button>
                         <button
                             className={`tab ${activeTab === 'synthese' ? 'active' : ''}`}
@@ -273,13 +361,50 @@ const Patients = () => {
                         {activeTab === 'diagnostic' && (
                             <div className="diagnostic-content">
                                 <div className="diagnostic-header">
-                                    <h4>Diagnostics</h4>
-                                    <span className="phase-badge">Phase 1</span>
+                                    <h4>Diagnostics & Analyses Cliniques associés</h4>
+                                    {onSelectPatientForAnalysis && (
+                                        <button
+                                            className="transcript-action-btn"
+                                            style={{ borderColor: 'rgba(0, 242, 254, 0.4)', color: 'var(--primary-cyan)' }}
+                                            onClick={() => onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`)}
+                                        >
+                                            + Nouveau Diagnostic pour {selectedPatient.prenom}
+                                        </button>
+                                    )}
                                 </div>
-                                <p className="diagnostic-plan">Plan de traitement / Complément / Commentaires</p>
-                                <div className="diagnostic-empty">
-                                    Aucun diagnostic enregistré
-                                </div>
+
+                                {patientAnalyses.length === 0 ? (
+                                    <div className="diagnostic-empty">
+                                        <p style={{ marginBottom: '10px' }}>Aucun diagnostic n'a encore été rattaché à {selectedPatient.nom} {selectedPatient.prenom}.</p>
+                                        {onSelectPatientForAnalysis && (
+                                            <button
+                                                className="btn-audio-primary"
+                                                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                                                onClick={() => onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`)}
+                                            >
+                                                ⚡ Effectuer un Diagnostic photo ou consultation audio
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="patient-diagnostics-history-list" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                        {patientAnalyses.map((ana, idx) => (
+                                            <div key={idx} style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '14px', padding: '16px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                    <strong style={{ color: 'var(--primary-cyan)', fontSize: '0.9rem' }}>
+                                                        Analyse du {new Date(ana.created_at).toLocaleDateString('fr-FR')} à {new Date(ana.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                    </strong>
+                                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                                        {ana.images?.length || 0} photo(s)
+                                                    </span>
+                                                </div>
+                                                <p style={{ fontSize: '0.85rem', color: '#cbd5e1', whiteSpace: 'pre-line', maxHeight: '120px', overflow: 'hidden' }}>
+                                                    {ana.diagnostic_text}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -287,7 +412,7 @@ const Patients = () => {
                             <div className="synthese-content">
                                 <h4>Synthèse patient</h4>
                                 <div className="synthese-empty">
-                                    Aucune synthèse disponible
+                                    Synthèse automatique générée par OrthoMind RAG disponible lors des séances.
                                 </div>
                             </div>
                         )}
@@ -337,19 +462,19 @@ const Patients = () => {
 
                         {activeTab === 'administratif' && (
                             <div className="admin-content">
-                                <h4>Informations administratives</h4>
+                                <h4>Informations administratives & NIR</h4>
                                 <div className="admin-grid">
+                                    <div className="admin-field">
+                                        <label>N° Sécurité Sociale (NIR)</label>
+                                        <span className="value">{selectedPatient.numeroInterne || 'Non renseigné'}</span>
+                                    </div>
                                     <div className="admin-field">
                                         <label>Solde</label>
                                         <span className="value">0,00 €</span>
                                     </div>
                                     <div className="admin-field">
-                                        <label>Avance</label>
-                                        <span className="value">0,00 €</span>
-                                    </div>
-                                    <div className="admin-field">
-                                        <label>Diagnostics préalables</label>
-                                        <span className="value">-</span>
+                                        <label>Suivi par</label>
+                                        <span className="value">{selectedPatient.praticien}</span>
                                     </div>
                                 </div>
                             </div>

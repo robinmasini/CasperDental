@@ -295,3 +295,144 @@
         grid-column: span 1;
     }
 }
+
+/* ===== SIMPLIFIED PATIENT FORM STYLES ===== */
+.simplified-patient-modal {
+    max-width: 680px !important;
+}
+
+.vonage-sms-notice-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(0, 242, 254, 0.08);
+    border: 1px solid rgba(0, 242, 254, 0.25);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin: 20px 24px 0 24px;
+}
+
+.vonage-sms-icon {
+    font-size: 1.5rem;
+}
+
+.vonage-sms-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--primary-cyan);
+    font-size: 0.85rem;
+}
+
+.vonage-sms-text strong {
+    color: #ffffff;
+    font-size: 0.88rem;
+}
+
+.simplified-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    padding: 24px;
+}
+
+.simplified-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 18px 24px;
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    flex-wrap: wrap;
+}
+
+.btn-secondary-save {
+    padding: 10px 18px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-secondary);
+    border-radius: 12px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary-save:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+}
+
+.btn-sms-submit {
+    padding: 12px 22px;
+    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    border: none;
+    color: #030712;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-sms-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 242, 254, 0.45);
+}
+
+.sms-sent-confirmation-card {
+    padding: 36px 28px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.sms-sent-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+}
+
+.sms-sent-confirmation-card h3 {
+    font-size: 1.15rem;
+    color: var(--primary-cyan);
+    margin-bottom: 10px;
+}
+
+.sms-sent-confirmation-card p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-width: 480px;
+    margin: 0 auto 20px auto;
+}
+
+.patient-link-preview-box {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(0, 242, 254, 0.3);
+    border-radius: 12px;
+    padding: 14px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+    width: 100%;
+    max-width: 480px;
+}
+
+.link-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.generated-url {
+    font-family: monospace;
+    font-size: 0.88rem;
+    color: var(--primary-cyan);
+    word-break: break-all;
+}

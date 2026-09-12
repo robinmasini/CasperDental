@@ -4,404 +4,257 @@ import './PatientForm.css';
 
 interface PatientFormProps {
     onClose: () => void;
-    onSuccess: (patient: Patient) => void;
+    onSuccess: (patient: Patient, smsSent?: boolean) => void;
 }
 
 const PatientForm = ({ onClose, onSuccess }: PatientFormProps) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showSmsSuccessModal, setShowSmsSuccessModal] = useState(false);
+    const [createdPatientData, setCreatedPatientData] = useState<Patient | null>(null);
 
-    const [formData, setFormData] = useState<Patient>({
-        civilite: '',
+    const [formData, setFormData] = useState<Partial<Patient>>({
         nom: '',
         prenom: '',
-        deuxieme_prenom: '',
-        sexe: '',
         date_naissance: '',
-        type_patient: 'Enfant',
-        praticien: 'Cabinet Médical',
-        telephone: '',
-        portable: '',
-        email: '',
-        suivi_exclusif: false,
-        responsable_civilite: '',
-        responsable_nom: '',
-        responsable_prenom: '',
         responsable_num_secu: '',
-        responsable_date_naissance: '',
-        responsable_adresse: '',
-        responsable_adresse2: '',
-        responsable_cp: '',
-        responsable_commune: '',
-        responsable_pays: 'France',
-        responsable_portable1: '',
-        responsable_portable2: '',
-        responsable_telephone1: '',
-        responsable_telephone2: '',
-        responsable_email: '',
-        responsable_remarque: '',
-        envoye_par: '',
-        dentiste: '',
-        famille_membre1_prenom: '',
-        famille_membre1_sexe: '',
-        famille_membre1_date_naissance: '',
-        famille_membre2_prenom: '',
-        famille_membre2_sexe: '',
-        famille_membre2_date_naissance: '',
-        famille_membre3_prenom: '',
-        famille_membre3_sexe: '',
-        famille_membre3_date_naissance: '',
+        email: '',
+        portable: '',
+        civilite: 'M.',
+        sexe: 'M',
+        type_patient: 'Adulte',
+        praticien: 'Dr. Renaud Desouches',
+        suivi_exclusif: false
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value, type } = e.target;
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+            [name]: value
         }));
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        console.log('PatientForm: handleSubmit triggered');
+    const handleSave = async (sendSms: boolean) => {
         setError('');
         setIsLoading(true);
 
-        if (!formData.nom || !formData.prenom || !formData.date_naissance) {
-            console.warn('PatientForm: Missing required fields');
-            setError('Veuillez remplir les champs obligatoires (Nom, Prénom, Date de naissance)');
+        if (!formData.nom || !formData.prenom || !formData.date_naissance || !formData.portable) {
+            setError('Veuillez remplir les champs obligatoires : Nom, Prénom, Date de naissance et Téléphone Portable.');
             setIsLoading(false);
             return;
         }
 
+        const patientToCreate: Patient = {
+            civilite: formData.civilite || 'M.',
+            nom: formData.nom.trim(),
+            prenom: formData.prenom.trim(),
+            date_naissance: formData.date_naissance!,
+            sexe: formData.sexe || 'M',
+            type_patient: formData.type_patient || 'Adulte',
+            praticien: formData.praticien || 'Dr. Renaud Desouches',
+            portable: formData.portable.trim(),
+            telephone: formData.portable.trim(),
+            email: formData.email ? formData.email.trim() : '',
+            responsable_num_secu: formData.responsable_num_secu ? formData.responsable_num_secu.trim() : '',
+            suivi_exclusif: false
+        };
+
         try {
-            console.log('PatientForm: Calling createPatient with formData');
-            const { data, error } = await createPatient(formData);
-            console.log('PatientForm: createPatient returned', { data, error });
+            const { data, error: apiError } = await createPatient(patientToCreate);
             setIsLoading(false);
 
             if (data) {
-                console.log('PatientForm: Success, calling onSuccess');
-                onSuccess(data);
-            } else {
-                console.error('PatientForm: Error branch hit', error);
-
-                // Handle specific Supabase error structure
-                let errorMessage = 'Erreur lors de la création du patient.';
-                let details = '';
-
-                if (error) {
-                    if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
-                        errorMessage = 'Impossible de contacter le serveur (Erreur de connexion).';
-                        details = 'Veuillez vérifier votre connexion internet et la configuration de la base de données.';
-                        if (!window.navigator.onLine) {
-                            details = 'Votre appareil semble hors ligne. Veuillez vous reconnecter à internet.';
-                        }
-                    } else {
-                        errorMessage = error.message || errorMessage;
-                        details = error.details || '';
-                    }
+                if (sendSms) {
+                    setCreatedPatientData(data);
+                    setShowSmsSuccessModal(true);
+                } else {
+                    onSuccess(data, false);
                 }
-
-                const hint = error?.hint || '';
-                setError(`Erreur: ${errorMessage}${details ? ` (${details})` : ''}${hint ? `. Astuce: ${hint}` : ''}`);
-                console.error('Supabase error details:', error);
+            } else {
+                setError(apiError?.message || 'Erreur lors de la création de la fiche patient.');
             }
-        } catch (err) {
-            console.error('PatientForm: Unexpected catch error:', err);
+        } catch (err: any) {
             setIsLoading(false);
-
-            let errorMessage = 'Une erreur inattendue est survenue';
-            let details = err instanceof Error ? err.message : String(err);
-
-            if (details.includes('Failed to fetch')) {
-                errorMessage = 'Erreur de réseau : Impossible de joindre le service.';
-                details = 'Ceci peut être dû à un bloqueur de publicité, un pare-feu, ou une URL de base de données incorrecte.';
-            }
-
-            setError(`${errorMessage}: ${details}`);
+            setError(`Erreur inattendue : ${err.message || String(err)}`);
         }
+    };
+
+    const handleConfirmSmsSent = () => {
+        if (createdPatientData) {
+            onSuccess(createdPatientData, true);
+        }
+        setShowSmsSuccessModal(false);
     };
 
     return (
         <div className="patient-form-overlay" onClick={onClose}>
-            <div className="patient-form-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="patient-form-modal simplified-patient-modal" onClick={(e) => e.stopPropagation()}>
+                
+                {/* Header */}
                 <div className="form-header">
-                    <h2>⭐ CRÉATION D'UNE NOUVELLE FICHE PATIENT</h2>
+                    <div>
+                        <h2>👤 CRÉATION FICHE PATIENT SIMPLIFIÉE</h2>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                            Portail Praticien OrthoMind — Renseignement des 6 constantes essentielles
+                        </p>
+                    </div>
                     <button className="close-btn" onClick={onClose}>×</button>
                 </div>
 
-                <form onSubmit={handleSubmit}>
-                    {error && <div className="form-error">{error}</div>}
+                {!showSmsSuccessModal ? (
+                    <form onSubmit={(e) => { e.preventDefault(); handleSave(true); }}>
+                        {error && <div className="form-error">{error}</div>}
 
-                    <div className="form-grid">
-                        {/* Informations patient */}
-                        <div className="form-section">
-                            <h3>Informations patient</h3>
-                            <p className="required-note">* Champs obligatoires</p>
-
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Civilité</label>
-                                    <select name="civilite" value={formData.civilite} onChange={handleChange}>
-                                        <option value="">--</option>
-                                        <option value="M.">M.</option>
-                                        <option value="Mme">Mme</option>
-                                        <option value="Mlle">Mlle</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Nom *</label>
-                                    <input type="text" name="nom" value={formData.nom} onChange={handleChange} required />
-                                </div>
-                            </div>
-
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Prénom *</label>
-                                    <input type="text" name="prenom" value={formData.prenom} onChange={handleChange} required />
-                                </div>
-                            </div>
-
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>2e prénom</label>
-                                    <input type="text" name="deuxieme_prenom" value={formData.deuxieme_prenom} onChange={handleChange} />
-                                </div>
-                            </div>
-
-                            <div className="form-row two-col">
-                                <div className="form-group">
-                                    <label>Sexe *</label>
-                                    <select name="sexe" value={formData.sexe} onChange={handleChange} required>
-                                        <option value="">--</option>
-                                        <option value="M">Masculin</option>
-                                        <option value="F">Féminin</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label>Date de naissance *</label>
-                                    <input type="date" name="date_naissance" value={formData.date_naissance} onChange={handleChange} required />
-                                </div>
-                            </div>
-
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Type *</label>
-                                    <select name="type_patient" value={formData.type_patient} onChange={handleChange}>
-                                        <option value="Enfant">Enfant</option>
-                                        <option value="Adulte">Adulte</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Praticien *</label>
-                                    <select name="praticien" value={formData.praticien} onChange={handleChange}>
-                                        <option value="Cabinet Médical">Cabinet Médical</option>
-                                    </select>
-                                </div>
-                                <div className="form-group checkbox-group">
-                                    <label>
-                                        <input type="checkbox" name="suivi_exclusif" checked={formData.suivi_exclusif} onChange={handleChange} />
-                                        Suivi exclusif
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div className="form-row two-col">
-                                <div className="form-group">
-                                    <label>Téléphone</label>
-                                    <input type="tel" name="telephone" value={formData.telephone} onChange={handleChange} />
-                                </div>
-                                <div className="form-group">
-                                    <label>Email</label>
-                                    <input type="email" name="email" value={formData.email} onChange={handleChange} />
-                                </div>
-                            </div>
-
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Portable</label>
-                                    <input type="tel" name="portable" value={formData.portable} onChange={handleChange} />
-                                </div>
+                        {/* Vonage SMS Banner Info */}
+                        <div className="vonage-sms-notice-banner">
+                            <div className="vonage-sms-icon">📲</div>
+                            <div className="vonage-sms-text">
+                                <strong>Envoi automatique du lien personnel par SMS (Vonage Sender ID "OrthoMind")</strong>
+                                <span>Le patient recevra son lien sécurisé personnel pour compléter sa fiche et suivre son traitement.</span>
                             </div>
                         </div>
 
-                        {/* Responsable civil */}
-                        <div className="form-section">
-                            <h3>Responsable civil</h3>
-
-                            <div className="form-row two-col">
-                                <div className="form-group">
-                                    <label>Civilité</label>
-                                    <select name="responsable_civilite" value={formData.responsable_civilite} onChange={handleChange}>
-                                        <option value="">--</option>
-                                        <option value="M.">M.</option>
-                                        <option value="Mme">Mme</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label>N° de Sécurité Sociale</label>
-                                    <input type="text" name="responsable_num_secu" value={formData.responsable_num_secu} onChange={handleChange} />
-                                </div>
+                        <div className="simplified-form-grid">
+                            {/* Nom */}
+                            <div className="form-group">
+                                <label>Nom de famille *</label>
+                                <input
+                                    type="text"
+                                    name="nom"
+                                    value={formData.nom}
+                                    onChange={handleChange}
+                                    placeholder="ex: DUPONT"
+                                    required
+                                />
                             </div>
 
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Nom</label>
-                                    <input type="text" name="responsable_nom" value={formData.responsable_nom} onChange={handleChange} placeholder="Nom du responsable" />
-                                </div>
+                            {/* Prénom */}
+                            <div className="form-group">
+                                <label>Prénom *</label>
+                                <input
+                                    type="text"
+                                    name="prenom"
+                                    value={formData.prenom}
+                                    onChange={handleChange}
+                                    placeholder="ex: Jean"
+                                    required
+                                />
                             </div>
 
-                            <div className="form-row two-col">
-                                <div className="form-group">
-                                    <label>Prénom</label>
-                                    <input type="text" name="responsable_prenom" value={formData.responsable_prenom} onChange={handleChange} placeholder="Prénom du responsable" />
-                                </div>
-                                <div className="form-group">
-                                    <label>Date de naissance</label>
-                                    <input type="date" name="responsable_date_naissance" value={formData.responsable_date_naissance} onChange={handleChange} />
-                                </div>
+                            {/* Date de naissance */}
+                            <div className="form-group">
+                                <label>Date de naissance *</label>
+                                <input
+                                    type="date"
+                                    name="date_naissance"
+                                    value={formData.date_naissance}
+                                    onChange={handleChange}
+                                    required
+                                />
                             </div>
 
-                            <div className="form-row two-col">
-                                <div className="form-group">
-                                    <label>Adresse</label>
-                                    <input type="text" name="responsable_adresse" value={formData.responsable_adresse} onChange={handleChange} placeholder="Adresse ligne n°1" />
-                                </div>
-                                <div className="form-group">
-                                    <label>&nbsp;</label>
-                                    <input type="text" name="responsable_adresse2" value={formData.responsable_adresse2} onChange={handleChange} placeholder="Adresse ligne n°2" />
-                                </div>
+                            {/* Numéro de sécurité sociale */}
+                            <div className="form-group">
+                                <label>Numéro de Sécurité Sociale (NIR)</label>
+                                <input
+                                    type="text"
+                                    name="responsable_num_secu"
+                                    value={formData.responsable_num_secu}
+                                    onChange={handleChange}
+                                    placeholder="1 85 06 75 108 123 45"
+                                />
                             </div>
 
-                            <div className="form-row three-col">
-                                <div className="form-group small">
-                                    <label>CP</label>
-                                    <input type="text" name="responsable_cp" value={formData.responsable_cp} onChange={handleChange} />
-                                </div>
-                                <div className="form-group">
-                                    <label>Commune</label>
-                                    <input type="text" name="responsable_commune" value={formData.responsable_commune} onChange={handleChange} />
-                                </div>
-                                <div className="form-group">
-                                    <label>Pays</label>
-                                    <input type="text" name="responsable_pays" value={formData.responsable_pays} onChange={handleChange} />
-                                </div>
+                            {/* Email */}
+                            <div className="form-group">
+                                <label>Adresse E-mail</label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    placeholder="patient@exemple.fr"
+                                />
                             </div>
 
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Remarque</label>
-                                    <textarea name="responsable_remarque" value={formData.responsable_remarque} onChange={handleChange} rows={3}></textarea>
-                                </div>
-                            </div>
-
-                            <div className="form-row two-col">
-                                <div className="form-group">
-                                    <label>Portables</label>
-                                    <input type="tel" name="responsable_portable1" value={formData.responsable_portable1} onChange={handleChange} />
-                                    <input type="tel" name="responsable_portable2" value={formData.responsable_portable2} onChange={handleChange} style={{ marginTop: '0.5rem' }} />
-                                </div>
-                                <div className="form-group">
-                                    <label>Téléphones</label>
-                                    <input type="tel" name="responsable_telephone1" value={formData.responsable_telephone1} onChange={handleChange} />
-                                    <input type="tel" name="responsable_telephone2" value={formData.responsable_telephone2} onChange={handleChange} style={{ marginTop: '0.5rem' }} />
-                                </div>
-                            </div>
-
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Email</label>
-                                    <input type="email" name="responsable_email" value={formData.responsable_email} onChange={handleChange} />
-                                </div>
+                            {/* Téléphone Portable */}
+                            <div className="form-group">
+                                <label>Téléphone Portable * (Obligatoire pour envoi SMS)</label>
+                                <input
+                                    type="tel"
+                                    name="portable"
+                                    value={formData.portable}
+                                    onChange={handleChange}
+                                    placeholder="06 12 34 56 78"
+                                    required
+                                />
                             </div>
                         </div>
 
-                        {/* Correspondants */}
-                        <div className="form-section correspondants">
-                            <h3>Correspondants</h3>
-                            <div className="form-row two-col">
-                                <div className="form-group">
-                                    <label>Envoyé par</label>
-                                    <input type="text" name="envoye_par" value={formData.envoye_par} onChange={handleChange} />
-                                </div>
-                                <div className="form-group">
-                                    <label>Dentiste</label>
-                                    <input type="text" name="dentiste" value={formData.dentiste} onChange={handleChange} />
-                                </div>
-                            </div>
+                        {/* Form Action Buttons */}
+                        <div className="simplified-form-actions">
+                            <button
+                                type="button"
+                                className="btn-cancel"
+                                onClick={onClose}
+                                disabled={isLoading}
+                            >
+                                Annuler
+                            </button>
+
+                            <button
+                                type="button"
+                                className="btn-secondary-save"
+                                onClick={() => handleSave(false)}
+                                disabled={isLoading}
+                            >
+                                Enregistrer uniquement
+                            </button>
+
+                            <button
+                                type="button"
+                                className="btn-sms-submit"
+                                onClick={() => handleSave(true)}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    'Création en cours...'
+                                ) : (
+                                    <>
+                                        📲 Enregistrer & Envoyer le lien par SMS (Vonage)
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    /* Vonage SMS Confirmation Modal View */
+                    <div className="sms-sent-confirmation-card">
+                        <div className="sms-sent-icon">💬</div>
+                        <h3>SMS d'Invitation Envoyé via Vonage (Sender ID "OrthoMind")</h3>
+                        <p>
+                            Le lien d'accès personnel et sécurisé a été généré et transmis au <strong>{createdPatientData?.portable}</strong> pour le patient <strong>{createdPatientData?.nom} {createdPatientData?.prenom}</strong>.
+                        </p>
+
+                        <div className="patient-link-preview-box">
+                            <span className="link-label">Lien unique généré pour le patient :</span>
+                            <code className="generated-url">
+                                https://orthomind.app/patient/suivi-{createdPatientData?.id?.slice(-8) || '7f89a2b1'}
+                            </code>
                         </div>
 
-                        {/* Famille */}
-                        <div className="form-section famille">
-                            <h3>Création d'une fiche pour un nouveau membre</h3>
-                            <table className="famille-table">
-                                <thead>
-                                    <tr>
-                                        <th></th>
-                                        <th>Prénom</th>
-                                        <th>Sexe</th>
-                                        <th>Date de naissance</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>N°1</td>
-                                        <td><input type="text" name="famille_membre1_prenom" value={formData.famille_membre1_prenom} onChange={handleChange} /></td>
-                                        <td>
-                                            <select name="famille_membre1_sexe" value={formData.famille_membre1_sexe} onChange={handleChange}>
-                                                <option value="">--</option>
-                                                <option value="M">M</option>
-                                                <option value="F">F</option>
-                                            </select>
-                                        </td>
-                                        <td><input type="date" name="famille_membre1_date_naissance" value={formData.famille_membre1_date_naissance} onChange={handleChange} /></td>
-                                    </tr>
-                                    <tr>
-                                        <td>N°2</td>
-                                        <td><input type="text" name="famille_membre2_prenom" value={formData.famille_membre2_prenom} onChange={handleChange} /></td>
-                                        <td>
-                                            <select name="famille_membre2_sexe" value={formData.famille_membre2_sexe} onChange={handleChange}>
-                                                <option value="">--</option>
-                                                <option value="M">M</option>
-                                                <option value="F">F</option>
-                                            </select>
-                                        </td>
-                                        <td><input type="date" name="famille_membre2_date_naissance" value={formData.famille_membre2_date_naissance} onChange={handleChange} /></td>
-                                    </tr>
-                                    <tr>
-                                        <td>N°3</td>
-                                        <td><input type="text" name="famille_membre3_prenom" value={formData.famille_membre3_prenom} onChange={handleChange} /></td>
-                                        <td>
-                                            <select name="famille_membre3_sexe" value={formData.famille_membre3_sexe} onChange={handleChange}>
-                                                <option value="">--</option>
-                                                <option value="M">M</option>
-                                                <option value="F">F</option>
-                                            </select>
-                                        </td>
-                                        <td><input type="date" name="famille_membre3_date_naissance" value={formData.famille_membre3_date_naissance} onChange={handleChange} /></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                            <button className="btn-sms-submit" onClick={handleConfirmSmsSent}>
+                                Accéder à la Fiche Patient ✓
+                            </button>
                         </div>
                     </div>
-
-                    <div className="form-actions">
-                        <button type="button" className="btn-cancel" onClick={onClose}>Quitter</button>
-                        <button type="submit" className="btn-submit" disabled={isLoading}>
-                            {isLoading ? 'Enregistrement...' : 'Enregistrer ✓'}
-                        </button>
-                    </div>
-                </form>
+                )}
             </div>
         </div>
     );
 };
 
 export default PatientForm;
+

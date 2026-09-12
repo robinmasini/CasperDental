@@ -9,8 +9,9 @@ import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import { AudioConsultation } from '../components/AudioConsultation';
 import defaultBookData from '../assets/cgs_volume_61.json';
 import orthomindLogo from '../assets/orthomind-logo.png';
-import logoSeul from '../assets/logo-seul.png';
 import Patients from './Patients';
+import PatientSelector from '../components/PatientSelector';
+import { Patient } from '../services/patientService';
 import orthomindNavIcon from '../assets/Orthomind.png';
 import welcomeCardImg from '../assets/welcomecard.png';
 import drPhoto from '../assets/photo.png';
@@ -211,6 +212,7 @@ const Dashboard = () => {
 
     // Patients & Images Upload State
     const [patientName, setPatientName] = useState('');
+    const [selectedPatientObj, setSelectedPatientObj] = useState<Patient | null>(null);
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const [isProcessingFiles, setIsProcessingFiles] = useState(false);
@@ -1317,9 +1319,18 @@ const Dashboard = () => {
 
                                 {/* Formulaire diagnostic */}
                                 <h2>Nouveau Diagnostic</h2>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '25px' }}>
-                                    Glissez vos fichiers ou sélectionnez-les pour commencer.
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>
+                                    Associez un patient et sélectonnez vos clichés pour commencer.
                                 </p>
+
+                                {/* Patient Selector dropdown & quick create */}
+                                <PatientSelector
+                                    selectedPatient={selectedPatientObj}
+                                    onSelectPatient={(p) => {
+                                        setSelectedPatientObj(p);
+                                        setPatientName(p ? `${p.nom.toUpperCase()} ${p.prenom}` : '');
+                                    }}
+                                />
 
                                 <div className="patient-input-group">
                                     <label>Clichés dentaires (Recommandé : 5-6 photos)</label>
@@ -1495,7 +1506,12 @@ const Dashboard = () => {
                 )}
 
                 {activeTab === 'patients' && (
-                    <Patients />
+                    <Patients 
+                        onSelectPatientForAnalysis={(name) => {
+                            setPatientName(name);
+                            handleTabClick('analyse');
+                        }}
+                    />
                 )}
 
                 {/* TAB 2: KNOWLEDGE BASE PDF UPLOAD */}
