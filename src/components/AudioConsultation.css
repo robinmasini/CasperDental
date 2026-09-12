@@ -855,8 +855,31 @@
 }
 
 /* ==========================================
-   Dual Studio Layout & Audio MP4 Uploader
+   Master Unified Studio Rectangle
    ========================================== */
+
+.audio-studio-unified-card {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 242, 254, 0.25);
+    border-radius: 22px;
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35), inset 0 0 20px rgba(0, 242, 254, 0.04);
+}
+
+.audio-studio-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
 
 .audio-studio-dual-container {
     display: grid;
@@ -871,70 +894,101 @@
     }
 }
 
-.audio-file-uploader-card {
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px dashed rgba(0, 242, 254, 0.3);
-    border-radius: 20px;
-    padding: 24px;
+.audio-recorder-subcard,
+.audio-uploader-subcard {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    align-items: center;
+    text-align: center;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.audio-file-uploader-card:hover {
-    border-color: rgba(0, 242, 254, 0.6);
-    background: rgba(15, 23, 42, 0.85);
+.audio-recorder-subcard.is-recording {
+    border-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.12);
 }
 
-.audio-file-uploader-card.is-dragging {
+.audio-uploader-subcard {
+    border-style: dashed;
+    border-color: rgba(0, 242, 254, 0.3);
+}
+
+.audio-uploader-subcard:hover {
+    border-color: rgba(0, 242, 254, 0.6);
+    background: rgba(0, 242, 254, 0.03);
+}
+
+.audio-uploader-subcard.is-dragging {
     border-color: #00f2fe;
     background: rgba(0, 242, 254, 0.12);
-    box-shadow: 0 0 30px rgba(0, 242, 254, 0.3);
-    transform: scale(1.01);
+    box-shadow: 0 0 25px rgba(0, 242, 254, 0.25);
 }
 
-.uploader-header-row {
+.subcard-header-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 14px;
+    text-align: left;
 }
 
-.uploader-title-group {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.uploader-icon {
-    font-size: 1.6rem;
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    background: rgba(0, 242, 254, 0.1);
-    border: 1px solid rgba(0, 242, 254, 0.25);
+.subcard-icon {
+    font-size: 1.3rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(0, 242, 254, 0.08);
+    border: 1px solid rgba(0, 242, 254, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
 
-.uploader-title-group h3 {
-    margin: 0 0 3px 0;
-    font-size: 1rem;
+.subcard-title {
+    margin: 0;
+    font-size: 0.95rem;
     font-weight: 700;
     color: #ffffff;
 }
 
-.uploader-title-group p {
+.subcard-subtitle {
     margin: 0;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     color: var(--text-secondary, #94a3b8);
+}
+
+.uploader-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.uploader-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.uploader-icon {
+    font-size: 1.3rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(0, 242, 254, 0.08);
+    border: 1px solid rgba(0, 242, 254, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .audio-dropzone {
@@ -942,14 +996,15 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    border: 2px dashed rgba(255, 255, 255, 0.15);
-    border-radius: 14px;
-    padding: 24px 16px;
-    background: rgba(0, 0, 0, 0.25);
+    border: 2px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 20px 14px;
+    background: rgba(0, 0, 0, 0.2);
     cursor: pointer;
     transition: all 0.25s ease;
+    width: 100%;
     flex: 1;
-    min-height: 140px;
+    min-height: 130px;
 }
 
 .audio-dropzone:hover {
@@ -966,23 +1021,23 @@
 }
 
 .dropzone-cloud-icon {
-    font-size: 2rem;
-    margin-bottom: 4px;
+    font-size: 1.8rem;
+    margin-bottom: 2px;
     transition: transform 0.2s ease;
 }
 
 .audio-dropzone:hover .dropzone-cloud-icon {
-    transform: translateY(-3px) scale(1.1);
+    transform: translateY(-2px) scale(1.08);
 }
 
 .dropzone-inner strong {
     color: #ffffff;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
 }
 
 .dropzone-inner span {
     color: var(--text-secondary, #94a3b8);
-    font-size: 0.78rem;
+    font-size: 0.76rem;
 }
 
 .uploaded-file-info {
@@ -992,6 +1047,3 @@
     border-radius: 10px;
     border: 1px solid rgba(0, 242, 254, 0.2);
 }
-
-
-

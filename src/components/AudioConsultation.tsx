@@ -514,225 +514,236 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
     return (
         <div className="audio-consultation-container">
-            {/* Header Banner */}
-            <div className="audio-consultation-header">
-                <div className="audio-title-zone">
-                    <div className="audio-title-icon-wrapper">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                            <line x1="12" y1="19" x2="12" y2="23" />
-                            <line x1="8" y1="23" x2="16" y2="23" />
-                        </svg>
-                    </div>
-                    <div className="audio-title-text">
-                        <h2>
-                            Consultation Audio — OrthoMind
-                            {patientName && (
-                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-cyan)', background: 'rgba(0,242,254,0.1)', padding: '2px 10px', borderRadius: '12px' }}>
-                                    Patient: {patientName}
-                                </span>
-                            )}
-                        </h2>
-                        <p>Enregistrez le dialogue praticien-patient pour générer le diagnostic et le plan de traitement certifié.</p>
-                    </div>
-                </div>
-
-                {/* Provider Selector */}
-                <div className="provider-selector-container">
-                    <span className="provider-label">Moteur :</span>
-                    <select
-                        className="provider-select"
-                        value={provider}
-                        onChange={(e) => setProvider(e.target.value as TranscriptionProvider)}
-                        disabled={recordingState === 'recording' || recordingState === 'paused'}
-                    >
-                        <option value="webspeech">Web Speech (Natif Navigateur - Temps réel)</option>
-                        <option value="whisper-openai">OpenAI Whisper-1 API</option>
-                        <option value="whisper-groq">Groq Whisper Turbo (Ultra-rapide)</option>
-                        <option value="mistral">Mistral Audio API</option>
-                    </select>
-
-                    {provider !== 'webspeech' && (
-                        <button
-                            className="transcript-action-btn"
-                            style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-                            onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-                        >
-                            🔑 {apiKey ? 'Clé configurée' : 'Configurer Clé'}
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* API Key Modal / Drawer if required */}
-            {showApiKeyInput && provider !== 'webspeech' && (
-                <div style={{ background: 'rgba(15, 23, 42, 0.9)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.3)', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <input
-                        type="password"
-                        className="glass-input"
-                        placeholder={`Saisissez votre clé API ${provider === 'whisper-groq' ? 'Groq (gsk_...)' : 'OpenAI/Mistral'}`}
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        style={{ flex: 1 }}
-                    />
-                    <button className="btn-audio-primary start-btn" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={handleSaveApiKey}>
-                        Sauvegarder
-                    </button>
-                </div>
-            )}
-
-            {/* Studio Split Layout: Live Studio (Left) & Audio MP4 Uploader (Right) */}
-            <div className="audio-studio-dual-container">
-                {/* Left Column: Live Recorder Card */}
-                <div className={`audio-recorder-card ${recordingState === 'recording' ? 'is-recording' : ''} ${recordingState === 'paused' ? 'is-paused' : ''}`}>
-                    {/* Status & Timer */}
-                    <div className="recording-status-row">
-                        <div className={`status-badge-recording ${recordingState}`}>
-                            <span className="pulse-dot"></span>
-                            {recordingState === 'idle' && 'Prêt pour l\'enregistrement direct'}
-                            {recordingState === 'recording' && '🔴 Consultation audio en cours...'}
-                            {recordingState === 'paused' && '⏸️ Consultation en pause'}
-                            {recordingState === 'transcribing' && '✨ Retranscription et analyse...'}
-                            {recordingState === 'stopped' && '✓ Consultation audio chargée'}
+            {/* Unified Master Studio Rectangle */}
+            <div className="audio-studio-unified-card">
+                {/* Master Header Row */}
+                <div className="audio-studio-header-row">
+                    <div className="audio-title-zone">
+                        <div className="audio-title-icon-wrapper">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                <line x1="12" y1="19" x2="12" y2="23" />
+                                <line x1="8" y1="23" x2="16" y2="23" />
+                            </svg>
                         </div>
-
-                        <div className="timer-badge">
-                            {formatTime(elapsedSeconds)}
-                        </div>
-                    </div>
-
-                    {/* Equalizer Sound Wave Visualizer */}
-                    <div className="waveform-container">
-                        {Array.from({ length: 16 }).map((_, idx) => (
-                            <div
-                                key={idx}
-                                className="wave-bar"
-                                style={{ height: `${getBarHeight(idx)}px` }}
-                            />
-                        ))}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="audio-controls-row">
-                        {recordingState === 'idle' || recordingState === 'stopped' ? (
-                            <button className="btn-audio-primary start-btn" onClick={handleStartRecording}>
-                                <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-                                Démarrer l'enregistrement micro
-                            </button>
-                        ) : (
-                            <>
-                                {recordingState === 'recording' ? (
-                                    <button className="btn-audio-secondary" onClick={handlePauseRecording}>
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                            <rect x="6" y="4" width="4" height="16" />
-                                            <rect x="14" y="4" width="4" height="16" />
-                                        </svg>
-                                        Pause
-                                    </button>
-                                ) : (
-                                    <button className="btn-audio-secondary" onClick={handleResumeRecording}>
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                            <polygon points="5 3 19 12 5 21 5 3" />
-                                        </svg>
-                                        Reprendre
-                                    </button>
+                        <div className="audio-title-text">
+                            <h2>
+                                Consultation Audio — OrthoMind
+                                {patientName && (
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-cyan)', background: 'rgba(0,242,254,0.1)', padding: '2px 10px', borderRadius: '12px' }}>
+                                        Patient: {patientName}
+                                    </span>
                                 )}
+                            </h2>
+                            <p>Enregistrez en direct le dialogue praticien-patient ou déposez un fichier audio MP4 en cas d'imprévu technique.</p>
+                        </div>
+                    </div>
 
-                                <button className="btn-audio-primary stop-btn" onClick={handleStopRecording}>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                        <rect x="4" y="4" width="16" height="16" rx="2" />
-                                    </svg>
-                                    Terminer l'enregistrement
-                                </button>
-                            </>
-                        )}
+                    {/* Provider Selector */}
+                    <div className="provider-selector-container">
+                        <span className="provider-label">Moteur :</span>
+                        <select
+                            className="provider-select"
+                            value={provider}
+                            onChange={(e) => setProvider(e.target.value as TranscriptionProvider)}
+                            disabled={recordingState === 'recording' || recordingState === 'paused'}
+                        >
+                            <option value="webspeech">Web Speech (Natif Navigateur - Temps réel)</option>
+                            <option value="whisper-openai">OpenAI Whisper-1 API</option>
+                            <option value="whisper-groq">Groq Whisper Turbo (Ultra-rapide)</option>
+                            <option value="mistral">Mistral Audio API</option>
+                        </select>
 
-                        {(recordingState === 'stopped' || transcript || audioUrl) && (
-                            <button className="btn-audio-secondary" onClick={handleReset} style={{ color: '#f87171' }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <polyline points="1 4 1 10 7 10" />
-                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                                </svg>
-                                Réinitialiser
+                        {provider !== 'webspeech' && (
+                            <button
+                                className="transcript-action-btn"
+                                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+                            >
+                                🔑 {apiKey ? 'Clé configurée' : 'Configurer Clé'}
                             </button>
                         )}
                     </div>
-
-                    {/* Status Message Notification */}
-                    {statusMessage && (
-                        <div style={{ marginTop: '15px', fontSize: '0.85rem', color: statusMessage.startsWith('Erreur') ? '#f87171' : 'var(--primary-cyan)', fontWeight: 500 }}>
-                            {statusMessage}
-                        </div>
-                    )}
-
-                    {/* Recorded Audio Playback */}
-                    {audioUrl && (
-                        <div className="audio-player-box">
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Réécoute du fichier audio de la séance :</span>
-                            <audio controls src={audioUrl} className="custom-audio-player" />
-                            <button className="transcript-action-btn" onClick={handleDownloadAudio} style={{ marginTop: '5px' }}>
-                                📥 Télécharger l'audio (.mp4)
-                            </button>
-                        </div>
-                    )}
                 </div>
 
-                {/* Right Column: Audio MP4 Drag & Drop Uploader Card (Analyse Différée) */}
-                <div 
-                    className={`audio-file-uploader-card ${isDraggingFile ? 'is-dragging' : ''}`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDropFile}
-                >
-                    <div className="uploader-header-row">
-                        <div className="uploader-title-group">
-                            <span className="uploader-icon">📁</span>
+                {/* API Key Modal / Drawer if required */}
+                {showApiKeyInput && provider !== 'webspeech' && (
+                    <div style={{ background: 'rgba(15, 23, 42, 0.9)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.3)', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '20px' }}>
+                        <input
+                            type="password"
+                            className="glass-input"
+                            placeholder={`Saisissez votre clé API ${provider === 'whisper-groq' ? 'Groq (gsk_...)' : 'OpenAI/Mistral'}`}
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            style={{ flex: 1 }}
+                        />
+                        <button className="btn-audio-primary start-btn" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={handleSaveApiKey}>
+                            Sauvegarder
+                        </button>
+                    </div>
+                )}
+
+                {/* Dual Grid inside the same rectangle */}
+                <div className="audio-studio-dual-container">
+                    {/* Left Column: Live Micro Recorder Subcard */}
+                    <div className={`audio-recorder-subcard ${recordingState === 'recording' ? 'is-recording' : ''} ${recordingState === 'paused' ? 'is-paused' : ''}`}>
+                        <div className="subcard-header-row">
+                            <span className="subcard-icon">🎙️</span>
                             <div>
-                                <h3>Analyse Différée — Import Audio MP4</h3>
-                                <p>Glissez un fichier audio (.mp4, .m4a, .mp3, .wav) en cas d'imprévu technique</p>
+                                <h3 className="subcard-title">Enregistrement Direct Micro</h3>
+                                <p className="subcard-subtitle">Enregistrement oral en direct pendant la consultation</p>
                             </div>
                         </div>
-                    </div>
 
-                    <label className="audio-dropzone">
-                        <input 
-                            type="file" 
-                            accept="audio/*,.mp4,.m4a,.mp3,.wav" 
-                            onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                    handleAudioFileSelect(e.target.files[0]);
-                                }
-                            }}
-                            style={{ display: 'none' }} 
-                        />
-                        <div className="dropzone-inner">
-                            <span className="dropzone-cloud-icon">🎵</span>
-                            {uploadedFileName ? (
-                                <div className="uploaded-file-info">
-                                    <strong style={{ color: 'var(--primary-cyan)', fontSize: '0.9rem', display: 'block', marginBottom: '2px' }}>
-                                        ✓ {uploadedFileName}
-                                    </strong>
-                                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                                        Fichier chargé. Cliquez pour remplacer.
-                                    </span>
-                                </div>
+                        {/* Status & Timer */}
+                        <div className="recording-status-row">
+                            <div className={`status-badge-recording ${recordingState}`}>
+                                <span className="pulse-dot"></span>
+                                {recordingState === 'idle' && 'Prêt pour l\'enregistrement'}
+                                {recordingState === 'recording' && '🔴 Enregistrement en cours...'}
+                                {recordingState === 'paused' && '⏸️ Consultation en pause'}
+                                {recordingState === 'transcribing' && '✨ Traitement en cours...'}
+                                {recordingState === 'stopped' && '✓ Audio capturé'}
+                            </div>
+
+                            <div className="timer-badge">
+                                {formatTime(elapsedSeconds)}
+                            </div>
+                        </div>
+
+                        {/* Equalizer Sound Wave Visualizer */}
+                        <div className="waveform-container">
+                            {Array.from({ length: 16 }).map((_, idx) => (
+                                <div
+                                    key={idx}
+                                    className="wave-bar"
+                                    style={{ height: `${getBarHeight(idx)}px` }}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="audio-controls-row">
+                            {recordingState === 'idle' || recordingState === 'stopped' ? (
+                                <button className="btn-audio-primary start-btn" onClick={handleStartRecording}>
+                                    <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                                    Démarrer l'enregistrement micro
+                                </button>
                             ) : (
                                 <>
-                                    <strong>Glisser-déposer un fichier audio MP4 ici</strong>
-                                    <span>ou cliquez pour parcourir vos fichiers (.mp4, .m4a, .mp3, .wav)</span>
+                                    {recordingState === 'recording' ? (
+                                        <button className="btn-audio-secondary" onClick={handlePauseRecording}>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <rect x="6" y="4" width="4" height="16" />
+                                                <rect x="14" y="4" width="4" height="16" />
+                                            </svg>
+                                            Pause
+                                        </button>
+                                    ) : (
+                                        <button className="btn-audio-secondary" onClick={handleResumeRecording}>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <polygon points="5 3 19 12 5 21 5 3" />
+                                            </svg>
+                                            Reprendre
+                                        </button>
+                                    )}
+
+                                    <button className="btn-audio-primary stop-btn" onClick={handleStopRecording}>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <rect x="4" y="4" width="16" height="16" rx="2" />
+                                        </svg>
+                                        Terminer
+                                    </button>
                                 </>
                             )}
-                        </div>
-                    </label>
 
-                    {/* Integrated Player for dropped audio */}
-                    {uploadedFileName && audioUrl && (
-                        <div className="audio-player-box" style={{ marginTop: '12px', paddingTop: '10px' }}>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>🔊 Écoute & Contrôle du fichier importé :</span>
-                            <audio controls src={audioUrl} className="custom-audio-player" />
+                            {(recordingState === 'stopped' || transcript || audioUrl) && (
+                                <button className="btn-audio-secondary" onClick={handleReset} style={{ color: '#f87171' }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <polyline points="1 4 1 10 7 10" />
+                                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                                    </svg>
+                                    Réinitialiser
+                                </button>
+                            )}
                         </div>
-                    )}
+
+                        {/* Status Message Notification */}
+                        {statusMessage && (
+                            <div style={{ marginTop: '12px', fontSize: '0.82rem', color: statusMessage.startsWith('Erreur') ? '#f87171' : 'var(--primary-cyan)', fontWeight: 500, textAlign: 'center' }}>
+                                {statusMessage}
+                            </div>
+                        )}
+
+                        {/* Recorded Audio Playback */}
+                        {audioUrl && !uploadedFileName && (
+                            <div className="audio-player-box">
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Réécoute de l'enregistrement micro :</span>
+                                <audio controls src={audioUrl} className="custom-audio-player" />
+                                <button className="transcript-action-btn" onClick={handleDownloadAudio} style={{ marginTop: '4px' }}>
+                                    📥 Télécharger (.mp4)
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Column: Audio MP4 Drag & Drop Uploader Subcard (Analyse Différée) */}
+                    <div 
+                        className={`audio-uploader-subcard ${isDraggingFile ? 'is-dragging' : ''}`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDropFile}
+                    >
+                        <div className="uploader-header-row">
+                            <div className="uploader-title-group">
+                                <span className="uploader-icon">📁</span>
+                                <div>
+                                    <h3 className="subcard-title">Analyse Différée — Import MP4</h3>
+                                    <p className="subcard-subtitle">Glissez un fichier audio en cas d'imprévu technique</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <label className="audio-dropzone">
+                            <input 
+                                type="file" 
+                                accept="audio/*,.mp4,.m4a,.mp3,.wav" 
+                                onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        handleAudioFileSelect(e.target.files[0]);
+                                    }
+                                }}
+                                style={{ display: 'none' }} 
+                            />
+                            <div className="dropzone-inner">
+                                <span className="dropzone-cloud-icon">🎵</span>
+                                {uploadedFileName ? (
+                                    <div className="uploaded-file-info">
+                                        <strong style={{ color: 'var(--primary-cyan)', fontSize: '0.88rem', display: 'block', marginBottom: '2px' }}>
+                                            ✓ {uploadedFileName}
+                                        </strong>
+                                        <span style={{ fontSize: '0.76rem', color: '#94a3b8' }}>
+                                            Fichier chargé. Cliquez pour remplacer.
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <strong>Glisser-déposer un fichier audio MP4 ici</strong>
+                                        <span>ou cliquez pour parcourir vos fichiers (.mp4, .m4a, .mp3, .wav)</span>
+                                    </>
+                                )}
+                            </div>
+                        </label>
+
+                        {/* Integrated Player for dropped audio */}
+                        {uploadedFileName && audioUrl && (
+                            <div className="audio-player-box" style={{ marginTop: '8px', paddingTop: '8px' }}>
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>🔊 Écoute & Contrôle du fichier importé :</span>
+                                <audio controls src={audioUrl} className="custom-audio-player" />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
