@@ -281,7 +281,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
         if (!audioUrl) return;
         const a = document.createElement('a');
         a.href = audioUrl;
-        a.download = `Consultation_Audio_${patientName ? patientName.replace(/\s+/g, '_') : 'Patient'}_${new Date().toISOString().slice(0, 10)}.webm`;
+        a.download = `Consultation_Audio_${patientName ? patientName.replace(/\s+/g, '_') : 'Patient'}_${new Date().toISOString().slice(0, 10)}.mp4`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -572,7 +572,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Réécoute de l'enregistrement de la séance :</span>
                         <audio controls src={audioUrl} className="custom-audio-player" />
                         <button className="transcript-action-btn" onClick={handleDownloadAudio} style={{ marginTop: '5px' }}>
-                            📥 Télécharger le fichier audio (.webm)
+                            📥 Télécharger le fichier audio (.mp4)
                         </button>
                     </div>
                 )}

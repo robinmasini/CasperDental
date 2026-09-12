@@ -182,11 +182,13 @@ export class AudioRecorder {
         this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
         // Setup MediaRecorder
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
-            ? 'audio/webm' 
-            : MediaRecorder.isTypeSupported('audio/mp4') 
-                ? 'audio/mp4' 
-                : 'audio/wav';
+        const mimeType = MediaRecorder.isTypeSupported('audio/mp4') 
+            ? 'audio/mp4' 
+            : MediaRecorder.isTypeSupported('audio/aac')
+                ? 'audio/aac'
+                : MediaRecorder.isTypeSupported('audio/webm') 
+                    ? 'audio/webm' 
+                    : 'audio/wav';
 
         this.mediaRecorder = new MediaRecorder(this.stream, { mimeType });
         this.mediaRecorder.ondataavailable = (event) => {
@@ -265,7 +267,7 @@ export class AudioRecorder {
             }
 
             this.mediaRecorder.onstop = () => {
-                const mimeType = this.mediaRecorder?.mimeType || 'audio/webm';
+                const mimeType = this.mediaRecorder?.mimeType || 'audio/mp4';
                 const audioBlob = new Blob(this.audioChunks, { type: mimeType });
                 const audioUrl = URL.createObjectURL(audioBlob);
 
@@ -281,7 +283,7 @@ export class AudioRecorder {
             if (this.mediaRecorder.state !== 'inactive') {
                 this.mediaRecorder.stop();
             } else {
-                const mimeType = this.mediaRecorder.mimeType || 'audio/webm';
+                const mimeType = this.mediaRecorder.mimeType || 'audio/mp4';
                 const audioBlob = new Blob(this.audioChunks, { type: mimeType });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 resolve({ blob: audioBlob, url: audioUrl });
@@ -303,7 +305,7 @@ export const transcribeAudioWithAPI = async (
     }
 
     const formData = new FormData();
-    formData.append('file', audioBlob, 'consultation_audio.webm');
+    formData.append('file', audioBlob, 'consultation_audio.mp4');
     formData.append('model', provider === 'whisper-groq' ? 'whisper-large-v3-turbo' : 'whisper-1');
     formData.append('language', 'fr');
 
