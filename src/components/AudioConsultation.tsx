@@ -10,6 +10,9 @@ import {
 } from '../services/transcriptionService';
 import { synthesizeAudioConsultation, AnalysisResult } from '../services/geminiService';
 import logoSeul from '../assets/logo-seul.png';
+import OrthoMindDepForm from './OrthoMindDepForm';
+import { extractDepDataFromAnalysis } from '../services/depParser';
+import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 
 interface AudioConsultationProps {
     patientName?: string;
@@ -90,7 +93,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
     const [isSynthesizing, setIsSynthesizing] = useState<boolean>(false);
     const [synthesisStatus, setSynthesisStatus] = useState<string>('');
     const [synthesisResult, setSynthesisResult] = useState<AnalysisResult | null>(null);
-    const [activeSynthesisTab, setActiveSynthesisTab] = useState<'diag' | 'treat'>('diag');
+    const [activeSynthesisTab, setActiveSynthesisTab] = useState<'dep' | 'diag' | 'treat'>('dep');
     const [isReportCopied, setIsReportCopied] = useState<boolean>(false);
     const [isSavedToPatient, setIsSavedToPatient] = useState<boolean>(false);
     const [savedMessage, setSavedMessage] = useState<string>('');
@@ -157,6 +160,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
             const localHistory = JSON.parse(localHistoryStr);
             const targetName = pName.trim() || 'Patient Anonyme';
+            const depData = extractDepDataFromAnalysis(result.diagnostic, result.traitement, targetName, pId);
             
             const newEntry = {
                 id: 'mock-analysis-audio-' + Date.now(),
@@ -167,7 +171,8 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 images: [],
                 diagnostic_text: result.diagnostic,
                 traitement_text: result.traitement,
-                transcript: audioTranscript || transcript || ''
+                transcript: audioTranscript || transcript || '',
+                dep_data: depData
             };
             
             // Prevent exact duplicates
@@ -177,7 +182,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
             }
             setIsSavedToPatient(true);
-            setSavedMessage(`✓ Synthèse rattachée avec succès à la Fiche Patient de ${targetName}`);
+            setSavedMessage(`✓ Synthèse & Fiche DEP rattachées avec succès à la Fiche Patient de ${targetName}`);
         } catch (e) {
             console.error('Failed to save audio synthesis to patient record:', e);
         }
@@ -943,6 +948,14 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
                         <div className="synthesis-tabs-header">
                             <button
+                                className={`synthesis-tab-btn ${activeSynthesisTab === 'dep' ? 'active' : ''}`}
+                                onClick={() => setActiveSynthesisTab('dep')}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', color: activeSynthesisTab === 'dep' ? 'var(--primary-cyan)' : undefined }}
+                            >
+                                <img src={logoSeul} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+                                ★ Fiche DEP (Sécurité Sociale)
+                            </button>
+                            <button
                                 className={`synthesis-tab-btn ${activeSynthesisTab === 'diag' ? 'active' : ''}`}
                                 onClick={() => setActiveSynthesisTab('diag')}
                             >
@@ -1010,7 +1023,18 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
                     {/* Content Box */}
                     <div className="synthesis-content-box">
-                        {activeSynthesisTab === 'diag' ? (
+                        {activeSynthesisTab === 'dep' ? (
+                            <OrthoMindDepForm
+                                depData={extractDepDataFromAnalysis(synthesisResult.diagnostic, synthesisResult.traitement, patientName, selectedPatientId)}
+                                patientName={patientName}
+                                patientId={selectedPatientId}
+                                onSave={(updatedData) => {
+                                    if (synthesisResult) {
+                                        saveSynthesisToPatientRecord(synthesisResult, patientName, selectedPatientId, transcript);
+                                    }
+                                }}
+                            />
+                        ) : activeSynthesisTab === 'diag' ? (
                             <div>
                                 <h3 style={{ color: 'var(--primary-cyan)', fontSize: '1.05rem', marginTop: 0, marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1027,7 +1051,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                         <polygon points="12 2 2 7 12 12 22 7 12 2" />
                                         <polyline points="2 17 12 22 22 17" />
-                                        <polyline points="2 12 12 17 22 12" />
+                                        <polyline points="2 12 17 22 12" />
                                     </svg>
                                     Stratégie Thérapeutique Conseillée & Sequence d'Aligneurs
                                 </h3>

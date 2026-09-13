@@ -13,6 +13,8 @@ import logoSeul from '../assets/logo-seul.png';
 import Patients from './Patients';
 import PatientSelector from '../components/PatientSelector';
 import { Patient } from '../services/patientService';
+import OrthoMindDepForm from '../components/OrthoMindDepForm';
+import { extractDepDataFromAnalysis } from '../services/depParser';
 import orthomindNavIcon from '../assets/Orthomind.png';
 import welcomeCardImg from '../assets/welcomecard.png';
 import drPhoto from '../assets/photo.png';
@@ -795,17 +797,19 @@ const Dashboard = () => {
                         );
                         
                         addLog('[SYSTEM] Enregistrement du rapport dans la base de données Supabase...');
+                        const depData = extractDepDataFromAnalysis(result.diagnostic, result.traitement, currentPatient, selectedPatientObj?.id);
                         const { error } = await supabase.from('dental_analyses').insert({
                             user_id: supabaseUser.id,
                             patient_name: currentPatient,
                             images: imageUrls,
                             diagnostic_text: result.diagnostic,
-                            traitement_text: result.traitement
+                            traitement_text: result.traitement,
+                            dep_data: depData
                         });
                         
                         if (!error) {
                             savedToSupabase = true;
-                            addLog('[SYSTEM] Rapport et clichés enregistrés avec succès sur Supabase.');
+                            addLog('[SYSTEM] Rapport, Fiche DEP et clichés enregistrés avec succès sur Supabase.');
                         } else {
                             console.warn('Failed to save to Supabase database, falling back to local history:', error.message);
                             addLog('[WARNING] Échec de l\'écriture en base. Sauvegarde locale de secours.');
@@ -830,19 +834,22 @@ const Dashboard = () => {
                         }
                     }
 
+                    const depData = extractDepDataFromAnalysis(result.diagnostic, result.traitement, currentPatient, selectedPatientObj?.id);
                     const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
                     const localHistory = JSON.parse(localHistoryStr);
                     const newAnalysis = {
                         id: 'mock-analysis-' + Date.now(),
                         patient_name: currentPatient,
+                        patient_id: selectedPatientObj?.id || '',
                         created_at: new Date().toISOString(),
                         images: base64Images,
                         diagnostic_text: result.diagnostic,
-                        traitement_text: result.traitement
+                        traitement_text: result.traitement,
+                        dep_data: depData
                     };
                     localHistory.unshift(newAnalysis);
                     localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
-                    console.log('Saved analysis locally.');
+                    console.log('Saved analysis locally with DEP form.');
                 }
                 
                 // Refresh history
@@ -1447,6 +1454,14 @@ const Dashboard = () => {
 
                                     <div className="results-tabs">
                                         <button 
+                                            className={`results-tab-btn ${activeResultTab === 'dep' ? 'active' : ''}`}
+                                            onClick={() => setActiveResultTab('dep')}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', color: activeResultTab === 'dep' ? 'var(--primary-cyan)' : undefined }}
+                                        >
+                                            <img src={logoSeul} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+                                            ★ Fiche DEP (Sécurité Sociale)
+                                        </button>
+                                        <button 
                                             className={`results-tab-btn ${activeResultTab === 'diag' ? 'active' : ''}`}
                                             onClick={() => setActiveResultTab('diag')}
                                         >
@@ -1462,7 +1477,28 @@ const Dashboard = () => {
                                 </div>
 
                                 <div className="results-split-container">
-                                    {activeResultTab === 'diag' ? (
+                                    {activeResultTab === 'dep' ? (
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <OrthoMindDepForm
+                                                depData={extractDepDataFromAnalysis(analysisResult.diagnostic, analysisResult.traitement, patientName, selectedPatientObj?.id)}
+                                                patientName={patientName}
+                                                patientId={selectedPatientObj?.id}
+                                                onSave={(updatedData) => {
+                                                    try {
+                                                        const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
+                                                        const localHistory = JSON.parse(localHistoryStr);
+                                                        if (localHistory.length > 0) {
+                                                            localHistory[0].dep_data = updatedData;
+                                                            localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
+                                                        }
+                                                        alert(`✓ Fiche Diagnostic DEP de ${patientName || 'Patient'} enregistrée avec succès dans sa Fiche Patient !`);
+                                                    } catch (e) {
+                                                        console.error(e);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    ) : activeResultTab === 'diag' ? (
                                         <div className="results-content-box" style={{ gridColumn: '1 / -1' }}>
                                             <h3>
                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-cyan)" strokeWidth="2.5">

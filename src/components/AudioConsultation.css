@@ -247,18 +247,18 @@
 }
 
 .btn-audio-primary.start-btn {
-    background: #ffffff;
-    color: #0b1120;
-    font-weight: 700;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
+    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    color: #090d16;
+    font-weight: 800;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0, 242, 254, 0.45);
 }
 
 .btn-audio-primary.start-btn:hover {
-    background: #ffffff;
-    color: #060913;
+    background: linear-gradient(135deg, #38bdf8 0%, #00f2fe 100%);
+    color: #000000;
     transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(255, 255, 255, 0.35);
+    box-shadow: 0 6px 30px rgba(0, 242, 254, 0.7);
 }
 
 .btn-audio-primary.stop-btn {
@@ -514,23 +514,22 @@
     gap: 10px;
     padding: 14px 28px;
     border-radius: var(--radius-lg, 16px);
-    background: #ffffff;
-    color: #0b1120;
+    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    color: #090d16;
     font-family: var(--font-display, sans-serif);
-    font-weight: 700;
+    font-weight: 800;
     font-size: 0.98rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: none;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 25px rgba(0, 242, 254, 0.45);
     transition: var(--transition-smooth);
 }
 
 .btn-synthesis-launch:hover:not(:disabled) {
-    background: #ffffff;
-    color: #060913;
+    background: linear-gradient(135deg, #38bdf8 0%, #00f2fe 100%);
+    color: #000000;
     transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(255, 255, 255, 0.35);
-    border-color: #ffffff;
+    box-shadow: 0 6px 35px rgba(0, 242, 254, 0.7);
 }
 
 .btn-synthesis-launch:disabled {

@@ -3,6 +3,10 @@ import { Patient, getPatients } from '../services/patientService';
 import { getAppointmentsByPatientId, Appointment as DBAppointment } from '../services/appointmentService';
 import PatientForm from '../components/PatientForm';
 import PatientPortal from './PatientPortal';
+import OrthoMindDepForm from '../components/OrthoMindDepForm';
+import { extractDepDataFromAnalysis } from '../services/depParser';
+import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
+import logoSeul from '../assets/logo-seul.png';
 import './Patients.css';
 
 interface DisplayPatient {
@@ -69,7 +73,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedPatient, setSelectedPatient] = useState<DisplayPatient | null>(null);
-    const [activeTab, setActiveTab] = useState<'diagnostic' | 'synthese' | 'rdv' | 'administratif'>('diagnostic');
+    const [activeTab, setActiveTab] = useState<'diagnostic' | 'dep' | 'synthese' | 'rdv' | 'administratif'>('dep');
     const [showForm, setShowForm] = useState(false);
     const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([]);
     const [loadingAppointments, setLoadingAppointments] = useState(false);
@@ -77,6 +81,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [showImmersionModal, setShowImmersionModal] = useState(false);
     const [patientAnalyses, setPatientAnalyses] = useState<any[]>([]);
     const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
+    const [currentDepData, setCurrentDepData] = useState<OrthoMindDepData | null>(null);
 
     const toggleSessionExpanded = (sessionKey: string) => {
         setExpandedSessionIds(prev => ({
@@ -140,11 +145,30 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                 });
                 setPatientAnalyses(matched);
 
-                // Default: Open the first/latest session automatically as a drawer
+                // Initialize DEP Form data for the selected patient
                 if (matched.length > 0) {
-                    const firstKey = matched[0].id || 'session-0';
+                    const latest = matched[0];
+                    if (latest.dep_data) {
+                        setCurrentDepData(latest.dep_data);
+                    } else {
+                        const parsed = extractDepDataFromAnalysis(
+                            latest.diagnostic_text || '',
+                            latest.traitement_text || '',
+                            `${selectedPatient.nom} ${selectedPatient.prenom}`,
+                            selectedPatient.id
+                        );
+                        setCurrentDepData(parsed);
+                    }
+                    const firstKey = latest.id || 'session-0';
                     setExpandedSessionIds({ [firstKey]: true });
                 } else {
+                    const defaultDep = createDefaultDepData(
+                        selectedPatient.nom,
+                        selectedPatient.prenom,
+                        selectedPatient.id.slice(-4),
+                        selectedPatient.id
+                    );
+                    setCurrentDepData(defaultDep);
                     setExpandedSessionIds({});
                 }
             } catch (e) {
@@ -395,6 +419,14 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                     {/* Tabs */}
                     <div className="patient-tabs">
                         <button
+                            className={`tab ${activeTab === 'dep' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('dep')}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', color: activeTab === 'dep' ? 'var(--primary-cyan)' : undefined }}
+                        >
+                            <img src={logoSeul} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+                            ★ FICHE DEP SÉCURITÉ SOCIALE
+                        </button>
+                        <button
                             className={`tab ${activeTab === 'diagnostic' ? 'active' : ''}`}
                             onClick={() => setActiveTab('diagnostic')}
                         >
@@ -422,6 +454,56 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
                     {/* Tab Content */}
                     <div className="tab-content">
+                        {activeTab === 'dep' && (
+                            <div>
+                                <div style={{ background: 'rgba(0, 242, 254, 0.06)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '14px', padding: '12px 18px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <img src={logoSeul} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
+                                        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#ffffff' }}>
+                                            Fiche Diagnostic DEP Renseignements Médicaux (Sécurité Sociale) — OrthoMind
+                                        </span>
+                                    </div>
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--primary-cyan)', background: 'rgba(0, 242, 254, 0.1)', padding: '3px 10px', borderRadius: '12px', fontWeight: 600 }}>
+                                        ✓ Remplie automatiquement lors de l'analyse patient
+                                    </span>
+                                </div>
+
+                                <OrthoMindDepForm
+                                    depData={currentDepData || createDefaultDepData(selectedPatient.nom, selectedPatient.prenom, selectedPatient.id.slice(-4), selectedPatient.id)}
+                                    patientName={`${selectedPatient.nom} ${selectedPatient.prenom}`}
+                                    patientId={selectedPatient.id}
+                                    onSave={(updatedData) => {
+                                        setCurrentDepData(updatedData);
+                                        try {
+                                            const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
+                                            const localHistory = JSON.parse(localHistoryStr);
+                                            const idx = localHistory.findIndex((h: any) => 
+                                                (h.patient_name || '').toLowerCase().includes(selectedPatient.nom.toLowerCase()) ||
+                                                h.patient_id === selectedPatient.id
+                                            );
+                                            if (idx !== -1) {
+                                                localHistory[idx].dep_data = updatedData;
+                                            } else {
+                                                localHistory.unshift({
+                                                    id: 'mock-analysis-dep-' + Date.now(),
+                                                    patient_name: `${selectedPatient.nom} ${selectedPatient.prenom}`,
+                                                    patient_id: selectedPatient.id,
+                                                    created_at: new Date().toISOString(),
+                                                    diagnostic_text: 'Diagnostic DEP saisi manuellement',
+                                                    traitement_text: updatedData.planDeTraitement,
+                                                    dep_data: updatedData
+                                                });
+                                            }
+                                            localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
+                                            alert(`✓ Fiche Diagnostic DEP de ${selectedPatient.prenom} enregistrée avec succès sur sa Fiche Patient !`);
+                                        } catch (err) {
+                                            console.error('Error saving DEP form:', err);
+                                        }
+                                    }}
+                                />
+                            </div>
+                        )}
+
                         {activeTab === 'diagnostic' && (
                             <div className="diagnostic-content">
                                 <div className="diagnostic-header">
@@ -553,7 +635,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
                                                             {/* Transcript if present */}
                                                             {ana.transcript && (
-                                                                <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '12px 14px', borderRadius: '10px', marginTop: '10px' }}>
+                                                                <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '12px 14px', borderRadius: '10px', marginTop: '10px', marginBottom: '14px' }}>
                                                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
                                                                         🗣️ Verbatim / Retranscription Audio de la consultation :
                                                                     </span>
@@ -562,6 +644,39 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                                                     </p>
                                                                 </div>
                                                             )}
+
+                                                            {/* OrthoMind DEP Diagnostic Form for this session */}
+                                                            <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '16px' }}>
+                                                                <h5 style={{ color: 'var(--primary-cyan)', margin: '0 0 10px 0', fontSize: '0.86rem', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                    <img src={logoSeul} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                                                                    Fiche Diagnostic DEP Renseignements Médicaux (Sécurité Sociale)
+                                                                </h5>
+                                                                <OrthoMindDepForm
+                                                                    depData={ana.dep_data || extractDepDataFromAnalysis(
+                                                                        ana.diagnostic_text || '',
+                                                                        ana.traitement_text || '',
+                                                                        `${selectedPatient.nom} ${selectedPatient.prenom}`,
+                                                                        selectedPatient.id
+                                                                    )}
+                                                                    patientName={`${selectedPatient.nom} ${selectedPatient.prenom}`}
+                                                                    patientId={selectedPatient.id}
+                                                                    readOnly={false}
+                                                                    onSave={(updatedDep) => {
+                                                                        try {
+                                                                            const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
+                                                                            const localHistory = JSON.parse(localHistoryStr);
+                                                                            const matchIdx = localHistory.findIndex((h: any) => h.id === ana.id);
+                                                                            if (matchIdx !== -1) {
+                                                                                localHistory[matchIdx].dep_data = updatedDep;
+                                                                                localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
+                                                                            }
+                                                                            alert('✓ Fiche Diagnostic DEP de la séance mise à jour avec succès !');
+                                                                        } catch (e) {
+                                                                            console.error(e);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
