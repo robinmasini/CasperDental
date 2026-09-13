@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import logoSeul from '../assets/logo-seul.png';
 import orthomindLogo from '../assets/orthomind-logo.png';
+import casperLogoWelcome from '../assets/casper-logo-welcome.png';
 import './PatientPortal.css';
 
 interface PatientPortalProps {
@@ -85,12 +86,18 @@ export const PatientPortal = ({ patientData, onCloseImmersion }: PatientPortalPr
                     </div>
                 </div>
 
-                {/* Status Notice Banner */}
-                <div className="portal-notice">
-                    <div className="notice-icon">📲</div>
-                    <div>
-                        <strong>Bonjour {patientFirstName}, bienvenue sur votre espace de suivi !</strong>
-                        <p>Complétez votre fiche de suivi orthodontique en direct avec le cabinet du {praticienName}.</p>
+                {/* Welcome Card Banner with Casper Robot Mascot */}
+                <div className="portal-notice-card">
+                    <div className="robot-badge-wrapper">
+                        <img src={casperLogoWelcome} alt="Casper Robot Mascot" className="robot-mascot-img" />
+                    </div>
+                    <div className="portal-notice-text">
+                        <h2 className="patient-greeting-title">
+                            Bonjour {patientFirstName}, bienvenue sur votre espace de suivi !
+                        </h2>
+                        <p className="patient-greeting-subtitle">
+                            Complétez votre fiche de suivi orthodontique en direct avec le cabinet du <strong>{praticienName}</strong>.
+                        </p>
                     </div>
                 </div>
 
@@ -140,7 +147,7 @@ export const PatientPortal = ({ patientData, onCloseImmersion }: PatientPortalPr
                             </div>
                         </div>
 
-                        <button className="btn-submit-portal" onClick={() => setIsSubmitted(false)}>
+                        <button className="btn-submit-portal-white" onClick={() => setIsSubmitted(false)}>
                             ✏️ Modifier mes informations
                         </button>
                     </div>
@@ -192,8 +199,9 @@ export const PatientPortal = ({ patientData, onCloseImmersion }: PatientPortalPr
                                     />
                                 </div>
 
-                                <button type="submit" className="btn-submit-portal">
-                                    📲 Transmettre ma fiche au cabinet
+                                <button type="submit" className="btn-submit-portal-white">
+                                    <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                                    Transmettre ma fiche au cabinet
                                 </button>
                             </form>
                         )}
@@ -203,7 +211,7 @@ export const PatientPortal = ({ patientData, onCloseImmersion }: PatientPortalPr
                             <div className="portal-section-photo">
                                 <div className="portal-section-title">
                                     <h3>2. Cliché de Suivi du Sourire</h3>
-                                    <p>Prenez une photo nette de vos dents de face pour l'analyse IA de votre praticien.</p>
+                                    <p>Prenez une photo nette de vos dents de face pour l'analyse de votre praticien.</p>
                                 </div>
 
                                 <div className="photo-upload-box">
@@ -224,7 +232,7 @@ export const PatientPortal = ({ patientData, onCloseImmersion }: PatientPortalPr
                                     )}
                                 </div>
 
-                                <button className="btn-submit-portal" onClick={() => setActiveTab('fiche')}>
+                                <button className="btn-submit-portal-white" onClick={() => setActiveTab('fiche')}>
                                     Continuer vers la transmission →
                                 </button>
                             </div>
@@ -263,7 +271,7 @@ export const PatientPortal = ({ patientData, onCloseImmersion }: PatientPortalPr
                 {/* Footer Brand */}
                 <div className="portal-footer">
                     <img src={orthomindLogo} alt="OrthoMind" className="footer-logo" />
-                    <span>Propulsé par OrthoMind AI — Sécurité et Confidentialité Données Santé</span>
+                    <span>Propulsé par OrthoMind — Sécurité et Confidentialité Données Santé</span>
                 </div>
             </div>
         </div>
@@ -271,3 +279,4 @@ export const PatientPortal = ({ patientData, onCloseImmersion }: PatientPortalPr
 };
 
 export default PatientPortal;
+
