@@ -97,7 +97,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             const data = await getPatients();
             const displayPatients = data.map(convertToDisplayPatient);
             setPatients(displayPatients);
-            if (displayPatients.length > 0) {
+            if (displayPatients.length > 0 && window.innerWidth > 768) {
                 setSelectedPatient(displayPatients[0]);
             }
             setLoading(false);
@@ -328,13 +328,39 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             {/* Right Panel - Patient Details */}
             {selectedPatient ? (
                 <div className="patient-details-panel">
+                    {/* Dedicated Mobile Header Bar with Close / Back Button */}
+                    <div className="mobile-details-top-bar">
+                        <button
+                            className="btn-back-patients-mobile"
+                            onClick={() => setSelectedPatient(null)}
+                        >
+                            ← Retour aux patients
+                        </button>
+                        <button
+                            className="btn-close-mobile-x"
+                            onClick={() => setSelectedPatient(null)}
+                            aria-label="Fermer la fiche patient"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
                     {/* Explicit Espace Praticien Header Banner */}
                     <div style={{ background: 'rgba(0, 242, 254, 0.05)', border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '12px', padding: '10px 16px', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary-cyan)', fontSize: '0.82rem', fontWeight: 700 }}>
                             <span style={{ fontSize: '1rem' }}>🔒</span> ESPACE PRATICIEN — FICHE PATIENT CONFIDENTIELLE (Partagée Cabinet)
                         </div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                            Dossier consultable par l'équipe du cabinet • Lien SMS Vonage généré pour le patient
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                Dossier consultable par l'équipe du cabinet • Lien SMS Vonage généré pour le patient
+                            </div>
+                            <button
+                                className="btn-close-desktop-fiche"
+                                onClick={() => setSelectedPatient(null)}
+                                title="Fermer la fiche patient"
+                            >
+                                ✕ Fermer
+                            </button>
                         </div>
                     </div>
 
