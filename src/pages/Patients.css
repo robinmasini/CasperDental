@@ -1,9 +1,11 @@
 /* ===== LIQUID GLASS PATIENTS THEME (DARK) ===== */
 .patients-container {
     display: flex;
-    height: 100%;
+    height: calc(100vh - 100px);
+    max-height: calc(100vh - 100px);
     background: transparent;
     gap: 1rem;
+    overflow: hidden;
 }
 
 /* Left Panel - Patient List */
@@ -132,6 +134,9 @@
 /* Right Panel - Patient Details */
 .patient-details-panel {
     flex: 1;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
     background: var(--bg-panel);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
@@ -275,8 +280,10 @@
 /* Tab Content */
 .tab-content {
     flex: 1;
+    min-height: 0;
     padding: 1.5rem;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Diagnostic Tab */
@@ -655,6 +662,11 @@
     .patient-tabs .tab {
         padding: 0.85rem 1rem;
         font-size: 0.75rem;
+    }
+
+    .tab-content {
+        overflow-y: visible;
+        flex: none;
     }
 }
 
