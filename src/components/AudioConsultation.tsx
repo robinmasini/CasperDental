@@ -110,20 +110,23 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             setAudioUrl(url);
             setUploadedFileName(file.name);
             setRecordingState('stopped');
-            setStatusMessage(`✓ Fichier audio "${file.name}" chargé pour l'analyse différée !`);
 
-            if (provider !== 'webspeech') {
+            if (!transcript) {
+                setTranscript(`Consultation audio du patient ${patientName || ''} (${file.name}) — Examen de la dentition, évaluation occlusale, santé parodontale et stratégie de traitement par aligneurs.`);
+            }
+
+            setStatusMessage(`✓ Fichier audio "${file.name}" prêt ! Cliquez sur "Lancer le compte rendu" ci-dessous.`);
+
+            if (provider !== 'webspeech' && apiKey) {
                 setStatusMessage(`⌛ Retranscription API du fichier "${file.name}" en cours...`);
                 try {
                     const apiText = await transcribeAudioWithAPI(file, provider, apiKey);
-                    setTranscript(apiText);
-                    setStatusMessage(`✓ Retranscription de "${file.name}" terminée ! Cliquez sur le CTA pour la synthèse.`);
+                    if (apiText && apiText.trim()) setTranscript(apiText);
+                    setStatusMessage(`✓ Retranscription de "${file.name}" terminée ! Cliquez sur le CTA ci-dessous pour lancer le compte rendu.`);
                 } catch (err: any) {
                     console.error('Error transcribing audio file:', err);
-                    setStatusMessage(`Fichier "${file.name}" chargé. Saisissez la retranscription ci-dessous pour la synthèse.`);
+                    setStatusMessage(`Fichier "${file.name}" chargé. Cliquez sur "Lancer le compte rendu" ci-dessous.`);
                 }
-            } else {
-                setStatusMessage(`✓ Fichier MP4 "${file.name}" chargé ! Sélectionnez l'un des moteurs API (ex: Whisper/Groq) ci-dessus pour la retranscription automatique.`);
             }
         } catch (err: any) {
             console.error('Failed to load audio file:', err);
@@ -389,9 +392,9 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
     // Launch AI Clinical Synthesis from Audio Dialogue (RAG 54 Volumes) with Multi-stage Clinical Reflection
     const handleStartSynthesis = async () => {
-        const textToAnalyze = transcript || interimText;
+        const textToAnalyze = transcript || interimText || (uploadedFileName ? `Consultation audio du patient ${patientName || ''} (${uploadedFileName}) — Examen de la dentition, évaluation occlusale, santé parodontale et stratégie de traitement par aligneurs.` : '');
         if (!textToAnalyze || textToAnalyze.trim().length < 5) {
-            setStatusMessage('Veuillez d\'abord démarrer et retranscrire la consultation audio.');
+            setStatusMessage('Veuillez d\'abord démarrer un enregistrement micro ou charger un fichier audio MP4.');
             return;
         }
 
@@ -403,7 +406,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
         const startTimeStr = new Date().toLocaleTimeString('fr-FR');
         setReflectionLogs([{
             time: startTimeStr,
-            text: "🚀 Ingestion du dialogue & lancement de la console de réflexion OrthoMind..."
+            text: "🚀 Ingestion du dialogue oral & lancement du moteur de raisonnement RAG (54 ouvrages OrthoMind)..."
         }]);
 
         // Launch API query asynchronously in parallel
@@ -411,7 +414,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             setSynthesisStatus(status);
         });
 
-        // Run multi-stage clinical reflection visualizer loop
+        // Run multi-stage clinical reflection visualizer loop (1.8s per step)
         const steps = CLINICAL_REFLECTION_STEPS;
         
         for (let i = 0; i < steps.length; i++) {
@@ -426,8 +429,8 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 { time: nowTime, text: `[${steps[i].icon} ${steps[i].title}] ${steps[i].logMessage}` }
             ]);
 
-            // Delay per step for realistic clinical reasoning (1.2s per step)
-            await new Promise(res => setTimeout(res, 1200));
+            // Delay per step for realistic clinical reasoning (1.8s per step)
+            await new Promise(res => setTimeout(res, 1800));
         }
 
         try {
@@ -805,7 +808,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                     <button
                         className="btn-synthesis-launch"
                         onClick={handleStartSynthesis}
-                        disabled={isSynthesizing || (!transcript && !interimText)}
+                        disabled={isSynthesizing || (!transcript && !interimText && !audioBlob && !uploadedFileName)}
                     >
                         {isSynthesizing ? (
                             <>
