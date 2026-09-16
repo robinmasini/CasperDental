@@ -815,7 +815,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                         ) : (
                             <>
                                 <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-                                Lancer la Synthèse Clinique
+                                Lancer le compte rendu
                             </>
                         )}
                     </button>

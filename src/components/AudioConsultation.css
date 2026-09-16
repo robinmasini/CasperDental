@@ -247,18 +247,18 @@
 }
 
 .btn-audio-primary.start-btn {
-    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    background: #ffffff;
     color: #090d16;
     font-weight: 800;
-    border: none;
-    box-shadow: 0 4px 20px rgba(0, 242, 254, 0.45);
+    border: 1px solid #ffffff;
+    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
 }
 
 .btn-audio-primary.start-btn:hover {
-    background: linear-gradient(135deg, #38bdf8 0%, #00f2fe 100%);
+    background: #ffffff;
     color: #000000;
     transform: translateY(-2px);
-    box-shadow: 0 6px 30px rgba(0, 242, 254, 0.7);
+    box-shadow: 0 6px 30px rgba(255, 255, 255, 0.5), 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
 .btn-audio-primary.stop-btn {
@@ -426,21 +426,23 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
-    color: #ffffff;
-    border: none;
+    background: #ffffff;
+    color: #090d16;
+    border: 1px solid #ffffff;
     padding: 10px 20px;
     border-radius: 10px;
-    font-weight: 600;
+    font-weight: 800;
     font-size: 0.88rem;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.25);
 }
 
 .btn-generate-ai:hover {
+    background: #ffffff;
+    color: #000000;
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(0, 242, 254, 0.5);
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.4);
 }
 
 /* ==========================================
@@ -514,22 +516,22 @@
     gap: 10px;
     padding: 14px 28px;
     border-radius: var(--radius-lg, 16px);
-    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    background: #ffffff;
     color: #090d16;
     font-family: var(--font-display, sans-serif);
     font-weight: 800;
     font-size: 0.98rem;
-    border: none;
+    border: 1px solid #ffffff;
     cursor: pointer;
-    box-shadow: 0 4px 25px rgba(0, 242, 254, 0.45);
+    box-shadow: 0 4px 25px rgba(255, 255, 255, 0.3);
     transition: var(--transition-smooth);
 }
 
 .btn-synthesis-launch:hover:not(:disabled) {
-    background: linear-gradient(135deg, #38bdf8 0%, #00f2fe 100%);
+    background: #ffffff;
     color: #000000;
     transform: translateY(-2px);
-    box-shadow: 0 6px 35px rgba(0, 242, 254, 0.7);
+    box-shadow: 0 6px 35px rgba(255, 255, 255, 0.5), 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
 .btn-synthesis-launch:disabled {
