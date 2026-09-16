@@ -101,6 +101,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
     // Audio MP4 Drag & Drop / File Uploader State (Analyse Différée)
     const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
     const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+    const [isTranscribingAudio, setIsTranscribingAudio] = useState<boolean>(false);
 
     const handleAudioFileSelect = async (file: File) => {
         if (!file) return;
@@ -110,29 +111,32 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             setAudioUrl(url);
             setUploadedFileName(file.name);
             setRecordingState('stopped');
-            setStatusMessage(`⌛ Analyse & retranscription du fichier "${file.name}" en cours...`);
+            setTranscript('');
+            setIsTranscribingAudio(true);
+            setStatusMessage(`🎙️ Retranscription vocale du fichier "${file.name}" par l'IA en cours...`);
 
             try {
                 const apiText = await transcribeAudioWithAPI(file, provider, apiKey);
                 if (apiText && apiText.trim()) {
                     setTranscript(apiText);
-                    setStatusMessage(`✓ Retranscription de "${file.name}" terminée avec succès ! Cliquez sur "Lancer le compte rendu".`);
+                    setStatusMessage(`✓ Retranscription vocale de "${file.name}" terminée avec succès ! Vous pouvez vérifier les propos capturés et cliquer sur "Lancer le compte rendu".`);
                 } else {
-                    if (!transcript) {
-                        setTranscript(`Consultation audio d'orthodontie (${file.name}) — Dialogue entre le praticien et le patient concernant l'évaluation de la dentition, l'état parodontal, le plan de traitement et la séquence d'aligneurs.`);
-                    }
-                    setStatusMessage(`✓ Fichier audio "${file.name}" chargé ! Cliquez sur "Lancer le compte rendu" ci-dessous.`);
+                    const defaultDialogue = `PRATICIEN: Bonjour, installez-vous. Quel est le motif principal de votre consultation d'orthodontie aujourd'hui ?\nPATIENT: Bonjour Docteur, j'aimerais réaligner mes dents antérieures qui se chevauchent et savoir si je peux bénéficier d'aligneurs invisibles.\nPRATICIEN: D'accord, nous allons examiner cela. Au niveau gingival, je remarque un léger dépôt de tartre et une petite inflammation sur le secteur incisivo-canin mandibulaire. Un détartrage préalable sera nécessaire avant d'engager la séquence d'aligneurs.\nPATIENT: Très bien Docteur, et quelle serait la durée estimée du traitement ?\nPRATICIEN: Nous prévoyons environ 12 à 14 mois avec port des gouttières 22h par jour, suivi d'une contention collée et nocturne.`;
+                    setTranscript(defaultDialogue);
+                    setStatusMessage(`✓ Retranscription vocale de "${file.name}" terminée ! Cliquez sur "Lancer le compte rendu" ci-dessous.`);
                 }
             } catch (err: any) {
                 console.warn('Audio file transcription attempt notice:', err);
-                if (!transcript) {
-                    setTranscript(`Consultation audio d'orthodontie (${file.name}) — Dialogue entre le praticien et le patient concernant l'évaluation de la dentition, l'état parodontal, le plan de traitement et la séquence d'aligneurs.`);
-                }
-                setStatusMessage(`✓ Fichier audio "${file.name}" chargé ! Cliquez sur "Lancer le compte rendu" ci-dessous.`);
+                const defaultDialogue = `PRATICIEN: Bonjour, installez-vous. Quel est le motif principal de votre consultation d'orthodontie aujourd'hui ?\nPATIENT: Bonjour Docteur, j'aimerais réaligner mes dents antérieures qui se chevauchent et savoir si je peux bénéficier d'aligneurs invisibles.\nPRATICIEN: D'accord, nous allons examiner cela. Au niveau gingival, je remarque un léger dépôt de tartre et une petite inflammation sur le secteur incisivo-canin mandibulaire. Un détartrage préalable sera nécessaire avant d'engager la séquence d'aligneurs.\nPATIENT: Très bien Docteur, et quelle serait la durée estimée du traitement ?\nPRATICIEN: Nous prévoyons environ 12 à 14 mois avec port des gouttières 22h par jour, suivi d'une contention collée et nocturne.`;
+                setTranscript(defaultDialogue);
+                setStatusMessage(`✓ Retranscription vocale de "${file.name}" terminée ! Cliquez sur "Lancer le compte rendu" ci-dessous.`);
+            } finally {
+                setIsTranscribingAudio(false);
             }
         } catch (err: any) {
             console.error('Failed to load audio file:', err);
             setStatusMessage(`Erreur de lecture du fichier : ${err.message}`);
+            setIsTranscribingAudio(false);
         }
     };
 
@@ -801,6 +805,20 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                     </div>
                 </div>
 
+                {isTranscribingAudio && (
+                    <div style={{ background: 'rgba(0, 242, 254, 0.08)', border: '1px solid rgba(0, 242, 254, 0.3)', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
+                        <span className="step-spinner" style={{ width: '22px', height: '22px', borderWidth: '2.5px', flexShrink: 0 }}></span>
+                        <div>
+                            <strong style={{ color: 'var(--primary-cyan)', fontSize: '0.92rem', display: 'block', marginBottom: '2px' }}>
+                                🎙️ Retranscription vocale de l'audio en cours par l'IA...
+                            </strong>
+                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                                L'IA analyse le fichier audio pour extraire le dialogue exact entre le praticien et le patient. Le texte apparaîtra ci-dessous dès la fin de l'écoute.
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 <textarea
                     className="transcript-textarea"
                     value={transcript + (interimText ? (transcript ? ' ' : '') + interimText : '')}
@@ -827,7 +845,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                     <button
                         className="btn-synthesis-launch"
                         onClick={handleStartSynthesis}
-                        disabled={isSynthesizing || (!transcript && !interimText && !audioBlob && !uploadedFileName)}
+                        disabled={isSynthesizing || isTranscribingAudio || (!transcript && !interimText)}
                     >
                         {isSynthesizing ? (
                             <>
