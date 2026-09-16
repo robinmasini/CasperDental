@@ -452,8 +452,8 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 { time: nowTime, text: `[${steps[i].icon} ${steps[i].title}] ${steps[i].logMessage}` }
             ]);
 
-            // Delay per step for realistic clinical reasoning (2.2s per step)
-            await new Promise(res => setTimeout(res, 2200));
+            // Delay per step for realistic deep clinical reasoning (3.0s per step = 15s total)
+            await new Promise(res => setTimeout(res, 3000));
         }
 
         try {

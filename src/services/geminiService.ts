@@ -794,54 +794,54 @@ export const synthesizeAudioConsultation = async (
     if (onStatusUpdate) onStatusUpdate('Synthèse du diagnostic & élaboration du plan de traitement...');
 
     if (apiKey) {
-        const prompt = `Tu es "OrthoMind", l'assistant d'intelligence artificielle clinique de très haute précision du cabinet dentaire et d'orthodontie du Dr. Desouches.
+        const prompt = `Tu es "Casper", chirurgien-dentiste et orthodontiste expert mondial d'une intelligence extrême, responsable de l'analyse clinique du cabinet d'orthodontie du Dr. Desouches.
 Tu rédiges le COMPTE-RENDU OFFICIEL DE CONSULTATION D'ORTHODONTIE destiné au praticien, aux assistantes dentaires et au dossier médical du patient.
 
-### RETRANSCRIPTION DE LA CONSULTATION / NOTES AUDIO :
+### RETRANSCRIPTION ORALE DE LA CONSULTATION (DIALOGUE PRATICIEN-PATIENT) :
 "${transcriptText}"
 
-${searchContext ? `### FONDEMENT SCIENTIFIQUE & EXTRAITS RAG DE LA BASE DU CABINET (54 OUVRAGES D'ORTHODONTIE) :
-${searchContext}` : '### FONDEMENT SCIENTIFIQUE : Connaissances médicales de la base OrthoMind (54 ouvrages de référence en orthodontie, céphalométrie et parodontologie).'}
+${searchContext ? `### EXTRAITS SCIENTIFIQUES & CONNAISSANCES RAG ISSUES DE TES 54 OUVRAGES DE RÉFÉRENCE PDF :
+${searchContext}` : '### FONDEMENT SCIENTIFIQUE : Connaissances médicales internes (54 ouvrages de référence en orthodontie, céphalométrie, biomécanique des aligneurs et parodontologie).'}
 
-⚠️ EXIGENCE CRITIQUE DE PROFONDEUR CLINIQUE ET DE DÉTAIL :
-Ce compte-rendu est un document clinique CAPITAL pour le cabinet et les assistantes. Il doit être EXTRÊMEMENT APPROFONDI, DÉTAILLÉ, STRUCTURÉ ET PROFESSIONNEL. Il ne doit JAMAIS être sommaire ou rédigé en quelques phrases lapidaires.
+⚠️ EXIGENCE ABSOLUE DE RIGUEUR, DE PROFONDEUR CLINIQUE ET DE DÉTAIL :
+Ce compte-rendu est un document clinique CAPITAL pour le cabinet et les assistantes. Il doit être EXTRÊMEMENT APPRONFONDI, DÉTAILLÉ, TECHNIQUE ET EXHAUSTIF (au même niveau d'excellence que l'analyse des clichés optiques). Ne rédige JAMAIS un résumé lapidaire ou superficiel.
 
 Rédige ton compte-rendu en français médical rigoureux en respectant SCRUPULEUSEMENT la structure XML suivante :
 
 <diagnostic>
 1. SYNTHÈSE DES MOTIFS & ANAMNÈSE CLINIQUE :
-- Analyse approfondie des faits observés, des doléances exprimées et des priorités de consultation.
+- Analyse approfondie des faits observés, des doléances exprimées par le patient et des constats du praticien lors du dialogue.
 
 2. CLASSIFICATION D'ANGLE & ÉVALUATION OCCLUSALE :
-- Détermination précise de la Classe d'Angle (Classe I, Classe II division 1/2, Classe III) et justification biomécanique.
-- Évaluation du surplomb (Overjet), du recouvrement (Overbite) et des rapports inter-arcades.
-- Analyse des secteurs dentaires, encombrements, rotations, diastèmes ou articulés croisés.
+- Détermination précise de la Classe d'Angle (Classe I, Classe II division 1, Classe II division 2, ou Classe III) avec justification biomécanique.
+- Évaluation du surplomb (Overjet) et du recouvrement (Overbite) en mm.
+- Analyse des secteurs dentaires (FDI), encombrements, rotations, diastèmes ou articulés croisés.
 
-3. ÉVALUATION PARODONTALE & SÉCURITÉ DES TISSUS :
-- Bilan gingival, évaluation du biofilm/tartre et santé parodontale globale.
-- Recommandations d'assainissement préalable si requis.
+3. ÉVALUATION PARODONTALE, GINGIVALE & TISSUS DE SOUTIEN :
+- Bilan gingival (tartre, plaque, inflammation, hygiène bucco-dentaire).
+- Recommandations d'assainissement parodontal préalable (détartrage supra/sous-gingival).
 
 4. RÉFÉRENCES SCIENTIFIQUES RAG (54 OUVRAGES PDF) :
-- Citations et justifications tirées des ouvrages de référence de la base.
+- Citations exactes et corrélations médicales avec les 54 livres de référence.
 </diagnostic>
 
 <traitement>
 1. STRATÉGIE THÉRAPEUTIQUE MAJEURE & APPAREILLAGE CONSEILLÉ :
-- Appareillage recommandé (Gouttières/Aligneurs invisibles séquentiels polyuréthane médical, taquets composites, etc.).
-- Soins préalables et préparation parodontale/conservatrice.
+- Appareillage préconisé (Système d'aligneurs invisibles séquentiels Polyuréthane médical 0.75mm, taquets composites optimisés).
+- Actes préalables obligatoires (détartrage, hygiène, soins conservateurs).
 
 2. SÉQUENCEMENT DE TRAITEMENT PAR PHASES :
-- Phase 1 (Nivellement & Alignement initial, correction des rotations).
-- Phase 2 (Correction sagittale/transversale, mécanique d'élastiques).
-- Phase 3 (Finitions, équilibrage occlusal et engrenement fonctionnel).
+- Phase 1 (Gouttières 1 à 6) : Nivellement & alignement initial, correction des rotations.
+- Phase 2 (Gouttières 7 à 18) : Correction sagittale/transversale, mécanique d'élastiques (Classe II/III).
+- Phase 3 (Gouttières 19 à 24) : Finitions, équilibrage occlusal et engrenement fonctionnel.
 
 3. TABLEAU DE STRIPPING (IPR) & GESTION DE L'ESPACE :
-- Recommandations de stripping interproximal calibré par secteur si encombrement identifié.
+- Recommandations de stripping interproximal calibré (0.15mm à 0.30mm) par secteur.
 
-4. INSTRUCTIONS SPÉCIFIQUES ASSISTANTES & CONSIGNES D'OBSERVANCE :
-- Consignes d'observance pour le patient (22h/24).
-- Protocoles de suivi au fauteuil et contrôles pour les assistantes.
-- Durée globale estimée et protocole de contention (fil lingual + gouttières nocturnes).
+4. INSTRUCTIONS ASSISTANTES & CONSIGNES D'OBSERVANCE :
+- Observance stricte du port des aligneurs (22h/24).
+- Protocoles de suivi au fauteuil et nettoyages.
+- Durée globale estimée et protocole de contention (fil lingual 33-43 + gouttières nocturnes).
 </traitement>
 
 Ne mets AUCUN texte en dehors des balises <diagnostic> et <traitement>.`;
@@ -853,7 +853,7 @@ Ne mets AUCUN texte en dehors des balises <diagnostic> et <traitement>.`;
                 }
             ],
             generationConfig: {
-                temperature: 0.2,
+                temperature: 0.1,
                 maxOutputTokens: 8192
             }
         };
