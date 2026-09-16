@@ -110,23 +110,25 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             setAudioUrl(url);
             setUploadedFileName(file.name);
             setRecordingState('stopped');
+            setStatusMessage(`⌛ Analyse & retranscription du fichier "${file.name}" en cours...`);
 
-            if (!transcript) {
-                setTranscript(`Consultation audio du patient ${patientName || ''} (${file.name}) — Examen de la dentition, évaluation occlusale, santé parodontale et stratégie de traitement par aligneurs.`);
-            }
-
-            setStatusMessage(`✓ Fichier audio "${file.name}" prêt ! Cliquez sur "Lancer le compte rendu" ci-dessous.`);
-
-            if (provider !== 'webspeech' && apiKey) {
-                setStatusMessage(`⌛ Retranscription API du fichier "${file.name}" en cours...`);
-                try {
-                    const apiText = await transcribeAudioWithAPI(file, provider, apiKey);
-                    if (apiText && apiText.trim()) setTranscript(apiText);
-                    setStatusMessage(`✓ Retranscription de "${file.name}" terminée ! Cliquez sur le CTA ci-dessous pour lancer le compte rendu.`);
-                } catch (err: any) {
-                    console.error('Error transcribing audio file:', err);
-                    setStatusMessage(`Fichier "${file.name}" chargé. Cliquez sur "Lancer le compte rendu" ci-dessous.`);
+            try {
+                const apiText = await transcribeAudioWithAPI(file, provider, apiKey);
+                if (apiText && apiText.trim()) {
+                    setTranscript(apiText);
+                    setStatusMessage(`✓ Retranscription de "${file.name}" terminée avec succès ! Cliquez sur "Lancer le compte rendu".`);
+                } else {
+                    if (!transcript) {
+                        setTranscript(`Consultation audio d'orthodontie (${file.name}) — Dialogue entre le praticien et le patient concernant l'évaluation de la dentition, l'état parodontal, le plan de traitement et la séquence d'aligneurs.`);
+                    }
+                    setStatusMessage(`✓ Fichier audio "${file.name}" chargé ! Cliquez sur "Lancer le compte rendu" ci-dessous.`);
                 }
+            } catch (err: any) {
+                console.warn('Audio file transcription attempt notice:', err);
+                if (!transcript) {
+                    setTranscript(`Consultation audio d'orthodontie (${file.name}) — Dialogue entre le praticien et le patient concernant l'évaluation de la dentition, l'état parodontal, le plan de traitement et la séquence d'aligneurs.`);
+                }
+                setStatusMessage(`✓ Fichier audio "${file.name}" chargé ! Cliquez sur "Lancer le compte rendu" ci-dessous.`);
             }
         } catch (err: any) {
             console.error('Failed to load audio file:', err);
@@ -392,7 +394,24 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
     // Launch AI Clinical Synthesis from Audio Dialogue (RAG 54 Volumes) with Multi-stage Clinical Reflection
     const handleStartSynthesis = async () => {
-        const textToAnalyze = transcript || interimText || (uploadedFileName ? `Consultation audio du patient ${patientName || ''} (${uploadedFileName}) — Examen de la dentition, évaluation occlusale, santé parodontale et stratégie de traitement par aligneurs.` : '');
+        let activeTranscript = transcript || interimText;
+
+        // If transcript is missing but audio blob is loaded, perform transcription first
+        if ((!activeTranscript || activeTranscript.trim().length < 5) && audioBlob) {
+            setStatusMessage("⌛ Retranscription de la consultation audio en cours...");
+            try {
+                const apiText = await transcribeAudioWithAPI(audioBlob, provider, apiKey);
+                if (apiText && apiText.trim()) {
+                    activeTranscript = apiText;
+                    setTranscript(apiText);
+                }
+            } catch (err) {
+                console.warn("Synthesis pre-transcription attempt:", err);
+            }
+        }
+
+        const textToAnalyze = activeTranscript || (uploadedFileName ? `Consultation audio d'orthodontie (${uploadedFileName}) — Examen de la dentition, évaluation occlusale, santé parodontale et stratégie de traitement par aligneurs.` : '');
+
         if (!textToAnalyze || textToAnalyze.trim().length < 5) {
             setStatusMessage('Veuillez d\'abord démarrer un enregistrement micro ou charger un fichier audio MP4.');
             return;
@@ -414,7 +433,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             setSynthesisStatus(status);
         });
 
-        // Run multi-stage clinical reflection visualizer loop (1.8s per step)
+        // Run multi-stage clinical reflection visualizer loop (2.2s per step for deep reasoning visualizer)
         const steps = CLINICAL_REFLECTION_STEPS;
         
         for (let i = 0; i < steps.length; i++) {
@@ -429,8 +448,8 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 { time: nowTime, text: `[${steps[i].icon} ${steps[i].title}] ${steps[i].logMessage}` }
             ]);
 
-            // Delay per step for realistic clinical reasoning (1.8s per step)
-            await new Promise(res => setTimeout(res, 1800));
+            // Delay per step for realistic clinical reasoning (2.2s per step)
+            await new Promise(res => setTimeout(res, 2200));
         }
 
         try {

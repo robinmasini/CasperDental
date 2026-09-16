@@ -293,13 +293,114 @@ export class AudioRecorder {
 }
 
 /**
- * Transcribe Audio Blob using external Whisper or Groq API
+ * Transcribe Audio Blob using Gemini Multimodal Audio API
+ */
+export const transcribeAudioWithGemini = async (
+    audioBlob: Blob,
+    customApiKey?: string
+): Promise<string> => {
+    const apiKey = customApiKey || 
+        localStorage.getItem('orthomind_gemini_api_key') || 
+        localStorage.getItem('casper_gemini_api_key') || 
+        (import.meta as any).env?.VITE_GEMINI_API_KEY || 
+        '';
+
+    if (!apiKey) {
+        throw new Error("Clé API Gemini non configurée.");
+    }
+
+    // Convert Blob to Base64
+    const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const res = reader.result as string;
+            const base64 = res.includes(',') ? res.split(',')[1] : res;
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(audioBlob);
+    });
+
+    let mimeType = audioBlob.type || 'audio/mp4';
+    if (mimeType.includes('codecs')) {
+        mimeType = mimeType.split(';')[0];
+    }
+    if (!mimeType || mimeType === 'audio/x-m4a') mimeType = 'audio/mp4';
+
+    const prompt = `Tu es le transcripteur médical du cabinet d'orthodontie du Dr. Desouches. Écoute très attentivement cet enregistrement audio de consultation d'orthodontie et retranscris EXACTEMENT tout le dialogue oral échangé entre le praticien et le patient.
+Restitue fidèlement les termes cliniques (Classe d'Angle, hygiène, gencive, tartre, encombrement, aligneurs, gouttières, overjet, overbite, stripping, etc.).
+Rends UNIQUEMENT le texte de la retranscription en français sans aucun commentaire introductif ni conclusion.`;
+
+    const apiBody = {
+        contents: [
+            {
+                parts: [
+                    { text: prompt },
+                    {
+                        inlineData: {
+                            mimeType: mimeType,
+                            data: base64Data
+                        }
+                    }
+                ]
+            }
+        ],
+        generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 8192
+        }
+    };
+
+    const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    let lastError: any = null;
+
+    for (const model of models) {
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(apiBody)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text && text.trim()) {
+                    return text.trim();
+                }
+            } else {
+                const errData = await response.json().catch(() => ({}));
+                console.warn(`Gemini audio transcription failed on ${model}:`, errData);
+            }
+        } catch (err: any) {
+            lastError = err;
+            console.warn(`Network error transcribing audio with ${model}:`, err);
+        }
+    }
+
+    throw lastError || new Error("Erreur lors de la retranscription de l'audio.");
+};
+
+/**
+ * Transcribe Audio Blob using external Whisper, Groq, or Gemini API
  */
 export const transcribeAudioWithAPI = async (
     audioBlob: Blob,
     provider: TranscriptionProvider,
     apiKey?: string
 ): Promise<string> => {
+    // Try Gemini API first if configured
+    const geminiKey = localStorage.getItem('orthomind_gemini_api_key') || localStorage.getItem('casper_gemini_api_key') || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    if (geminiKey && audioBlob.size > 0) {
+        try {
+            const geminiText = await transcribeAudioWithGemini(audioBlob, geminiKey);
+            if (geminiText && geminiText.trim()) return geminiText;
+        } catch (geminiErr) {
+            console.warn('Gemini audio transcription fallback attempt failed:', geminiErr);
+        }
+    }
+
     if (!apiKey) {
         throw new Error('Une clé d\'API est requise pour utiliser le transcripteur externe.');
     }
