@@ -7,6 +7,7 @@ import OrthoMindDepForm from '../components/OrthoMindDepForm';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import logoSeul from '../assets/logo-seul.png';
+import OnyxCephTravauxTable from '../components/OnyxCephTravauxTable';
 import './Patients.css';
 
 interface DisplayPatient {
@@ -73,7 +74,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedPatient, setSelectedPatient] = useState<DisplayPatient | null>(null);
-    const [activeTab, setActiveTab] = useState<'diagnostic' | 'dep' | 'synthese' | 'rdv' | 'administratif'>('dep');
+    const [activeTab, setActiveTab] = useState<'diagnostic' | 'dep' | 'synthese' | 'rdv' | 'administratif' | 'travaux'>('dep');
     const [showForm, setShowForm] = useState(false);
     const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([]);
     const [loadingAppointments, setLoadingAppointments] = useState(false);
@@ -476,10 +477,27 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         >
                             ADMINISTRATIF
                         </button>
+                        <button
+                            className={`tab ${activeTab === 'travaux' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('travaux')}
+                            style={{ color: activeTab === 'travaux' ? 'var(--primary-cyan)' : undefined }}
+                        >
+                            🧪 TRAVAUX & LABO (ONYXCEPH)
+                        </button>
                     </div>
 
                     {/* Tab Content */}
                     <div className="tab-content">
+                        {activeTab === 'travaux' && (
+                            <div className="travaux-content" style={{ marginTop: '10px' }}>
+                                <OnyxCephTravauxTable
+                                    patientName={`${selectedPatient.nom} ${selectedPatient.prenom}`}
+                                    patientId={selectedPatient.id}
+                                    filterCurrentPatientOnly={true}
+                                />
+                            </div>
+                        )}
+
                         {activeTab === 'dep' && (
                             <div>
                                 <div style={{ background: 'rgba(0, 242, 254, 0.06)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '14px', padding: '12px 18px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>

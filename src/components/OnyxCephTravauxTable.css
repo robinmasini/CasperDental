@@ -1,0 +1,540 @@
+/* OnyxCeph Travaux & Labo Table Styling - High Fidelity Monday.com UI */
+
+.onyxceph-container {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    overflow-x: auto;
+}
+
+/* Header & Controls Bar */
+.onyxceph-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.onyxceph-header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.onyxceph-header-title h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.onyxceph-views-nav {
+    display: flex;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+}
+
+.onyxceph-view-tab {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.onyxceph-view-tab.active,
+.onyxceph-view-tab:hover {
+    color: var(--primary-cyan, #00f2fe);
+    background: rgba(0, 242, 254, 0.1);
+}
+
+.onyxceph-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.btn-add-element {
+    background: #0284c7;
+    color: #ffffff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s ease;
+}
+
+.btn-add-element:hover {
+    background: #0369a1;
+}
+
+.onyxceph-tool-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.onyxceph-tool-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.onyxceph-search-input {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    outline: none;
+    width: 220px;
+}
+
+.onyxceph-search-input:focus {
+    border-color: var(--primary-cyan, #00f2fe);
+}
+
+/* Month Group Accordion Section */
+.onyxceph-group {
+    margin-bottom: 28px;
+}
+
+.onyxceph-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 10px;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.onyxceph-group-header:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.onyxceph-group-arrow {
+    color: #e11d48;
+    font-size: 0.85rem;
+    transition: transform 0.2s ease;
+}
+
+.onyxceph-group-arrow.collapsed {
+    transform: rotate(-90deg);
+}
+
+.onyxceph-group-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.group-title-september {
+    color: #f43f5e;
+}
+
+.group-title-october {
+    color: #84cc16;
+}
+
+.group-title-default {
+    color: var(--primary-cyan, #00f2fe);
+}
+
+.onyxceph-group-count {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* Monday.com Main Table Grid */
+.onyxceph-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(10, 16, 29, 0.5);
+}
+
+.onyxceph-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1250px;
+    font-size: 0.84rem;
+}
+
+.onyxceph-table th {
+    background: rgba(15, 23, 42, 0.9);
+    color: #94a3b8;
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
+    font-size: 0.8rem;
+}
+
+.onyxceph-table th:last-child {
+    border-right: none;
+}
+
+.onyxceph-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: middle;
+    background: rgba(15, 23, 42, 0.3);
+}
+
+.onyxceph-table tr:hover td {
+    background: rgba(30, 41, 59, 0.4);
+}
+
+/* Patient / Element Column */
+.element-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: #ffffff;
+    min-width: 170px;
+}
+
+.element-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #0284c7;
+    cursor: pointer;
+}
+
+/* Color-Coded Badges for 'Travail à réaliser' */
+.badge-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease, filter 0.15s ease;
+    user-select: none;
+    text-align: center;
+    min-width: 130px;
+}
+
+.badge-tag:hover {
+    transform: scale(1.03);
+    filter: brightness(1.1);
+}
+
+/* Tag Color Presets */
+.tag-stab-contention { background: #e11d48; }
+.tag-match { background: #047857; }
+.tag-brux { background: #6b21a8; }
+.tag-suite-impr { background: #65a30d; }
+.tag-a-faire { background: #475569; }
+.tag-disjoncteur { background: #4c1d95; }
+.tag-blanchiment { background: #ea580c; }
+.tag-transpalatin { background: #a16207; }
+.tag-stagging { background: #991b1b; }
+.tag-goutt-expansion { background: #0284c7; }
+.tag-goutt-sport { background: #3b82f6; }
+.tag-goutt-propulsion { background: #0284c7; }
+.tag-urgences { background: #dc2626; }
+.tag-carriere-motion { background: #1e1b4b; }
+.tag-fils-colles { background: #be185d; }
+.tag-eln-ailettes { background: #d97706; }
+.tag-1er-traitement { background: #0891b2; }
+.tag-set-up { background: #ec4899; }
+.tag-33 { background: #0284c7; }
+.tag-activateur-ailettes { background: #d97706; }
+.tag-casper { background: #0f766e; }
+
+/* Status Badges for 'Travail' */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-align: center;
+    display: inline-block;
+    min-width: 110px;
+    cursor: pointer;
+}
+
+.status-a-impr {
+    background: #059669;
+    color: #ffffff;
+}
+
+.status-a-faire {
+    background: #475569;
+    color: #ffffff;
+}
+
+.status-en-attente-rdv {
+    background: #e11d48;
+    color: #ffffff;
+}
+
+.status-termine {
+    background: #10b981;
+    color: #ffffff;
+}
+
+/* Prothésiste & Rdv Pills */
+.prothesiste-pill {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #38bdf8;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.rdv-pill {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* Facturation Badge */
+.facturation-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.facture-en-attente {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.facture-paye {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* Printer & Counter Pills */
+.printer-pill {
+    background: #047857;
+    color: #ffffff;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+/* Editable Inline Cell Inputs */
+.onyxceph-cell-input {
+    background: transparent;
+    border: 1px transparent;
+    color: #e2e8f0;
+    font-size: 0.82rem;
+    width: 100%;
+    padding: 4px 6px;
+    border-radius: 4px;
+    outline: none;
+}
+
+.onyxceph-cell-input:focus,
+.onyxceph-cell-input:hover {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(0, 242, 254, 0.4);
+}
+
+/* Quick Add Inline Bar */
+.onyxceph-add-row-bar {
+    padding: 8px 12px;
+    background: rgba(15, 23, 42, 0.6);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.onyxceph-add-row-bar input {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    width: 250px;
+}
+
+.onyxceph-add-row-bar input:focus {
+    border-style: solid;
+    border-color: var(--primary-cyan, #00f2fe);
+}
+
+/* Tag Picker Popup Modal (Image 2 Overlay) */
+.tag-picker-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.tag-picker-card {
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 20px;
+    padding: 24px;
+    max-width: 880px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 242, 254, 0.15);
+    animation: popupAppear 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popupAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.tag-picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 12px;
+}
+
+.tag-picker-header h4 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tag-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 6px;
+    margin-bottom: 20px;
+}
+
+.tag-picker-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #ffffff;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+.tag-picker-item:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.tag-picker-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tag-picker-footer-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tag-picker-footer-btn:hover {
+    color: #ffffff;
+}
+
+.tag-picker-auto-btn {
+    color: var(--primary-cyan, #00f2fe);
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
