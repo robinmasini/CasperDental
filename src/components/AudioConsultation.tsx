@@ -119,17 +119,15 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 const apiText = await transcribeAudioWithAPI(file, provider, apiKey);
                 if (apiText && apiText.trim()) {
                     setTranscript(apiText);
-                    setStatusMessage(`✓ Retranscription vocale de "${file.name}" terminée avec succès ! Vous pouvez vérifier les propos capturés et cliquer sur "Lancer le compte rendu".`);
+                    setStatusMessage(`✓ Retranscription vocale de "${file.name}" terminée avec succès ! Vérifiez les propos capturés ci-dessous puis cliquez sur "Lancer le compte rendu".`);
                 } else {
-                    const defaultDialogue = `PRATICIEN: Bonjour, installez-vous. Quel est le motif principal de votre consultation d'orthodontie aujourd'hui ?\nPATIENT: Bonjour Docteur, j'aimerais réaligner mes dents antérieures qui se chevauchent et savoir si je peux bénéficier d'aligneurs invisibles.\nPRATICIEN: D'accord, nous allons examiner cela. Au niveau gingival, je remarque un léger dépôt de tartre et une petite inflammation sur le secteur incisivo-canin mandibulaire. Un détartrage préalable sera nécessaire avant d'engager la séquence d'aligneurs.\nPATIENT: Très bien Docteur, et quelle serait la durée estimée du traitement ?\nPRATICIEN: Nous prévoyons environ 12 à 14 mois avec port des gouttières 22h par jour, suivi d'une contention collée et nocturne.`;
-                    setTranscript(defaultDialogue);
-                    setStatusMessage(`✓ Retranscription vocale de "${file.name}" terminée ! Cliquez sur "Lancer le compte rendu" ci-dessous.`);
+                    setTranscript('');
+                    setStatusMessage(`⚠️ La retranscription vocale de "${file.name}" a renvoyé un texte vide. Veuillez vérifier la clé API ou saisir la retranscription manuellement ci-dessous.`);
                 }
             } catch (err: any) {
                 console.warn('Audio file transcription attempt notice:', err);
-                const defaultDialogue = `PRATICIEN: Bonjour, installez-vous. Quel est le motif principal de votre consultation d'orthodontie aujourd'hui ?\nPATIENT: Bonjour Docteur, j'aimerais réaligner mes dents antérieures qui se chevauchent et savoir si je peux bénéficier d'aligneurs invisibles.\nPRATICIEN: D'accord, nous allons examiner cela. Au niveau gingival, je remarque un léger dépôt de tartre et une petite inflammation sur le secteur incisivo-canin mandibulaire. Un détartrage préalable sera nécessaire avant d'engager la séquence d'aligneurs.\nPATIENT: Très bien Docteur, et quelle serait la durée estimée du traitement ?\nPRATICIEN: Nous prévoyons environ 12 à 14 mois avec port des gouttières 22h par jour, suivi d'une contention collée et nocturne.`;
-                setTranscript(defaultDialogue);
-                setStatusMessage(`✓ Retranscription vocale de "${file.name}" terminée ! Cliquez sur "Lancer le compte rendu" ci-dessous.`);
+                setTranscript('');
+                setStatusMessage(`⚠️ Impossible de retranscrire "${file.name}" (${err.message}). Veuillez vérifier la clé API (Whisper/Groq/Gemini) ou saisir la retranscription manuellement ci-dessous.`);
             } finally {
                 setIsTranscribingAudio(false);
             }
@@ -398,28 +396,38 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
     // Launch AI Clinical Synthesis from Audio Dialogue (RAG 54 Volumes) with Multi-stage Clinical Reflection
     const handleStartSynthesis = async () => {
-        let activeTranscript = transcript || interimText;
+        let activeTranscript = (transcript || interimText || '').trim();
+
+        if (isTranscribingAudio) {
+            setStatusMessage("⌛ Retranscription audio en cours... Veuillez patienter que le texte apparaisse ci-dessus avant de lancer la synthèse.");
+            return;
+        }
 
         // If transcript is missing but audio blob is loaded, perform transcription first
-        if ((!activeTranscript || activeTranscript.trim().length < 5) && audioBlob) {
+        if (!activeTranscript && audioBlob) {
+            setIsTranscribingAudio(true);
             setStatusMessage("⌛ Retranscription de la consultation audio en cours...");
             try {
                 const apiText = await transcribeAudioWithAPI(audioBlob, provider, apiKey);
                 if (apiText && apiText.trim()) {
-                    activeTranscript = apiText;
-                    setTranscript(apiText);
+                    activeTranscript = apiText.trim();
+                    setTranscript(apiText.trim());
+                    setStatusMessage("✓ Retranscription vocale chargée ! Lancement de la synthèse clinique...");
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.warn("Synthesis pre-transcription attempt:", err);
+                setStatusMessage(`⚠️ Impossible de retranscrire automatiquement l'audio (${err.message}). Veuillez saisir ou vérifier la retranscription ci-dessus.`);
+            } finally {
+                setIsTranscribingAudio(false);
             }
         }
 
-        const textToAnalyze = activeTranscript || (uploadedFileName ? `Consultation audio d'orthodontie (${uploadedFileName}) — Examen de la dentition, évaluation occlusale, santé parodontale et stratégie de traitement par aligneurs.` : '');
-
-        if (!textToAnalyze || textToAnalyze.trim().length < 5) {
-            setStatusMessage('Veuillez d\'abord démarrer un enregistrement micro ou charger un fichier audio MP4.');
+        if (!activeTranscript || activeTranscript.length < 5) {
+            setStatusMessage('⚠️ Aucune retranscription vocale détectée ! Veuillez d\'abord charger et vérifier le texte de la consultation dans le cadre ci-dessus avant de pouvoir lancer le compte-rendu.');
             return;
         }
+
+        const textToAnalyze = activeTranscript;
 
         setIsSynthesizing(true);
         setSynthesisResult(null);
@@ -842,23 +850,35 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                         </div>
                     </div>
 
-                    <button
-                        className="btn-synthesis-launch"
-                        onClick={handleStartSynthesis}
-                        disabled={isSynthesizing || isTranscribingAudio || (!transcript && !interimText)}
-                    >
-                        {isSynthesizing ? (
-                            <>
-                                <span className="synthesis-spinner-glow" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></span>
-                                Synthèse en cours...
-                            </>
-                        ) : (
-                            <>
-                                <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-                                Lancer le compte rendu
-                            </>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                        <button
+                            className="btn-synthesis-launch"
+                            onClick={handleStartSynthesis}
+                            disabled={isSynthesizing || isTranscribingAudio || (!transcript && !interimText)}
+                        >
+                            {isSynthesizing ? (
+                                <>
+                                    <span className="synthesis-spinner-glow" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></span>
+                                    Synthèse en cours...
+                                </>
+                            ) : isTranscribingAudio ? (
+                                <>
+                                    <span className="synthesis-spinner-glow" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></span>
+                                    Retranscription en cours...
+                                </>
+                            ) : (
+                                <>
+                                    <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                                    Lancer le compte rendu
+                                </>
+                            )}
+                        </button>
+                        {(!transcript && !interimText) && (
+                            <span style={{ fontSize: '0.76rem', color: '#fbbf24', fontWeight: 600 }}>
+                                ⚠️ Chargez & vérifiez le texte de retranscription ci-dessus avant de pouvoir lancer le compte-rendu.
+                            </span>
                         )}
-                    </button>
+                    </div>
                 </div>
             </div>
 

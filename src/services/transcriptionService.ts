@@ -7,6 +7,8 @@
  * 4. Orthodontic terms auto-formatter
  */
 
+import { getGeminiApiKey } from './geminiService';
+
 // Extend Window interface for Web Speech API cross-browser support
 declare global {
     interface Window {
@@ -299,14 +301,10 @@ export const transcribeAudioWithGemini = async (
     audioBlob: Blob,
     customApiKey?: string
 ): Promise<string> => {
-    const apiKey = customApiKey || 
-        localStorage.getItem('orthomind_gemini_api_key') || 
-        localStorage.getItem('casper_gemini_api_key') || 
-        (import.meta as any).env?.VITE_GEMINI_API_KEY || 
-        '';
+    const apiKey = customApiKey || getGeminiApiKey();
 
     if (!apiKey) {
-        throw new Error("Clé API Gemini non configurée.");
+        throw new Error("Clé API Gemini non configurée ou invalide.");
     }
 
     // Convert Blob to Base64
@@ -391,7 +389,7 @@ export const transcribeAudioWithAPI = async (
     apiKey?: string
 ): Promise<string> => {
     // Try Gemini API first if configured
-    const geminiKey = localStorage.getItem('orthomind_gemini_api_key') || localStorage.getItem('casper_gemini_api_key') || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    const geminiKey = getGeminiApiKey();
     if (geminiKey && audioBlob.size > 0) {
         try {
             const geminiText = await transcribeAudioWithGemini(audioBlob, geminiKey);
@@ -401,8 +399,9 @@ export const transcribeAudioWithAPI = async (
         }
     }
 
-    if (!apiKey) {
-        throw new Error('Une clé d\'API est requise pour utiliser le transcripteur externe.');
+    const keyToUse = apiKey || geminiKey;
+    if (!keyToUse) {
+        throw new Error('Une clé d\'API (Whisper, Groq ou Gemini) est requise pour effectuer la retranscription.');
     }
 
     const formData = new FormData();
