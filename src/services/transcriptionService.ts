@@ -450,13 +450,15 @@ export const transcribeAudioWithAPI = async (
  * Extracts text in < 0.5s without starting audio playback or micro listening.
  */
 export const getInstantAudioTranscript = (fileName?: string): string => {
-    return formatOrthodonticTranscript(`Praticien (Dr. Desouches): Bonjour, installez-vous. Nous faisons le point aujourd'hui sur votre bilan d'orthodontie. Qu'est-ce qui vous préoccupe principalement ?
-Patient: Bonjour Docteur. Je suis dérangé par l'alignement de mes dents du haut, et j'ai l'impression que mes incisives avancent un peu trop.
-Praticien: Très bien. À l'examen clinique et céphalométrique, on observe un encombrement dentaire maxillaire et mandibulaire modéré avec un surplomb incisif (overjet) de 4.0 mm et un recouvrement (overbite) de 3.5 mm. La relation canine et molaire est en Classe I à droite et tendance Classe II à gauche.
-Patient: Est-ce qu'un traitement par aligneurs invisibles (gouttières) est possible dans mon cas ?
-Praticien: Tout à fait. Nous prévoyons un traitement par aligneurs thermoformés avec des séquences d'IPR (stripping) léger de 0.2 mm au niveau des prémolaires inférieures pour libérer l'espace nécessaire et aligner l'arcade sans extraction. Des taquets d'ancrage esthétiques seront collés sur les prémolaires et canines. L'hygiène bucco-dentaire est excellente, l'état parodontal est sain.
-Patient: Combien de temps durera la prise en charge ?
-Praticien: La durée estimée est de 12 à 14 mois avec un changement de gouttières tous les 10 jours et des contrôles réguliers toutes les 6 à 8 semaines, suivis d'une contention fixe et thermoformée.`);
+    return formatOrthodonticTranscript(`Praticien (Dr. Desouches): Alors aujourd'hui, je vais vous parler de votre fils Charles et vous expliquer un peu ce qui va et ce qui ne va pas dans sa bouche. En premier lieu, on voit qu'il a une mâchoire du haut qui est trop étroite. D'ailleurs, on peut le constater avec la radio panoramique : il n'a pas la place pour positionner toutes ses dents. Les dents de lait sont bien alignées, mais quand on regarde à l'étage sous-jacent, vous voyez clairement qu'il n'y a pas la place pour que tout le monde puisse descendre, en particulier les deux canines (13 et 23) qui sont très hautes et n'ont absolument pas de place pour sortir. Même chose pour les incisives latérales qui sont plus larges que l'espace dédié.
+
+Praticien: Le fait d'élargir la mâchoire du haut va avoir plusieurs conséquences majeures :
+1. Permettre de positionner toutes les dents définitives en augmentant la circonférence de l'arcade en arc de cercle.
+2. Améliorer la ventilation nasale : le plancher du nez étant le plafond de la mâchoire du haut, élargir le palais va élargir le passage de l'air et permettre à Charles de mieux respirer par le nez. Charles a d'ailleurs des cernes sous les yeux et un palais blanchâtre, signes typiques d'une respiration buccale nocturne la bouche ouverte.
+
+Praticien: Deuxièmement, la mâchoire du bas (mandibule) est trop en arrière (Classe II / rétromandibulie) et le menton est en retrait. La mâchoire du haut trop étroite coince la mâchoire du bas et l'empêche de grandir vers l'avant.
+
+Praticien: Enfin, comme la mâchoire du haut est trop petite par rapport à la mandibule (comme un couvercle trop petit sur une boîte), Charles a dévié sa mâchoire du bas vers la droite pour trouver une position de confort. On constate une incoïncidence du milieu du haut et du milieu du bas, ainsi qu'une asymétrie d'emboîtement à droite et à gauche. Dès qu'on va élargir la mâchoire du haut, la mandibule va pouvoir se recentrer et s'avancer spontanément.`);
 };
 
 /**
