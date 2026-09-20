@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import logoSeul from '../assets/logo-seul.png';
+import logoOnyxceph from '../assets/logo-onyxceph.png';
 import './OrthoMindDepForm.css';
 
 interface OrthoMindDepFormProps {
@@ -148,7 +149,10 @@ export const OrthoMindDepForm: React.FC<OrthoMindDepFormProps> = ({
             {/* PARTIE 1: Dual Column Grid */}
             <div className="dep-section-box">
                 <div className="dep-section-header">
-                    <h4 className="dep-section-title">PARTIE 1 — ANOMALIES BASALES & ALVÉOLAIRES</h4>
+                    <h4 className="dep-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <img src={logoOnyxceph} alt="OnyxCeph logo" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
+                        OnyxCeph - Anomalies basales & alvéolaires
+                    </h4>
                     {isLiveFilling && (
                         <span style={{ fontSize: '0.78rem', color: 'var(--primary-cyan)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span className="synthesis-spinner-glow" style={{ width: '12px', height: '12px' }}></span>
