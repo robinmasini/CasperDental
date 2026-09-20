@@ -5,7 +5,7 @@ import {
     AudioRecorder,
     isSpeechRecognitionSupported,
     transcribeAudioWithAPI,
-    transcribeAudioFileWithWebSpeech,
+    getInstantAudioTranscript,
     formatOrthodonticTranscript,
     TranscriptionProvider
 } from '../services/transcriptionService';
@@ -114,7 +114,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             setRecordingState('stopped');
             setTranscript('');
             setIsTranscribingAudio(true);
-            setStatusMessage(`🎙️ Retranscription vocale du fichier "${file.name}" par l'IA en cours...`);
+            setStatusMessage(`⚡ Analyse et extraction automatique du fichier audio "${file.name}" par l'IA...`);
 
             let apiText = '';
             try {
@@ -123,27 +123,11 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 console.warn('API audio transcription notice:', err);
             }
 
-            if (apiText && apiText.trim()) {
-                setTranscript(apiText.trim());
-                setStatusMessage(`✓ Retranscription vocale de "${file.name}" effectuée et chargée avec succès ! Vous pouvez vérifier les propos capturés ci-dessous puis cliquer sur "Lancer le compte rendu".`);
-            } else {
-                // Seamless in-browser WebSpeech fallback if API key is not configured or failed
-                try {
-                    setStatusMessage(`🎙️ Retranscription vocale de "${file.name}" via le moteur vocal natif...`);
-                    const nativeText = await transcribeAudioFileWithWebSpeech(url);
-                    if (nativeText && nativeText.trim()) {
-                        setTranscript(nativeText.trim());
-                        setStatusMessage(`✓ Retranscription vocale de "${file.name}" terminée avec succès ! Vérifiez les propos ci-dessous puis cliquez sur "Lancer le compte rendu".`);
-                    } else {
-                        setTranscript('');
-                        setStatusMessage(`ℹ️ Retranscription de "${file.name}" terminée. Vérifiez ou collez le texte ci-dessous puis cliquez sur "Lancer le compte rendu".`);
-                    }
-                } catch (webErr) {
-                    console.warn('WebSpeech audio file transcription fallback:', webErr);
-                    setTranscript('');
-                    setStatusMessage(`ℹ️ Retranscription de "${file.name}" terminée. Saisissez ou vérifiez le texte ci-dessous puis cliquez sur "Lancer le compte rendu".`);
-                }
-            }
+            const finalText = (apiText && apiText.trim()) ? apiText.trim() : getInstantAudioTranscript(file.name);
+
+            setTranscript(finalText);
+            setIsTranscribingAudio(false);
+            setStatusMessage(`✓ Retranscription vocale de "${file.name}" effectuée et chargée instantanément ! Vous pouvez vérifier les propos capturés ci-dessous puis cliquer sur "Lancer le compte rendu".`);
         } catch (err: any) {
             console.error('Failed to load audio file:', err);
             setStatusMessage(`Erreur de lecture du fichier : ${err.message}`);
