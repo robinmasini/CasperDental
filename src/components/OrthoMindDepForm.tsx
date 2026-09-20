@@ -149,8 +149,8 @@ export const OrthoMindDepForm: React.FC<OrthoMindDepFormProps> = ({
             {/* PARTIE 1: Dual Column Grid */}
             <div className="dep-section-box">
                 <div className="dep-section-header">
-                    <h4 className="dep-section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <img src={logoOnyxceph} alt="OnyxCeph logo" style={{ width: '38px', height: '38px', objectFit: 'contain' }} />
+                    <h4 className="dep-section-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <img src={logoOnyxceph} alt="OnyxCeph logo" style={{ width: '56px', height: '56px', objectFit: 'contain' }} />
                         OnyxCeph - Anomalies basales & alvéolaires
                     </h4>
                     {isLiveFilling && (

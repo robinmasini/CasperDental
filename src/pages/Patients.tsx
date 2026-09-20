@@ -483,7 +483,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             onClick={() => setActiveTab('travaux')}
                             style={{ color: activeTab === 'travaux' ? 'var(--primary-cyan)' : undefined, display: 'flex', alignItems: 'center', gap: '8px' }}
                         >
-                            <img src={logoMonday} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                            <img src={logoMonday} alt="" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
                             PLANNING MONDAY CABINET
                         </button>
                     </div>
