@@ -7,6 +7,7 @@ import OrthoMindDepForm from '../components/OrthoMindDepForm';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import logoSeul from '../assets/logo-seul.png';
+import logoMonday from '../assets/logo-monday.png';
 import OnyxCephTravauxTable from '../components/OnyxCephTravauxTable';
 import './Patients.css';
 
@@ -480,9 +481,10 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         <button
                             className={`tab ${activeTab === 'travaux' ? 'active' : ''}`}
                             onClick={() => setActiveTab('travaux')}
-                            style={{ color: activeTab === 'travaux' ? 'var(--primary-cyan)' : undefined }}
+                            style={{ color: activeTab === 'travaux' ? 'var(--primary-cyan)' : undefined, display: 'flex', alignItems: 'center', gap: '6px' }}
                         >
-                            🧪 TRAVAUX & LABO (ONYXCEPH)
+                            <img src={logoMonday} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+                            PLANNING MONDAY CABINET
                         </button>
                     </div>
 

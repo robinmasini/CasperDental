@@ -6,6 +6,7 @@ import {
     updateTravauxItem,
     deleteTravauxItem
 } from '../services/travauxService';
+import logoMonday from '../assets/logo-monday.png';
 import './OnyxCephTravauxTable.css';
 
 interface OnyxCephTravauxTableProps {
@@ -178,7 +179,8 @@ const OnyxCephTravauxTable: React.FC<OnyxCephTravauxTableProps> = ({
             <div className="onyxceph-top-bar">
                 <div className="onyxceph-header-title">
                     <h3>
-                        <span>📐</span> Organisation cab / OnyxCeph — Suivi Travaux & Aligneurs
+                        <img src={logoMonday} alt="Monday logo" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                        Planning Monday cabinet
                     </h3>
                 </div>
 
