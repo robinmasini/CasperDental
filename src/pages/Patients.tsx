@@ -449,42 +449,44 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         <button
                             className={`tab ${activeTab === 'dep' ? 'active' : ''}`}
                             onClick={() => setActiveTab('dep')}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', color: activeTab === 'dep' ? 'var(--primary-cyan)' : undefined }}
                         >
                             <img src={logoSeul} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
-                            ★ FICHE DEP SÉCURITÉ SOCIALE
+                            <span>★ FICHE DEP SÉCURITÉ SOCIALE</span>
                         </button>
                         <button
                             className={`tab ${activeTab === 'diagnostic' ? 'active' : ''}`}
                             onClick={() => setActiveTab('diagnostic')}
                         >
-                            DIAGNOSTICS & CONFERENCES ({patientAnalyses.length})
+                            <span className="tab-icon">🩺</span>
+                            <span>DIAGNOSTICS & CONFERENCES ({patientAnalyses.length})</span>
                         </button>
                         <button
                             className={`tab ${activeTab === 'synthese' ? 'active' : ''}`}
                             onClick={() => setActiveTab('synthese')}
                         >
-                            SYNTHÈSE GLOBALE
+                            <span className="tab-icon">⚡</span>
+                            <span>SYNTHÈSE GLOBALE</span>
                         </button>
                         <button
                             className={`tab ${activeTab === 'rdv' ? 'active' : ''}`}
                             onClick={() => setActiveTab('rdv')}
                         >
-                            RDV/SUIVI
+                            <span className="tab-icon">📅</span>
+                            <span>RDV/SUIVI</span>
                         </button>
                         <button
                             className={`tab ${activeTab === 'administratif' ? 'active' : ''}`}
                             onClick={() => setActiveTab('administratif')}
                         >
-                            ADMINISTRATIF
+                            <span className="tab-icon">📁</span>
+                            <span>ADMINISTRATIF</span>
                         </button>
                         <button
                             className={`tab ${activeTab === 'travaux' ? 'active' : ''}`}
                             onClick={() => setActiveTab('travaux')}
-                            style={{ color: activeTab === 'travaux' ? 'var(--primary-cyan)' : undefined, display: 'flex', alignItems: 'center', gap: '8px' }}
                         >
-                            <img src={logoMonday} alt="" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
-                            PLANNING MONDAY CABINET
+                            <img src={logoMonday} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
+                            <span>PLANNING MONDAY CABINET</span>
                         </button>
                     </div>
 

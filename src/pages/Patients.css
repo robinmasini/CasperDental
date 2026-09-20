@@ -247,13 +247,14 @@
     color: var(--text-primary);
 }
 
-/* Tabs */
+/* Tabs Track Container */
 .patient-tabs {
     display: flex;
     align-items: center;
-    padding: 0 1.5rem;
+    gap: 10px;
+    padding: 12px 1.5rem;
     border-bottom: 1px solid var(--border-glass);
-    background: rgba(15, 23, 42, 0.15);
+    background: rgba(15, 23, 42, 0.4);
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
@@ -266,31 +267,52 @@
     display: none;
 }
 
+/* Individual Category Card Tiles ("Vraies cases de chaque catégorie") */
 .tab {
-    padding: 1rem 1.5rem;
-    border: none;
-    background: none;
-    font-size: 0.8rem;
-    font-weight: 600;
+    padding: 10px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     color: var(--text-secondary);
     cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: var(--transition-fast);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     flex-shrink: 0;
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    user-select: none;
+}
+
+.tab .tab-icon {
+    font-size: 1rem;
+    line-height: 1;
 }
 
 .tab:hover {
-    color: var(--primary-cyan);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 .tab.active {
-    color: var(--primary-cyan);
-    border-bottom-color: var(--primary-cyan);
+    background: #ffffff;
+    color: #0b1120;
+    border-color: #ffffff;
+    font-weight: 800;
+    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.35), 0 0 15px rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+.tab.active span {
+    color: #0b1120;
 }
 
 /* Tab Content */
@@ -670,25 +692,21 @@
     }
 
     .patient-tabs {
-        display: flex;
-        align-items: center;
-        overflow-x: auto;
-        overflow-y: hidden;
-        white-space: nowrap;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        padding: 0.5rem 0.75rem;
-        margin: 0 -1rem 0.75rem -1rem;
-        width: calc(100% + 2rem);
-        background: rgba(11, 17, 32, 0.95);
-        border-bottom: 1px solid var(--border-glass);
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 12px;
+        margin: 0 0 1.25rem 0;
+        width: 100%;
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
         box-sizing: border-box;
-        position: sticky;
-        top: 55px;
-        z-index: 1205;
-        backdrop-filter: blur(15px);
-        -webkit-backdrop-filter: blur(15px);
+        overflow: visible;
+        white-space: normal;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
     }
 
     .patient-tabs::-webkit-scrollbar {
@@ -696,14 +714,36 @@
     }
 
     .patient-tabs .tab {
-        padding: 0.85rem 1rem;
+        width: 100%;
+        padding: 12px 10px;
         font-size: 0.78rem;
         font-weight: 700;
-        flex-shrink: 0;
-        white-space: nowrap;
-        display: inline-flex;
+        border-radius: 14px;
+        display: flex;
         align-items: center;
-        gap: 6px;
+        justify-content: center;
+        text-align: center;
+        gap: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        min-height: 52px;
+        box-sizing: border-box;
+        white-space: normal;
+        word-break: break-word;
+        line-height: 1.2;
+    }
+
+    .patient-tabs .tab.active {
+        background: #ffffff !important;
+        color: #0b1120 !important;
+        border-color: #ffffff !important;
+        box-shadow: 0 6px 22px rgba(255, 255, 255, 0.4) !important;
+        transform: scale(1.02);
+    }
+
+    .patient-tabs .tab.active span {
+        color: #0b1120 !important;
     }
 
     .tab-content {
