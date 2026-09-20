@@ -410,36 +410,89 @@ export const transcribeAudioWithAPI = async (
 
     const keyToUse = apiKey || geminiKey;
     if (!keyToUse) {
-        throw new Error('Une clé d\'API (Whisper, Groq ou Gemini) est requise pour effectuer la retranscription.');
+        return '';
     }
 
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'consultation_audio.mp4');
-    formData.append('model', provider === 'whisper-groq' ? 'whisper-large-v3-turbo' : 'whisper-1');
-    formData.append('language', 'fr');
+    try {
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'consultation_audio.mp4');
+        formData.append('model', provider === 'whisper-groq' ? 'whisper-large-v3-turbo' : 'whisper-1');
+        formData.append('language', 'fr');
 
-    let endpoint = 'https://api.openai.com/v1/audio/transcriptions';
-    if (provider === 'whisper-groq') {
-        endpoint = 'https://api.groq.com/openai/v1/audio/transcriptions';
-    } else if (provider === 'mistral') {
-        endpoint = 'https://api.mistral.ai/v1/audio/transcriptions';
+        let endpoint = 'https://api.openai.com/v1/audio/transcriptions';
+        if (provider === 'whisper-groq') {
+            endpoint = 'https://api.groq.com/openai/v1/audio/transcriptions';
+        } else if (provider === 'mistral') {
+            endpoint = 'https://api.mistral.ai/v1/audio/transcriptions';
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${keyToUse}`,
+            },
+            body: formData,
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return data.text || '';
+        }
+    } catch (e) {
+        console.warn('Whisper/Groq transcription API failed:', e);
     }
 
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`,
-        },
-        body: formData,
+    return '';
+};
+
+/**
+ * Fallback: Transcribe audio file in-browser using WebSpeech API playback
+ */
+export const transcribeAudioFileWithWebSpeech = (audioUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+        if (!isSpeechRecognitionSupported()) {
+            resolve('');
+            return;
+        }
+
+        const audio = new Audio(audioUrl);
+        const transcriber = new SpeechTranscriber('fr-FR');
+        let accumulatedText = '';
+
+        transcriber.start(
+            (_interim, fullText) => {
+                accumulatedText = fullText;
+            },
+            (err) => {
+                console.warn('WebSpeech audio file error:', err);
+            },
+            () => {
+                resolve(accumulatedText || transcriber.getTranscript());
+            }
+        );
+
+        audio.onended = () => {
+            const final = transcriber.stop();
+            resolve(final || accumulatedText);
+        };
+
+        audio.onerror = () => {
+            transcriber.stop();
+            resolve(accumulatedText);
+        };
+
+        audio.play().catch((e) => {
+            console.warn('Could not play audio file for WebSpeech transcription:', e);
+            transcriber.stop();
+            resolve(accumulatedText);
+        });
+
+        setTimeout(() => {
+            const final = transcriber.stop();
+            audio.pause();
+            resolve(final || accumulatedText);
+        }, 45000);
     });
-
-    if (!response.ok) {
-        const errorJson = await response.json().catch(() => ({}));
-        throw new Error(errorJson.error?.message || `Erreur API Transcription (${response.status})`);
-    }
-
-    const data = await response.json();
-    return data.text || '';
 };
 
 /**
