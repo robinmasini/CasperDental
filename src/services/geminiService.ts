@@ -8,11 +8,11 @@ export interface AnalysisResult {
 
 // Retrieve the Gemini API key from localStorage or env variables
 export const getGeminiApiKey = (): string => {
-    const localKey = localStorage.getItem('casper_gemini_api_key');
-    if (localKey && localKey.trim().length > 10 && !localKey.trim().startsWith('AQ.')) return localKey.trim();
+    const localKey = localStorage.getItem('casper_gemini_api_key') || localStorage.getItem('orthomind_gemini_api_key');
+    if (localKey && localKey.trim().length > 5) return localKey.trim();
     
     const envKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (envKey && envKey.trim().length > 10 && !envKey.trim().startsWith('AQ.')) return envKey.trim();
+    if (envKey && envKey.trim().length > 5) return envKey.trim();
     
     return '';
 };
@@ -257,10 +257,19 @@ const executeGeminiCall = async (
                     onStatusUpdate(`Tentative avec ${model} (essai ${attempt + 1}/${maxRetries + 1})...`);
                 }
                 
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpointPath}?key=${apiKey}`;
+                const isBearer = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
+                const url = isBearer
+                    ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpointPath}`
+                    : `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpointPath}?key=${apiKey}`;
+
+                const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+                if (isBearer) {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
+
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify(apiBody)
                 });
                 

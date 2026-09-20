@@ -354,10 +354,19 @@ Rends UNIQUEMENT le texte de la retranscription en français sans aucun commenta
 
     for (const model of models) {
         try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const isBearer = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
+            const url = isBearer
+                ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+                : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (isBearer) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+            }
+
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify(apiBody)
             });
 
