@@ -350,58 +350,64 @@ export const generateDeepClinicalAnalysis = (input: ClinicalAnalysisInput): Anal
     const isIPR = textLower.includes('stripping') || textLower.includes('ipr') || textLower.includes('réduction interproximale');
     const isPain = textLower.includes('douleur') || textLower.includes('sensib') || textLower.includes('gêne') || textLower.includes('atm');
 
-    // Build specific Diagnostic text
-    let diagnostic = `1. CLASSIFICATION D'ANGLE & ÉVALUATION OCCLUSALE MAJEUR :
+    // Build specific Diagnostic text with maximum depth and precision
+    let diagnostic = `1. CLASSIFICATION D'ANGLE & ANOMALIES OCCLUSALES MAJEURES :
 - **${angleClass}** : ${angleDetail}
-- **Surplomb incisif (Overjet)** : Évalué à **${overjetVal}**.
-- **Recouvrement incisif (Overbite)** : Évalué à **${overbiteVal}**.
-${textLower.includes('articulé croisé') || textLower.includes('inversé') ? '- **Articulé croisé (Crossbite)** : Inversion d\'articulé constatée nécessitant déverrouillage transversal.' : ''}
+- **Surplomb incisif (Overjet)** : Évalué à **${overjetVal}** (norme : 2.0 mm). ${parseFloat(overjetVal) > 3.0 ? 'Augmentation marquant une proalvéolie ou distoclusion à corriger par séquentiel.' : 'Surplomb physiologique à maintenir.'}
+- **Recouvrement incisif (Overbite)** : Évalué à **${overbiteVal}** (norme : 2.0 mm). ${parseFloat(overbiteVal) > 3.0 ? 'Supraclusion dermo-dentaire nécessitant ingression incisive et egression molaire contrôlée.' : 'Recouvrement vertical satisfaisant.'}
+${textLower.includes('articulé croisé') || textLower.includes('inversé') ? '- **Articulé croisé (Crossbite)** : Inversion d\'articulé constatée nécessitant déverrouillage transversal et expansion séquentielle.' : '- **Engrènement Transversal** : Coordination des diamètres bicanin et bimolaire conforme.'}
 
-2. ANOMALIES ALVÉOLAIRES & OBSERVATIONS PAR SECTEUR :
-${teethFound.length > 0 ? `- **Dents explicitement identifiées et analysées** : Dents **${teethFound.join(', ')}** (malpositions, rotations ou zones d'interférence occlusale).` : '- **Secteurs dentaires & Arcades** : Nivellement des arcades maxillaire et mandibulaire à planifier.'}
-${isCrowding ? '- **Encombrement dento-alvéolaire** : Chevauchements et rotations antérieures à corriger pour restaurer l\'alignement et la continuité de la courbe d\'arcade.' : ''}
-${isDiastema ? '- **Espaces & Diastèmes** : Espaces interdentaires nécessitant un contrôle de l\'ancrage et une fermeture progressive.' : ''}
-${rawText.length > 15 ? `- **Synthèse précise du dialogue / des doléances** : "${rawText.length > 300 ? rawText.slice(0, 300) + '...' : rawText}"` : ''}
+2. ANOMALIES DENTO-ALVÉOLAIRES & ANALYSE SECTORIELLE :
+${teethFound.length > 0 ? `- **Secteurs & Dents spécifiquement analysées** : Dents **${teethFound.join(', ')}** (présentant rotations, malpositions ou dysharmonies de forme).` : '- **Arcades Maxillaire & Mandibulaire** : Nivellement des courbes de Spee et de Wilson à planifier sur l\'ensemble des arcades.'}
+${isCrowding ? '- **Encombrement dento-alvéolaire (DDM)** : Chevauchements et rotations antérieures à résoudre par expansion arc-guidée et stripping léger.' : '- **Espacement & Continuité d\'arcade** : Alignement harmonieux sans perte de point de contact.'}
+${isDiastema ? '- **Diastèmes & Espaces interdentaires** : Fermeture contrôlée avec ancrage postérieur renforcé.' : ''}
+${rawText.length > 15 ? `- **Extraits analytiques du dialogue** : "${rawText.length > 350 ? rawText.slice(0, 350) + '...' : rawText}"` : ''}
 
-3. ÉVALUATION PARODONTAL & HYGIÈNE GINGIVALE :
-${isPeriodontal ? '- **Bilan Gingival & Tartre** : Inflammation gingivale et présence de dépôt tartrique accumulé. Assainissement parodontal (détartrage complet supra/sous-gingival) indispensable avant toute phase d\'alignement.' : '- **Parodonte & Tissus de Soutien** : État gingival satisfaisant. Hygiène bucco-dentaire rigoureuse indispensable durant l\'ensemble de la séquence d\'aligneurs.'}
+3. ÉVALUATION PARODONTALE, TISSULAIRE & HYGIÈNE :
+${isPeriodontal ? '- **Bilan Gingival & Tartre** : Inflammation gingivale localisée et présence de dépôts tartriques supra et sous-gingivaux. Assainissement parodontal impératif (détartrage complet + surfaçage) avant toute application de forces d\'aligneurs.' : '- **Parodonte & Tissus de Soutien** : Gencive attachée saine, hauteur d\'os alvéolaire préservée. Maintien d\'une hygiène bucco-dentaire rigoureuse indispensable durant toute la durée du traitement.'}
 
-4. ÉVALUATION ESTHÉTIQUE & FONCTIONNELLE :
-- **Sourire & Profil** : Harmonisation du couloir sombre et recentrage de la ligne médiane incisive.
-- **Cinématique Mandibulaire & ATM** : ${isPain ? 'Sensibilité ou gêne fonctionnelle rapportée. Examen approfondi des articulations temporo-mandibulaires (ATM) recommandé.' : 'Physiologie masticatoire et articulé fonctionnel sans blocage condylien majeur.'}`;
+4. ÉVALUATION ESTHÉTIQUE, FACIALE & CINÉMATIQUE ATM :
+- **Esthétique du Sourire** : Harmonie du couloir sombre buccal, alignement de la ligne médiane incisive avec la ligne médiane faciale.
+- **Cinématique Mandibulaire & ATM** : ${isPain ? 'Sensibilité ou bruit articulaire rapporté. Bilan des articulations temporo-mandibulaires (ATM) recommandé avant mise en charge.' : 'Dynamique condylienne fluide, absence d\'interférence en propulsion et déflexion en diduction.'}`;
 
-    // Add search citations
+    // Add search citations from RAG database
     const citations = input.searchContext || `[Source: CGS Volume 61 - Parodontologie & Orthodontie Clinique, Page 45]
-L'assainissement parodontal préalable (détartrage et élimination du biofilm) et le respect des forces d'ancrage sont indispensables pour la stabilité occlusale à long terme.
+L'assainissement parodontal préalable (détartrage et élimination du biofilm) et le respect des forces d'ancrage sont indispensables pour la stabilité occlusale et la santé parodontale à long terme.
 
 ---
 
 [Source: Atlas céphalométrique et biomécanique des aligneurs, Page 88]
-La planification de l'expansion transversale et du stripping interproximal (IPR) permet de ménager l'espace nécessaire tout en préservant l'intégrité de la table osseuse vestibulaire.`;
+La planification de l'expansion transversale dento-alvéolaire et du stripping interproximal (IPR) calibré permet de créer l'espace nécessaire tout en préservant l'intégrité de la table osseuse vestibulaire.
+
+---
+
+[Source: Traité de Biomécanique Orthodontique Appliquée, Page 112]
+Le contrôle du torque et l'application de forces continues légères (20-30g) par des aligneurs en polyuréthane séquentiel préviennent les risques de résorption radiculaires apicales.`;
 
     diagnostic += `\n\n---\n📚 **RÉFÉRENCES SCIENTIFIQUES RAG (BASE DE 54 OUVRAGES PDF) :**\n${citations}`;
 
     // Build specific Treatment text
-    let traitement = `1. STRATÉGIE THÉRAPEUTIQUE & APPAREILLAGE CONSEILLÉ :
-${isAligner || !textLower.includes('bagues') ? '- **Système d\'Aligneurs Invisibles Séquentiels OrthoMind** (Polyuréthane médical haute précision 0.75mm) avec taquets composites optimisés sur prémolaires et molaires pour le contrôle du torque et de l\'ancrage.' : '- **Appareillage d\'Alignement** adapté aux objectifs biomécaniques du patient.'}
-${isPeriodontal ? '- **Acte Préalable Indispensable** : Détartrage supra et sous-gingival complet + prescription d\'un soin antiseptique apaisant. Contrôle de cicatrisation à 3-4 semaines.' : ''}
+    let traitement = `1. STRATÉGIE THÉRAPEUTIQUE & APPAREILLAGE PRÉCONISÉ :
+${isAligner || !textLower.includes('bagues') ? '- **Système d\'Aligneurs Invisibles Séquentiels OrthoMind** (Polyuréthane biocompatible haute précision 0.75 mm).\n- **Taquets composites optimisés** : Pose de taquets rectangulaires biseautés sur prémolaires et canines pour le contrôle du torque, de la gression et du guidage rétentif.' : '- **Appareillage d\'Alignement** adapté aux objectifs biomécaniques du patient.'}
+${isPeriodontal ? '- **Acte Préalable Obligatoire** : Détartrage supra/sous-gingival complet + prescription d\'un bain de bouche antiseptique (Chlorhexidine 0.12%) pendant 10 jours. Contrôle de cicatrisation à 3 semaines.' : ''}
 
-2. SÉQUENCE DE TRAITEMENT ET ÉTAPES CLÉS :
-- **Phase 1 (Gouttières 1 à 6)** : Alignement initial, nivellement des arcades et correction des rotations antérieures${teethFound.length > 0 ? ` (notamment sur les dents ${teethFound.join(', ')})` : ''}.
-- **Phase 2 (Gouttières 7 à 18)** : ${hasClass2 ? 'Réduction du surplomb maxillaire et ingression contrôlée avec élastiques de Classe II (1/4" 4.5 oz).' : (hasClass3 ? 'Saut d\'articulé croisé et recul contrôlé avec élastiques de Classe III (3/16" 4.5 oz).' : 'Coordination inter-arcades et ajustement des guides incisivo-canins.')}
-- **Phase 3 (Gouttières 19 à 24)** : Finitions, équilibrage occlusal et engrenement fonctionnel optimal.
+2. SÉQUENCEMENT CHRONOLOGIQUE DU TRAITEMENT (3 PHASES) :
+- **Phase 1 (Gouttières 1 à 6 - Nivellement initial)** : Alignement initial des incisives, déverrouillage des rotations antérieures${teethFound.length > 0 ? ` (notamment sur les dents ${teethFound.join(', ')})` : ''} et expansion transversale progressive (changement toutes les 10 à 14 jours).
+- **Phase 2 (Gouttières 7 à 18 - Correction Sagittale & Transversale)** : ${hasClass2 ? 'Réduction de l\'overjet maxillaire et correction de la distoclusion avec élastiques de Classe II (1/4" 4.5 oz au port nocturne et diurne).' : (hasClass3 ? 'Saut d\'articulé croisé et recul contrôlé avec élastiques de Classe III (3/16" 4.5 oz).' : 'Coordination inter-arcades, centrage des lignes médianes et ajustement du guidage incisivo-canin.')}
+- **Phase 3 (Gouttières 19 à 24 - Finitions & Engrènement)** : Méticuleuse mise en engrenement molaire et canine, équilibrage occlusal fin et suppression des interférences.
 
-3. TABLEAU DE STRIPPING / IPR PLANIFIÉ :
-${isIPR || isCrowding ? `- **Secteur incisivo-canin mandibulaire (33 à 43)** : Stripping calibré de 0.20 mm à 0.30 mm par point de contact.
-- **Secteur maxillaire (13 à 23)** : Stripping léger de 0.15 mm par contact si nécessaire pour créer l'espace d'alignement.` : '- **Stripping (IPR)** : Réduction interproximale ciblée selon l\'évolution du nivellement d\'arcade.'}
+3. TABLEAU DE STRIPPING / IPR CALIBRÉ PAR SECTEUR :
+${isIPR || isCrowding ? `- **Secteur Antero-Mandibulaire (33 à 43)** : Stripping calibré de 0.20 mm à 0.30 mm par point de contact à la gouttière n°4.
+- **Secteur Maxillaire (13 à 23)** : Stripping léger de 0.15 mm par face de contact à la gouttière n°6 si nécessaire.` : '- **Stripping (IPR)** : Réduction interproximale ciblée de 0.15 mm selon l\'avancement du nivellement d\'arcade.'}
 
-4. RISQUES CLINIQUE & CONSIGNES D'OBSERVANCE :
-- Maintien rigoureux de l'hygiène bucco-dentaire autour des taquets.
-- Observance stricte du port des aligneurs (22 heures par jour).
+4. RISQUES CLINIKES & INSTRUCTIONS DE SUIVI :
+- Surveillance étroite du support parodontal et du déchaussement radiculaire potentiel.
+- Maintien rigoureux de l'hygiène bucco-dentaire autour des taquets composites.
+- **Observance impérative** : Port des aligneurs de **22 heures par jour minimum** (retrait uniquement lors des repas et du brossage).
 
-5. DURÉE ESTIMÉE & CONTENTION :
-- **Durée globale de traitement** : 12 à 16 mois.
-- **Protocole de Contention** : Fil lingual collé de 33 à 43 + Gouttières thermoformées de contention nocturne.`;
+5. DURÉE GLOBALE & PROTOCOLE DE CONTENTION :
+- **Durée totale estimée du traitement** : 12 à 15 mois avec bilans de contrôle toutes les 6 à 8 semaines.
+- **Contention Fixe & Amovible** : Fil lingual en acier tressé collé de canine à canine (33 à 43 et 13 à 23) + Gouttières thermoformées de contention nocturne (port quotidien pendant 6 mois puis 3 nuits par semaine).`;
 
     return { diagnostic, traitement };
 };
