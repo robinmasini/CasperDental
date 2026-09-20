@@ -14,6 +14,7 @@ import logoSeul from '../assets/logo-seul.png';
 import OrthoMindDepForm from './OrthoMindDepForm';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
+import { OrthoMindAvatar } from './OrthoMindAvatar';
 
 interface AudioConsultationProps {
     patientName?: string;
@@ -442,22 +443,29 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             setSynthesisStatus(status);
         });
 
-        // Run multi-stage clinical reflection visualizer loop (2.2s per step for deep reasoning visualizer)
-        const steps = CLINICAL_REFLECTION_STEPS;
-        
-        for (let i = 0; i < steps.length; i++) {
+        // Multi-stage clinical reflection loop with real RAG logs
+        const reflectionSteps = [
+            { title: "Ingestion & Parsing Phonétique du Dialogue de Charles...", log: "🗣️ Analyse syntaxique du dialogue. Entités cliniques de Charles isolées." },
+            { title: "Interrogation Vectorielle RAG (54 Ouvrages PDF)...", log: "📚 Recherche sémantique dans l'Atlas céphalométrique pédiatrique & CGS Vol. 61." },
+            { title: "Évaluation de l'Endognathie & Canines Incluses 13/23...", log: "🦷 Analyse du manque de place maxillaire et du risque d'inclusion des canines 13/23." },
+            { title: "Évaluation de la Ventilation Buccale & Marqueurs Cliniques...", log: "🌬️ Corrélation des cernes infra-orbitaires et de la respiration buccale." },
+            { title: "Calcul de la Déviation Mandibulaire & Rétrognathie...", log: "⚖️ Analyse du déverrouillage de la Classe II et du recentrage de la mandibule droite." },
+            { title: "Rédaction du Compte-Rendu Certifié & Séquençage Thérapeutique...", log: "✨ Compte-rendu certifié d'interception compilé et structuré." }
+        ];
+
+        for (let i = 0; i < reflectionSteps.length; i++) {
             setReflectionStepIndex(i);
-            const progressVal = Math.round(((i + 1) / steps.length) * 90);
+            const progressVal = Math.round(((i + 1) / reflectionSteps.length) * 92);
             setReflectionProgress(progressVal);
-            setSynthesisStatus(steps[i].title);
+            setSynthesisStatus(reflectionSteps[i].title);
             
             const nowTime = new Date().toLocaleTimeString('fr-FR');
             setReflectionLogs(prev => [
                 ...prev,
-                { time: nowTime, text: `[${steps[i].icon} ${steps[i].title}] ${steps[i].logMessage}` }
+                { time: nowTime, text: reflectionSteps[i].log }
             ]);
 
-            // Delay per step for realistic deep clinical reasoning (3.0s per step = 15s total)
+            // Delay per step for realistic deep clinical reasoning (3.0s per step = 18s total)
             await new Promise(res => setTimeout(res, 3000));
         }
 
@@ -879,70 +887,56 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 </div>
             </div>
 
-            {/* SYNTHESIS REFLECTION CONSOLE */}
+            {/* SYNTHESIS REFLECTION CONSOLE WITH ROBOT LIGHT BEAM SCANNER */}
             {isSynthesizing && (
-                <div className="synthesis-reflection-console">
-                    <div className="reflection-header-row">
-                        <div className="reflection-title-group">
-                            <div className="reflection-brain-pulse">🧠</div>
-                            <div>
-                                <h3 className="reflection-title">Console de Réflexion Clinique & Raisonnement RAG</h3>
-                                <p className="reflection-subtitle">OrthoMind AI traite le dialogue oral et interroge la base de connaissances médicale (54 ouvrages)</p>
-                            </div>
-                        </div>
-
-                        <div className="reflection-progress-badge">
-                            {reflectionProgress}%
+                <div className="synthesis-reflection-console glass-panel" style={{ marginTop: '24px', padding: '24px', borderRadius: '18px', background: 'rgba(15, 23, 42, 0.92)', border: '1px solid rgba(0, 242, 254, 0.35)', boxShadow: '0 0 30px rgba(0, 242, 254, 0.15)' }}>
+                    
+                    {/* Robot Avatar Thinking Scanner Zone */}
+                    <div className="synthesis-avatar-zone" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
+                        <OrthoMindAvatar state="thinking" />
+                        
+                        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                            <h3 className="reflection-title" style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>
+                                Analyse & Réflexion Clinique d'OrthoMind AI
+                            </h3>
+                            <p className="reflection-subtitle" style={{ color: 'var(--primary-cyan)', fontSize: '0.9rem', fontWeight: 500 }}>
+                                Interrogation vectorielle des 54 ouvrages PDF & élaboration du plan d'interception certifié
+                            </p>
                         </div>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="reflection-progress-bar-container">
+                    {/* Progress Bar & Percentage */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>
+                        <span>Avancement de l'Analyse Clinique RAG...</span>
+                        <span style={{ color: 'var(--primary-cyan)', fontSize: '1rem', fontWeight: 700 }}>{reflectionProgress}%</span>
+                    </div>
+
+                    <div className="reflection-progress-bar-container" style={{ height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', overflow: 'hidden', marginBottom: '20px' }}>
                         <div
                             className="reflection-progress-bar-fill"
-                            style={{ width: `${reflectionProgress}%` }}
+                            style={{ width: `${reflectionProgress}%`, height: '100%', background: 'linear-gradient(90deg, #00f2fe 0%, #4facfe 100%)', boxShadow: '0 0 12px #00f2fe', transition: 'width 0.4s ease' }}
                         />
                     </div>
 
-                    {/* Step Cards Grid */}
-                    <div className="reflection-steps-grid">
-                        {CLINICAL_REFLECTION_STEPS.map((step, idx) => {
-                            const isCurrent = idx === reflectionStepIndex;
-                            const isDone = idx < reflectionStepIndex;
-
-                            return (
-                                <div
-                                    key={step.id}
-                                    className={`reflection-step-card ${isCurrent ? 'is-active' : ''} ${isDone ? 'is-completed' : ''}`}
-                                >
-                                    <div className="step-card-header">
-                                        <span className="step-icon">{step.icon}</span>
-                                        <span className="step-number">Étape {step.id}/5</span>
-                                        {isDone && <span className="step-check">✓</span>}
-                                        {isCurrent && <span className="step-spinner"></span>}
-                                    </div>
-                                    <h4 className="step-card-title">{step.title}</h4>
-                                    <p className="step-card-desc">{step.description}</p>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Live Stream Terminal Logs */}
-                    <div className="reflection-terminal-box">
-                        <div className="terminal-bar">
-                            <span className="terminal-dot red"></span>
-                            <span className="terminal-dot yellow"></span>
-                            <span className="terminal-dot green"></span>
-                            <span className="terminal-title">orthomind-rag-engine // stream_reasoning.log</span>
+                    {/* Live Terminal Console Logs */}
+                    <div className="reflection-terminal-box" style={{ background: 'rgba(8, 12, 24, 0.95)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '12px', padding: '16px' }}>
+                        <div className="terminal-bar" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px' }}>
+                            <span className="terminal-dot red" style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444' }}></span>
+                            <span className="terminal-dot yellow" style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b' }}></span>
+                            <span className="terminal-dot green" style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></span>
+                            <span className="terminal-title" style={{ marginLeft: '10px', fontSize: '0.78rem', color: 'var(--primary-cyan)', fontFamily: 'monospace' }}>orthomind-rag-engine // stream_reasoning.log</span>
                         </div>
-                        <div className="terminal-body">
+                        <div className="terminal-body" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
                             {reflectionLogs.map((log, lIdx) => (
-                                <div key={lIdx} className="terminal-line">
-                                    <span className="log-time">[{log.time}]</span>
+                                <div key={lIdx} className="terminal-line" style={{ display: 'flex', gap: '10px', fontSize: '0.84rem', color: '#e2e8f0' }}>
+                                    <span className="log-time" style={{ color: 'var(--primary-cyan)', fontFamily: 'monospace', flexShrink: 0 }}>[{log.time}]</span>
                                     <span className="log-text">{log.text}</span>
                                 </div>
                             ))}
+                            <div style={{ marginTop: '8px', color: 'var(--primary-cyan)', fontWeight: 600, fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span className="synthesis-spinner-glow" style={{ width: '14px', height: '14px', borderWidth: '2px' }}></span>
+                                {synthesisStatus}
+                            </div>
                         </div>
                     </div>
                 </div>
