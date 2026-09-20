@@ -2092,14 +2092,23 @@
     width: 100% !important;
     display: flex !important;
     box-sizing: border-box !important;
-    padding: 4px !important;
-    gap: 4px !important;
+    padding: 6px !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .results-tabs::-webkit-scrollbar {
+    display: none !important;
   }
 
   .results-tab-btn {
-    flex: 1 !important;
+    flex-shrink: 0 !important;
     text-align: center !important;
-    padding: 8px 4px !important;
+    padding: 8px 14px !important;
     font-size: 0.82rem !important;
     white-space: nowrap !important;
   }
