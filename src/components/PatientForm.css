@@ -305,8 +305,8 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    background: rgba(0, 242, 254, 0.08);
-    border: 1px solid rgba(0, 242, 254, 0.25);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
     border-radius: 14px;
     padding: 14px 18px;
     margin: 20px 24px 0 24px;
@@ -320,13 +320,14 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    color: var(--primary-cyan);
+    color: var(--text-secondary);
     font-size: 0.85rem;
 }
 
 .vonage-sms-text strong {
     color: #ffffff;
     font-size: 0.88rem;
+    font-family: var(--font-display);
 }
 
 .simplified-form-grid {
@@ -353,6 +354,7 @@
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: var(--text-secondary);
     border-radius: 12px;
+    font-family: var(--font-display);
     font-size: 0.86rem;
     font-weight: 600;
     cursor: pointer;
@@ -366,23 +368,26 @@
 
 .btn-sms-submit {
     padding: 12px 22px;
-    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
-    border: none;
-    color: #030712;
+    background: #ffffff !important;
+    border: 1px solid #ffffff !important;
+    color: #0b1120 !important;
     border-radius: 12px;
+    font-family: var(--font-display, 'Outfit', sans-serif);
     font-weight: 700;
     font-size: 0.88rem;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
-    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.15);
+    transition: var(--transition-smooth, all 0.3s ease);
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
 .btn-sms-submit:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(0, 242, 254, 0.45);
+    background: #ffffff !important;
+    color: #060913 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(255, 255, 255, 0.35), 0 0 15px rgba(255, 255, 255, 0.2);
 }
 
 .sms-sent-confirmation-card {
@@ -400,7 +405,8 @@
 
 .sms-sent-confirmation-card h3 {
     font-size: 1.15rem;
-    color: var(--primary-cyan);
+    color: var(--text-primary);
+    font-family: var(--font-display);
     margin-bottom: 10px;
 }
 
@@ -413,8 +419,8 @@
 }
 
 .patient-link-preview-box {
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(0, 242, 254, 0.3);
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-glass);
     border-radius: 12px;
     padding: 14px 20px;
     display: flex;
@@ -433,6 +439,6 @@
 .generated-url {
     font-family: monospace;
     font-size: 0.88rem;
-    color: var(--primary-cyan);
+    color: #ffffff;
     word-break: break-all;
 }

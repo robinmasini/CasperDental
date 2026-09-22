@@ -218,13 +218,13 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                 <div className="patient-form-overlay" onClick={() => setShowSmsModal(false)}>
                     <div className="patient-form-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', padding: '30px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h3 style={{ color: 'var(--primary-cyan)', margin: 0, fontSize: '1.1rem' }}>
+                            <h3 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.15rem', fontFamily: 'var(--font-display)' }}>
                                 📲 SMS Vonage — Lien d'accès personnel
                             </h3>
                             <button className="close-btn" onClick={() => setShowSmsModal(false)}>×</button>
                         </div>
 
-                        <div style={{ background: 'rgba(0, 242, 254, 0.08)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
+                        <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-glass)', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
                             <div style={{ fontSize: '0.85rem', color: '#ffffff', fontWeight: 700, marginBottom: '6px' }}>
                                 Sender ID configuré : <span style={{ color: 'var(--primary-cyan)' }}>OrthoMind</span>
                             </div>
@@ -245,8 +245,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 Fermer
                             </button>
                             <button
-                                className="transcript-action-btn"
-                                style={{ borderColor: 'rgba(0, 242, 254, 0.5)', color: 'var(--primary-cyan)', padding: '8px 12px', fontSize: '0.82rem' }}
+                                className="btn-glass-secondary"
                                 onClick={() => {
                                     setShowSmsModal(false);
                                     setShowImmersionModal(true);
@@ -255,7 +254,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 👁️ Immersion Vision Patient →
                             </button>
                             <button
-                                className="btn-sms-submit"
+                                className="btn-white-cta"
                                 onClick={() => {
                                     alert(`✓ SMS envoyé avec succès à ${selectedPatient.prenom} via Vonage !`);
                                     setShowSmsModal(false);
@@ -348,8 +347,8 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                     </div>
 
                     {/* Explicit Espace Praticien Header Banner */}
-                    <div style={{ background: 'rgba(0, 242, 254, 0.05)', border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '12px', padding: '10px 16px', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary-cyan)', fontSize: '0.82rem', fontWeight: 700 }}>
+                    <div className="practitioner-notice-banner">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
                             <span style={{ fontSize: '1rem' }}>🔒</span> ESPACE PRATICIEN — FICHE PATIENT CONFIDENTIELLE (Partagée Cabinet)
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -384,18 +383,16 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             </div>
                         </div>
 
-                        <div className="patient-header-right" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div className="patient-header-right">
                             <button
-                                className="transcript-action-btn"
-                                style={{ borderColor: 'rgba(0, 242, 254, 0.4)', color: 'var(--primary-cyan)', padding: '8px 14px', fontSize: '0.85rem' }}
+                                className="btn-white-cta"
                                 onClick={() => setShowSmsModal(true)}
                             >
-                                📲 SMS Vonage : Lien Patient
+                                📲 SMS Vonage
                             </button>
 
                             <button
-                                className="transcript-action-btn"
-                                style={{ borderColor: 'rgba(124, 58, 237, 0.5)', color: '#a78bfa', padding: '8px 14px', fontSize: '0.85rem' }}
+                                className="btn-glass-secondary"
                                 onClick={() => setShowImmersionModal(true)}
                             >
                                 👁️ Immersion Vision Patient
@@ -403,8 +400,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
                             {onSelectPatientForAnalysis && (
                                 <button
-                                    className="btn-audio-primary"
-                                    style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+                                    className="btn-white-cta"
                                     onClick={() => onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`)}
                                 >
                                     ⚡ Lancer Diagnostic
@@ -417,18 +413,18 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                     <div className="patient-info-grid">
                         <div className="info-section">
                             <h4>📧 Contact & Portable</h4>
-                            <p>{selectedPatient.email || 'Non renseigné'}</p>
-                            <p style={{ color: 'var(--primary-cyan)', fontWeight: 600 }}>{selectedPatient.telephone || 'Non renseigné'}</p>
+                            <p style={{ fontWeight: 600 }}>{selectedPatient.email || 'Non renseigné'}</p>
+                            <p style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{selectedPatient.telephone || 'Non renseigné'}</p>
                         </div>
                         <div className="info-section">
                             <h4>📲 Portail Patient Externe</h4>
                             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Lien généré propre au patient :</p>
-                            <code style={{ fontSize: '0.75rem', color: 'var(--primary-cyan)', display: 'block', marginBottom: '8px' }}>
+                            <code style={{ fontSize: '0.78rem', color: '#ffffff', background: 'rgba(255, 255, 255, 0.06)', padding: '4px 8px', borderRadius: '6px', display: 'inline-block', marginBottom: '10px' }}>
                                 orthomind.app/patient/suivi-{selectedPatient.id.slice(-6)}
                             </code>
                             <button
-                                className="transcript-action-btn"
-                                style={{ width: '100%', borderColor: 'rgba(0, 242, 254, 0.5)', color: 'var(--primary-cyan)', padding: '6px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                className="btn-glass-secondary"
+                                style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                                 onClick={() => setShowImmersionModal(true)}
                             >
                                 👁️ Immersion Vision Patient →
@@ -504,14 +500,14 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
                         {activeTab === 'dep' && (
                             <div>
-                                <div style={{ background: 'rgba(0, 242, 254, 0.06)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '14px', padding: '12px 18px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-glass)', borderRadius: '14px', padding: '14px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <img src={logoSeul} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
-                                        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#ffffff' }}>
+                                        <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#ffffff', fontFamily: 'var(--font-display)' }}>
                                             Fiche Diagnostic DEP Renseignements Médicaux (Sécurité Sociale) — OrthoMind
                                         </span>
                                     </div>
-                                    <span style={{ fontSize: '0.78rem', color: 'var(--primary-cyan)', background: 'rgba(0, 242, 254, 0.1)', padding: '3px 10px', borderRadius: '12px', fontWeight: 600 }}>
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid var(--border-glass)', padding: '4px 12px', borderRadius: '12px', fontWeight: 600 }}>
                                         ✓ Remplie automatiquement lors de l'analyse patient
                                     </span>
                                 </div>
@@ -554,12 +550,11 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
                         {activeTab === 'diagnostic' && (
                             <div className="diagnostic-content">
-                                <div className="diagnostic-header">
-                                    <h4>Diagnostics & Consultation Audio de {selectedPatient.nom} {selectedPatient.prenom}</h4>
+                                <div className="diagnostic-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>Diagnostics & Consultation Audio de {selectedPatient.nom} {selectedPatient.prenom}</h4>
                                     {onSelectPatientForAnalysis && (
                                         <button
-                                            className="transcript-action-btn"
-                                            style={{ borderColor: 'rgba(0, 242, 254, 0.4)', color: 'var(--primary-cyan)' }}
+                                            className="btn-white-cta"
                                             onClick={() => onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`)}
                                         >
                                             + Nouveau Diagnostic pour {selectedPatient.prenom}
@@ -569,11 +564,10 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
                                 {patientAnalyses.length === 0 ? (
                                     <div className="diagnostic-empty">
-                                        <p style={{ marginBottom: '10px' }}>Aucun diagnostic n'a encore été rattaché à {selectedPatient.nom} {selectedPatient.prenom}.</p>
+                                        <p style={{ marginBottom: '14px' }}>Aucun diagnostic n'a encore été rattaché à {selectedPatient.nom} {selectedPatient.prenom}.</p>
                                         {onSelectPatientForAnalysis && (
                                             <button
-                                                className="btn-audio-primary"
-                                                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                                                className="btn-white-cta"
                                                 onClick={() => onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`)}
                                             >
                                                 ⚡ Effectuer un Diagnostic photo ou consultation audio
