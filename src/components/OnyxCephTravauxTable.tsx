@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
     TravauxItem,
     getLocalTravaux,
@@ -468,8 +469,8 @@ const OnyxCephTravauxTable: React.FC<OnyxCephTravauxTableProps> = ({
                 );
             })}
 
-            {/* Tag Selection Popup Modal matching Image #2 */}
-            {activeTagPickerItem && (
+            {/* Tag Selection Popup Modal matching Image #2 - Rendered via Portal to break out of transformed containers */}
+            {activeTagPickerItem && createPortal(
                 <div className="tag-picker-overlay" onClick={() => setActiveTagPickerItem(null)}>
                     <div className="tag-picker-card" onClick={e => e.stopPropagation()}>
                         <div className="tag-picker-header">
@@ -503,7 +504,8 @@ const OnyxCephTravauxTable: React.FC<OnyxCephTravauxTableProps> = ({
                             </span>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
