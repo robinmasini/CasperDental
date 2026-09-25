@@ -19,10 +19,6 @@ import orthomindNavIcon from '../assets/Orthomind.png';
 import welcomeCardImg from '../assets/welcomecard.png';
 import drPhoto from '../assets/photo.png';
 import casperLogoWelcome from '../assets/casper-logo-welcome.png';
-import navbar1 from '../assets/navbar-1.png';
-import navbar2 from '../assets/navbar-2.png';
-import navbar3 from '../assets/navbar-3.png';
-import navbar4 from '../assets/navbar-4.png';
 import './Dashboard.css';
 
 interface BookDocument {
@@ -2278,66 +2274,73 @@ const Dashboard = () => {
 
             {/* Mobile Bottom Navigation Bar */}
             {!isPatientAccount && (
-                <div className="mobile-bottom-navbar">
-                    {/* Glow effect behind the active icon */}
-                    <div className={`nav-background-glow pos-${activeTab}`} />
-                    <div 
-                        className="mobile-navbar-image-container"
-                        style={{ 
-                            backgroundImage: `url(${
-                                activeTab === 'analyse' ? navbar1 :
-                                activeTab === 'patients' ? navbar2 :
-                                activeTab === 'knowledge' ? navbar3 :
-                                navbar4
-                            })`,
-                            WebkitMaskImage: `url(${
-                                activeTab === 'analyse' ? navbar1 :
-                                activeTab === 'patients' ? navbar2 :
-                                activeTab === 'knowledge' ? navbar3 :
-                                navbar4
-                            })`,
-                            maskImage: `url(${
-                                activeTab === 'analyse' ? navbar1 :
-                                activeTab === 'patients' ? navbar2 :
-                                activeTab === 'knowledge' ? navbar3 :
-                                navbar4
-                            })`
-                        }}
+                <nav className="mobile-bottom-navbar" aria-label="Navigation principale mobile">
+                    <button 
+                        className={`mobile-navbar-tab ${activeTab === 'analyse' ? 'active' : ''}`}
+                        onClick={() => handleTabClick('analyse')}
+                        title="Analyse Clinique"
                     >
-                        {/* Invisible Clickable Overlays */}
-                        <button 
-                            className="mobile-navbar-tab-btn" 
-                            style={{ left: '0%', width: '22%' }}
-                            onClick={() => handleTabClick('analyse')}
-                            title="Analyse Clinique"
-                        />
-                        <button 
-                            className="mobile-navbar-tab-btn" 
-                            style={{ left: '22%', width: '18%' }}
-                            onClick={() => handleTabClick('patients')}
-                            title="Liste de patients"
-                        />
-                        {/* Center Hexagon defaults to Clinical Analysis */}
-                        <button 
-                            className="mobile-navbar-tab-btn" 
-                            style={{ left: '40%', width: '20%' }}
-                            onClick={() => handleTabClick('analyse')}
-                            title="Casper Logo"
-                        />
-                        <button 
-                            className="mobile-navbar-tab-btn" 
-                            style={{ left: '60%', width: '18%' }}
-                            onClick={() => handleTabClick('knowledge')}
-                            title="Connaissances PDF"
-                        />
-                        <button 
-                            className="mobile-navbar-tab-btn" 
-                            style={{ left: '78%', width: '22%' }}
-                            onClick={() => handleTabClick('config')}
-                            title="Configuration / API"
-                        />
-                    </div>
-                </div>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                        </svg>
+                        <span className="mobile-navbar-label">Analyse</span>
+                    </button>
+
+                    <button 
+                        className={`mobile-navbar-tab ${activeTab === 'patients' ? 'active' : ''}`}
+                        onClick={() => handleTabClick('patients')}
+                        title="Liste de patients"
+                    >
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                        <span className="mobile-navbar-label">Patients</span>
+                    </button>
+
+                    {/* Center Button - Audio Consultation / Casper */}
+                    <button 
+                        className={`mobile-navbar-tab mobile-navbar-center-btn ${activeTab === 'audio' ? 'active' : ''}`}
+                        onClick={() => handleTabClick('audio')}
+                        title="Consultation Audio"
+                    >
+                        <div className="center-icon-badge">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                <line x1="12" y1="19" x2="12" y2="23" />
+                                <line x1="8" y1="23" x2="16" y2="23" />
+                            </svg>
+                        </div>
+                        <span className="mobile-navbar-label">Audio</span>
+                    </button>
+
+                    <button 
+                        className={`mobile-navbar-tab ${activeTab === 'knowledge' ? 'active' : ''}`}
+                        onClick={() => handleTabClick('knowledge')}
+                        title="Base de Connaissances"
+                    >
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                        </svg>
+                        <span className="mobile-navbar-label">Savoir</span>
+                    </button>
+
+                    <button 
+                        className={`mobile-navbar-tab ${activeTab === 'config' ? 'active' : ''}`}
+                        onClick={() => handleTabClick('config')}
+                        title="Configuration"
+                    >
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        </svg>
+                        <span className="mobile-navbar-label">Config</span>
+                    </button>
+                </nav>
             )}
         </div>
     );
