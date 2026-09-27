@@ -6,7 +6,7 @@ import PatientForm from '../components/PatientForm';
 import PatientPortal from './PatientPortal';
 import OrthoMindDepForm from '../components/OrthoMindDepForm';
 import ClinicalReport from '../components/ClinicalReport';
-import Icon from '../components/Icon';
+import Icon, { IconName } from '../components/Icon';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import OnyxCephTravauxTable from '../components/OnyxCephTravauxTable';
@@ -88,10 +88,13 @@ const APPOINTMENT_STATUS: Record<string, string> = {
 };
 
 // Valeur d'une propriété ou mention "Non renseigné"
-const Field = ({ label, value }: { label: string; value?: string | null }) => (
-    <div>
-        <dt>{label}</dt>
-        <dd className={value ? '' : 'is-empty'}>{value || 'Non renseigné'}</dd>
+const Field = ({ label, value, icon }: { label: string; value?: string | null; icon?: IconName }) => (
+    <div className={icon ? 'om-dl-item--icon' : undefined}>
+        {icon && <span className="om-dl-icon" aria-hidden="true"><Icon name={icon} size={16} /></span>}
+        <div>
+            <dt>{label}</dt>
+            <dd className={value ? '' : 'is-empty'}>{value || 'Non renseigné'}</dd>
+        </div>
     </div>
 );
 
@@ -457,31 +460,34 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
                     {/* Résumé */}
                     <dl className="om-dl fiche-summary">
-                        <Field label="Naissance" value={formatDate(raw.date_naissance)} />
-                        <Field label="Téléphone" value={selectedPatient.telephone} />
-                        <Field label="E-mail" value={selectedPatient.email} />
-                        <Field label="Praticien" value={selectedPatient.praticien} />
-                        <Field label="Allergies" value={null} />
-                        <div>
-                            <dt>Portail patient</dt>
-                            <dd>
-                                <button className="fiche-inline-link" onClick={() => setShowLinkModal(true)}>
-                                    suivi-{selectedPatient.id.slice(-6)}
-                                </button>
-                            </dd>
+                        <Field label="Naissance" value={formatDate(raw.date_naissance)} icon="cake" />
+                        <Field label="Téléphone" value={selectedPatient.telephone} icon="phone" />
+                        <Field label="E-mail" value={selectedPatient.email} icon="mail" />
+                        <Field label="Praticien" value={selectedPatient.praticien} icon="stethoscope" />
+                        <Field label="Allergies" value={null} icon="alert" />
+                        <div className="om-dl-item--icon">
+                            <span className="om-dl-icon" aria-hidden="true"><Icon name="link" size={16} /></span>
+                            <div>
+                                <dt>Portail patient</dt>
+                                <dd>
+                                    <button className="fiche-inline-link" onClick={() => setShowLinkModal(true)}>
+                                        suivi-{selectedPatient.id.slice(-6)}
+                                    </button>
+                                </dd>
+                            </div>
                         </div>
                     </dl>
 
                     {/* Onglets */}
                     <nav className="om-tabs fiche-tabs" role="tablist">
                         {([
-                            ['dep', 'Fiche DEP', null],
-                            ['dossier', 'Diagnostics', patientAnalyses.length],
-                            ['synthese', 'Synthèse', null],
-                            ['rdv', 'RDV / suivi', patientAppointments.length],
-                            ['admin', 'Administratif', null],
-                            ['travaux', 'Planning Monday', null],
-                        ] as [FicheTab, string, number | null][]).map(([key, label, count]) => (
+                            ['dep', 'Fiche DEP', null, 'clipboard'],
+                            ['dossier', 'Diagnostics', patientAnalyses.length, 'stethoscope'],
+                            ['synthese', 'Synthèse', null, 'chart'],
+                            ['rdv', 'RDV / suivi', patientAppointments.length, 'calendar'],
+                            ['admin', 'Administratif', null, 'folder'],
+                            ['travaux', 'Planning Monday', null, null],
+                        ] as [FicheTab, string, number | null, IconName | null][]).map(([key, label, count, icon]) => (
                             <button
                                 key={key}
                                 role="tab"
@@ -489,6 +495,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 className={`om-tab ${activeTab === key ? 'is-active' : ''}`}
                                 onClick={() => setActiveTab(key)}
                             >
+                                {icon && <Icon name={icon} size={16} />}
                                 {key === 'travaux' && <img src={logoMonday} alt="" className="om-tab-logo" />}
                                 {label}
                                 {count !== null && count > 0 && <span className="om-tab-count">{count}</span>}
@@ -538,12 +545,12 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                                 {isOpen && (
                                                     <div className="om-accordion-body">
                                                         <div className="session-section">
-                                                            <h3 className="om-label">Diagnostic</h3>
+                                                            <h3 className="om-label fiche-stat-label"><Icon name="activity" size={14} /> Diagnostic</h3>
                                                             <ClinicalReport text={ana.diagnostic_text} />
                                                         </div>
                                                         {ana.traitement_text && (
                                                             <div className="session-section">
-                                                                <h3 className="om-label">Plan de traitement</h3>
+                                                                <h3 className="om-label fiche-stat-label"><Icon name="tooth" size={14} /> Plan de traitement</h3>
                                                                 <ClinicalReport text={ana.traitement_text} />
                                                             </div>
                                                         )}
@@ -588,15 +595,15 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             <div className="fiche-synthese">
                                 <div className="fiche-stats">
                                     <div className="om-card om-card--flat">
-                                        <span className="om-label">Diagnostics & consultations</span>
+                                        <span className="om-label fiche-stat-label"><Icon name="stethoscope" size={14} /> Diagnostics & consultations</span>
                                         <strong className="fiche-stat-value">{patientAnalyses.length} séance{patientAnalyses.length > 1 ? 's' : ''}</strong>
                                     </div>
                                     <div className="om-card om-card--flat">
-                                        <span className="om-label">Praticien référent</span>
+                                        <span className="om-label fiche-stat-label"><Icon name="user" size={14} /> Praticien référent</span>
                                         <strong className="fiche-stat-value">{selectedPatient.praticien}</strong>
                                     </div>
                                     <div className="om-card om-card--flat">
-                                        <span className="om-label">Dernière séance</span>
+                                        <span className="om-label fiche-stat-label"><Icon name="calendar" size={14} /> Dernière séance</span>
                                         <strong className="fiche-stat-value">{patientAnalyses[0] ? formatDate(patientAnalyses[0].created_at) : '—'}</strong>
                                     </div>
                                 </div>
@@ -665,7 +672,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         {activeTab === 'admin' && (
                             <div className="fiche-admin">
                                 <section>
-                                    <h3 className="om-label fiche-admin-title">Patient</h3>
+                                    <h3 className="om-label fiche-admin-title"><Icon name="user" size={14} /> Patient</h3>
                                     <dl className="om-dl">
                                         <Field label="Civilité" value={raw.civilite} />
                                         <Field label="Nom" value={raw.nom} />
@@ -676,7 +683,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                     </dl>
                                 </section>
                                 <section>
-                                    <h3 className="om-label fiche-admin-title">Responsable légal / assuré</h3>
+                                    <h3 className="om-label fiche-admin-title"><Icon name="users" size={14} /> Responsable légal / assuré</h3>
                                     <dl className="om-dl">
                                         <Field label="Nom" value={[raw.responsable_civilite, raw.responsable_prenom, raw.responsable_nom].filter(Boolean).join(' ')} />
                                         <Field label="N° de sécurité sociale" value={raw.responsable_num_secu} />
@@ -686,7 +693,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                     </dl>
                                 </section>
                                 <section>
-                                    <h3 className="om-label fiche-admin-title">Correspondants</h3>
+                                    <h3 className="om-label fiche-admin-title"><Icon name="stethoscope" size={14} /> Correspondants</h3>
                                     <dl className="om-dl">
                                         <Field label="Adressé par" value={raw.envoye_par} />
                                         <Field label="Dentiste traitant" value={raw.dentiste} />
@@ -694,7 +701,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                     </dl>
                                 </section>
                                 <section>
-                                    <h3 className="om-label fiche-admin-title">Comptabilité</h3>
+                                    <h3 className="om-label fiche-admin-title"><Icon name="file" size={14} /> Comptabilité</h3>
                                     <dl className="om-dl">
                                         <Field label="Solde" value="0,00 €" />
                                     </dl>
