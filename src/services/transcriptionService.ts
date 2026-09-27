@@ -7,7 +7,7 @@
  * 4. Orthodontic terms auto-formatter
  */
 
-import { getGeminiApiKey, executeGeminiCall, extractText } from './geminiService';
+import { getGeminiApiKey, executeGeminiCall, extractText, geminiFetch } from './geminiService';
 
 // Extend Window interface for Web Speech API cross-browser support
 declare global {
@@ -341,7 +341,7 @@ const INLINE_AUDIO_LIMIT = 14 * 1024 * 1024; // marge sous la limite de ~20 Mo (
 
 // Envoi d'un gros fichier via l'API Files de Gemini (upload résumable)
 const uploadAudioToGeminiFiles = async (blob: Blob, mimeType: string, apiKey: string): Promise<string> => {
-    const start = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`, {
+    const start = await geminiFetch('https://generativelanguage.googleapis.com/upload/v1beta/files', {
         method: 'POST',
         headers: {
             'X-Goog-Upload-Protocol': 'resumable',
@@ -351,7 +351,7 @@ const uploadAudioToGeminiFiles = async (blob: Blob, mimeType: string, apiKey: st
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({ file: { display_name: 'consultation-orthomind' } }),
-    });
+    }, apiKey);
     const uploadUrl = start.headers.get('X-Goog-Upload-URL') || start.headers.get('x-goog-upload-url');
     if (!start.ok || !uploadUrl) throw new Error(`Envoi du fichier audio refusé (${start.status}).`);
 
@@ -370,7 +370,7 @@ const uploadAudioToGeminiFiles = async (blob: Blob, mimeType: string, apiKey: st
     // Le fichier doit être « ACTIVE » avant de pouvoir être utilisé
     for (let i = 0; i < 30 && file.state === 'PROCESSING'; i++) {
         await new Promise(r => setTimeout(r, 2000));
-        file = await (await fetch(`https://generativelanguage.googleapis.com/v1beta/${file.name}?key=${apiKey}`)).json();
+        file = await (await geminiFetch(`https://generativelanguage.googleapis.com/v1beta/${file.name}`, {}, apiKey)).json();
     }
     if (file.state === 'FAILED') throw new Error('Gemini n\'a pas pu lire ce fichier audio.');
     return file.uri;
@@ -385,10 +385,8 @@ export const transcribeAudioWithGemini = async (
     if (!apiKey) throw new Error('Clé API Gemini non configurée.');
 
     const mimeType = normalizeAudioMime(audioBlob, fileName);
-    const isBearer = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
-
     let audioPart: any;
-    if (audioBlob.size > INLINE_AUDIO_LIMIT && !isBearer) {
+    if (audioBlob.size > INLINE_AUDIO_LIMIT) {
         const fileUri = await uploadAudioToGeminiFiles(audioBlob, mimeType, apiKey);
         audioPart = { fileData: { mimeType, fileUri } };
     } else {

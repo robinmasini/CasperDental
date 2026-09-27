@@ -143,15 +143,40 @@ const STATIC_MODEL_FALLBACK: Record<ModelTier, string[]> = {
 
 let availableModelsPromise: Promise<string[] | null> | null = null;
 
-const isBearerKey = (apiKey: string) => apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
+// Authentification Gemini. Les clés AI Studio (« AIza… » comme le nouveau format
+// « AQ.… ») passent par l'en-tête x-goog-api-key — jamais dans l'URL, où elles
+// finiraient dans les journaux. Un jeton OAuth (« ya29.… ») passe en Bearer.
+// Pour le format « AQ.… », on retente en Bearer si Google refuse l'en-tête.
+type GeminiAuthMode = 'api-key' | 'bearer';
+let preferredAuthMode: GeminiAuthMode | null = null;
+
+const authModesFor = (apiKey: string): GeminiAuthMode[] => {
+    if (apiKey.startsWith('ya29.')) return ['bearer'];
+    if (apiKey.startsWith('AQ.')) return preferredAuthMode === 'bearer' ? ['bearer', 'api-key'] : ['api-key', 'bearer'];
+    return ['api-key'];
+};
+
+export const geminiFetch = async (url: string, init: RequestInit, apiKey: string): Promise<Response> => {
+    const modes = authModesFor(apiKey);
+    let response: Response | null = null;
+    for (const mode of modes) {
+        const headers = new Headers(init.headers);
+        if (mode === 'bearer') headers.set('Authorization', `Bearer ${apiKey}`);
+        else headers.set('x-goog-api-key', apiKey);
+        response = await fetch(url, { ...init, headers });
+        if (response.status !== 401 && response.status !== 403) {
+            if (modes.length > 1) preferredAuthMode = mode;
+            return response;
+        }
+    }
+    return response!;
+};
 
 const listAvailableModels = (apiKey: string): Promise<string[] | null> => {
     if (availableModelsPromise) return availableModelsPromise;
     availableModelsPromise = (async () => {
         try {
-            const bearer = isBearerKey(apiKey);
-            const url = `https://generativelanguage.googleapis.com/v1beta/models?pageSize=200${bearer ? '' : `&key=${apiKey}`}`;
-            const response = await fetch(url, { headers: bearer ? { Authorization: `Bearer ${apiKey}` } : {} });
+            const response = await geminiFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', {}, apiKey);
             if (!response.ok) return null;
             const data = await response.json();
             return (data.models || [])
@@ -192,9 +217,7 @@ const resolveModelChain = async (apiKey: string, tier: ModelTier): Promise<strin
 // Vérifie une clé Gemini et indique le modèle expert qui sera utilisé
 export const testGeminiKey = async (apiKey: string): Promise<{ ok: true; model: string } | { ok: false; error: string }> => {
     try {
-        const bearer = isBearerKey(apiKey);
-        const url = `https://generativelanguage.googleapis.com/v1beta/models?pageSize=200${bearer ? '' : `&key=${apiKey}`}`;
-        const response = await fetch(url, { headers: bearer ? { Authorization: `Bearer ${apiKey}` } : {} });
+        const response = await geminiFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', {}, apiKey);
         if (!response.ok) {
             const err = await response.json().catch(() => ({}));
             return { ok: false, error: err.error?.message || `Erreur ${response.status}` };
@@ -231,21 +254,11 @@ export const executeGeminiCall = async (
                     onStatusUpdate(`Tentative avec ${model} (essai ${attempt + 1}/${maxRetries + 1})...`);
                 }
 
-                const bearer = isBearerKey(apiKey);
-                const url = bearer
-                    ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpointPath}`
-                    : `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpointPath}?key=${apiKey}`;
-
-                const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-                if (bearer) {
-                    headers['Authorization'] = `Bearer ${apiKey}`;
-                }
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(apiBody)
-                });
+                const response = await geminiFetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpointPath}`,
+                    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(apiBody) },
+                    apiKey
+                );
 
                 if (response.ok) {
                     const data = await response.json();
@@ -669,7 +682,7 @@ export const generateSmileSimulationWithGemini = async (simPhotoBase64: string):
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`, {
+            const resp = await geminiFetch('https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 signal: controller.signal,
@@ -677,7 +690,7 @@ export const generateSmileSimulationWithGemini = async (simPhotoBase64: string):
                     instances: [{ prompt }],
                     parameters: { sampleCount: 1, aspectRatio: "1:1" }
                 })
-            });
+            }, apiKey);
             clearTimeout(timeoutId);
             if (resp.ok) {
                 const data = await resp.json();
