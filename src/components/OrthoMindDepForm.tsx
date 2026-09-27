@@ -106,7 +106,7 @@ export const OrthoMindDepForm: React.FC<OrthoMindDepFormProps> = ({
         if (onSave) {
             onSave(formData);
         } else {
-            alert('✓ Diagnostic DEP Sécurité Sociale enregistré avec succès dans la Fiche Patient !');
+            alert('Fiche DEP enregistrée dans le dossier du patient.');
         }
     };
 
@@ -118,14 +118,14 @@ export const OrthoMindDepForm: React.FC<OrthoMindDepFormProps> = ({
                     <img src={logoSeul} alt="OrthoMind" className="dep-title-icon" />
                     <div className="dep-title-text">
                         <h3>
-                            ★ DIAGNOSTIC DESTINÉ À LA SÉCURITÉ SOCIALE (DEP)
+                            Diagnostic destiné à la Sécurité sociale (DEP)
                         </h3>
                         <div className="dep-meta-info">
                             <span className="dep-patient-badge">
-                                👤 {formData.patientNom} {formData.patientPrenom}
+                                {formData.patientNom} {formData.patientPrenom}
                             </span>
-                            <span>• N° interne: <strong>{formData.numeroInterne}</strong></span>
-                            <span>• N° dossier: <strong>{formData.numeroDossier.slice(-8)}</strong></span>
+                            <span>N° interne : <strong>{formData.numeroInterne}</strong></span>
+                            <span>N° dossier : <strong>{formData.numeroDossier.slice(-8)}</strong></span>
                         </div>
                     </div>
                 </div>
@@ -627,12 +627,11 @@ export const OrthoMindDepForm: React.FC<OrthoMindDepFormProps> = ({
                     <div className="dep-actions-bar">
                         {onReset && (
                             <button type="button" className="btn-orthomind-danger" onClick={onReset}>
-                                Tout Réinitialiser
+                                Tout réinitialiser
                             </button>
                         )}
                         <button type="button" className="btn-orthomind-cta" onClick={handleFormSubmit}>
-                            <img src={logoSeul} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-                            Enregistrer dans Fiche Patient
+                            Enregistrer dans la fiche patient
                         </button>
                     </div>
                 )}

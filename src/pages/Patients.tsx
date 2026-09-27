@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Patient, getPatients } from '../services/patientService';
-import { getAppointmentsByPatientId, Appointment as DBAppointment } from '../services/appointmentService';
+import { getAppointmentsByPatientId } from '../services/appointmentService';
 import PatientForm from '../components/PatientForm';
 import PatientPortal from './PatientPortal';
 import OrthoMindDepForm from '../components/OrthoMindDepForm';
+import ClinicalReport from '../components/ClinicalReport';
+import Icon from '../components/Icon';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
-import logoSeul from '../assets/logo-seul.png';
-import logoMonday from '../assets/logo-monday.png';
 import OnyxCephTravauxTable from '../components/OnyxCephTravauxTable';
+import logoMonday from '../assets/logo-monday.png';
 import './Patients.css';
 
 interface DisplayPatient {
@@ -17,12 +18,11 @@ interface DisplayPatient {
     prenom: string;
     dateNaissance: string;
     age: string;
-    numeroInterne: string;
     numeroDossier: string;
     email?: string;
     telephone?: string;
-    allergies?: string;
     praticien: string;
+    raw: Patient;
 }
 
 interface Appointment {
@@ -35,20 +35,27 @@ interface Appointment {
     praticien: string;
 }
 
-
-// Demo data removed - using real data
+type FicheTab = 'dep' | 'dossier' | 'synthese' | 'rdv' | 'admin' | 'travaux';
 
 // Calculate age from date of birth
 const calculateAge = (dateNaissance: string): string => {
     const birthDate = new Date(dateNaissance);
+    if (isNaN(birthDate.getTime())) return '';
     const today = new Date();
-    const years = today.getFullYear() - birthDate.getFullYear();
-    const months = today.getMonth() - birthDate.getMonth();
-
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    if (today.getDate() < birthDate.getDate()) months--;
     if (months < 0) {
-        return `${years - 1} ans ${12 + months} mois`;
+        years--;
+        months += 12;
     }
-    return `${years} ans ${months} mois`;
+    return months > 0 ? `${years} ans ${months} mois` : `${years} ans`;
+};
+
+const formatDate = (iso?: string) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? iso : d.toLocaleDateString('fr-FR');
 };
 
 // Convert Supabase patient to display format
@@ -58,13 +65,34 @@ const convertToDisplayPatient = (patient: Patient): DisplayPatient => ({
     prenom: patient.prenom,
     dateNaissance: patient.date_naissance,
     age: calculateAge(patient.date_naissance),
-    numeroInterne: patient.id?.slice(-4) || '',
     numeroDossier: patient.id || '',
     email: patient.email,
     telephone: patient.portable || patient.telephone,
-    allergies: '',
-    praticien: patient.praticien || 'Cabinet'
+    praticien: patient.praticien || 'Cabinet',
+    raw: patient,
 });
+
+const readHistory = (): any[] => {
+    try {
+        return JSON.parse(localStorage.getItem('casper_mock_history') || '[]');
+    } catch {
+        return [];
+    }
+};
+
+const APPOINTMENT_STATUS: Record<string, string> = {
+    'terminé': 'om-badge--success',
+    'confirmé': 'om-badge--accent',
+    'annulé': 'om-badge--danger',
+};
+
+// Valeur d'une propriété ou mention "Non renseigné"
+const Field = ({ label, value }: { label: string; value?: string | null }) => (
+    <div>
+        <dt>{label}</dt>
+        <dd className={value ? '' : 'is-empty'}>{value || 'Non renseigné'}</dd>
+    </div>
+);
 
 interface PatientsProps {
     onSelectPatientForAnalysis?: (patientName: string) => void;
@@ -75,24 +103,19 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedPatient, setSelectedPatient] = useState<DisplayPatient | null>(null);
-    const [activeTab, setActiveTab] = useState<'diagnostic' | 'dep' | 'synthese' | 'rdv' | 'administratif' | 'travaux'>('dep');
+    const [activeTab, setActiveTab] = useState<FicheTab>('dep');
     const [showForm, setShowForm] = useState(false);
     const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([]);
     const [loadingAppointments, setLoadingAppointments] = useState(false);
-    const [showSmsModal, setShowSmsModal] = useState(false);
+    const [showLinkModal, setShowLinkModal] = useState(false);
     const [showImmersionModal, setShowImmersionModal] = useState(false);
+    const [linkCopied, setLinkCopied] = useState(false);
     const [patientAnalyses, setPatientAnalyses] = useState<any[]>([]);
-    const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
+    const [openSessionId, setOpenSessionId] = useState<string | null>(null);
     const [currentDepData, setCurrentDepData] = useState<OrthoMindDepData | null>(null);
+    const [depSessionId, setDepSessionId] = useState<string | null>(null);
 
-    const toggleSessionExpanded = (sessionKey: string) => {
-        setExpandedSessionIds(prev => ({
-            ...prev,
-            [sessionKey]: !prev[sessionKey]
-        }));
-    };
-
-    // Fetch patients from Supabase
+    // Fetch patients
     useEffect(() => {
         const fetchPatients = async () => {
             setLoading(true);
@@ -107,14 +130,23 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
         fetchPatients();
     }, []);
 
+    const depFromSession = (session: any, patient: DisplayPatient): OrthoMindDepData =>
+        session.dep_data || extractDepDataFromAnalysis(
+            session.diagnostic_text || '',
+            session.traitement_text || '',
+            `${patient.nom} ${patient.prenom}`,
+            patient.id
+        );
+
     // Fetch appointments & diagnostics when selected patient changes
     useEffect(() => {
+        if (!selectedPatient) return;
+
         const fetchPatientAppointments = async () => {
-            if (!selectedPatient) return;
             setLoadingAppointments(true);
             try {
                 const data = await getAppointmentsByPatientId(selectedPatient.id);
-                const displayAppointments: Appointment[] = data.map(apt => {
+                setPatientAppointments(data.map(apt => {
                     const aptDate = new Date(apt.date);
                     return {
                         id: apt.id,
@@ -125,59 +157,39 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         etat: apt.status,
                         praticien: selectedPatient.praticien
                     };
-                });
-                setPatientAppointments(displayAppointments);
+                }));
             } catch (error) {
-                console.error("Failed to fetch patient appointments:", error);
+                console.error('Failed to fetch patient appointments:', error);
             } finally {
                 setLoadingAppointments(false);
             }
         };
 
         const loadPatientDiagnostics = () => {
-            if (!selectedPatient) return;
-            try {
-                const localHistory = localStorage.getItem('casper_mock_history');
-                const historyItems = localHistory ? JSON.parse(localHistory) : [];
-                const matched = historyItems.filter((item: any) => {
-                    const itemName = (item.patient_name || '').toLowerCase();
-                    return itemName.includes(selectedPatient.nom.toLowerCase()) || 
-                           itemName.includes(selectedPatient.prenom.toLowerCase()) ||
-                           item.patient_id === selectedPatient.id;
-                });
-                setPatientAnalyses(matched);
+            const matched = readHistory().filter((item: any) => {
+                if (item.patient_id) return item.patient_id === selectedPatient.id;
+                const itemName = (item.patient_name || '').toLowerCase();
+                return itemName.includes(selectedPatient.nom.toLowerCase()) && itemName.includes(selectedPatient.prenom.toLowerCase());
+            });
+            setPatientAnalyses(matched);
 
-                // Initialize DEP Form data for the selected patient
-                if (matched.length > 0) {
-                    const latest = matched[0];
-                    if (latest.dep_data) {
-                        setCurrentDepData(latest.dep_data);
-                    } else {
-                        const parsed = extractDepDataFromAnalysis(
-                            latest.diagnostic_text || '',
-                            latest.traitement_text || '',
-                            `${selectedPatient.nom} ${selectedPatient.prenom}`,
-                            selectedPatient.id
-                        );
-                        setCurrentDepData(parsed);
-                    }
-                    const firstKey = latest.id || 'session-0';
-                    setExpandedSessionIds({ [firstKey]: true });
-                } else {
-                    const defaultDep = createDefaultDepData(
-                        selectedPatient.nom,
-                        selectedPatient.prenom,
-                        selectedPatient.id.slice(-4),
-                        selectedPatient.id
-                    );
-                    setCurrentDepData(defaultDep);
-                    setExpandedSessionIds({});
-                }
-            } catch (e) {
-                console.error('Error filtering patient diagnostics:', e);
+            if (matched.length > 0) {
+                setCurrentDepData(depFromSession(matched[0], selectedPatient));
+                setDepSessionId(matched[0].id || null);
+                setOpenSessionId(matched[0].id || 'session-0');
+            } else {
+                setCurrentDepData(createDefaultDepData(
+                    selectedPatient.nom,
+                    selectedPatient.prenom,
+                    selectedPatient.id.slice(-4),
+                    selectedPatient.id
+                ));
+                setDepSessionId(null);
+                setOpenSessionId(null);
             }
         };
 
+        setActiveTab('dep');
         fetchPatientAppointments();
         loadPatientDiagnostics();
     }, [selectedPatient]);
@@ -187,25 +199,71 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
         p.numeroDossier.includes(searchQuery)
     );
 
-    const getEtatClass = (etat: string) => {
-        switch (etat) {
-            case 'terminé': return 'etat-termine';
-            case 'confirmé': return 'etat-confirme';
-            case 'annulé': return 'etat-annule';
-            default: return 'etat-planifie';
-        }
-    };
-
-    const handlePatientCreated = (patient: Patient, smsSent?: boolean) => {
+    const handlePatientCreated = (patient: Patient) => {
         const displayPatient = convertToDisplayPatient(patient);
         setPatients(prev => [displayPatient, ...prev]);
         setSelectedPatient(displayPatient);
         setShowForm(false);
     };
 
+    const saveDep = (updatedData: OrthoMindDepData) => {
+        if (!selectedPatient) return;
+        setCurrentDepData(updatedData);
+        try {
+            const history = readHistory();
+            const idx = depSessionId ? history.findIndex((h: any) => h.id === depSessionId) : -1;
+            if (idx !== -1) {
+                history[idx].dep_data = updatedData;
+            } else {
+                const newId = 'mock-analysis-dep-' + Date.now();
+                history.unshift({
+                    id: newId,
+                    patient_name: `${selectedPatient.nom} ${selectedPatient.prenom}`,
+                    patient_id: selectedPatient.id,
+                    created_at: new Date().toISOString(),
+                    diagnostic_text: 'Fiche DEP saisie manuellement',
+                    traitement_text: updatedData.planDeTraitement,
+                    dep_data: updatedData
+                });
+                setDepSessionId(newId);
+            }
+            localStorage.setItem('casper_mock_history', JSON.stringify(history));
+            setPatientAnalyses(history.filter((h: any) => h.patient_id === selectedPatient.id));
+        } catch (err) {
+            console.error('Error saving DEP form:', err);
+        }
+    };
+
+    const openDepForSession = (session: any) => {
+        if (!selectedPatient) return;
+        setCurrentDepData(depFromSession(session, selectedPatient));
+        setDepSessionId(session.id || null);
+        setActiveTab('dep');
+    };
+
+    const patientLink = selectedPatient ? `${window.location.origin}/patient/suivi-${selectedPatient.id}` : '';
+
+    const copyPatientLink = async () => {
+        try {
+            await navigator.clipboard.writeText(patientLink);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        } catch {
+            window.prompt('Copiez le lien patient :', patientLink);
+        }
+    };
+
+    const startAnalysis = () => {
+        if (selectedPatient && onSelectPatientForAnalysis) {
+            onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`);
+        }
+    };
+
+    const depSession = patientAnalyses.find(a => a.id === depSessionId);
+    const raw = selectedPatient?.raw;
+
     return (
         <div className="patients-container">
-            {/* Patient Form Modal */}
             {showForm && (
                 <PatientForm
                     onClose={() => setShowForm(false)}
@@ -213,64 +271,53 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                 />
             )}
 
-            {/* Vonage SMS Modal Preview */}
-            {showSmsModal && selectedPatient && (
-                <div className="patient-form-overlay" onClick={() => setShowSmsModal(false)}>
-                    <div className="patient-form-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', padding: '30px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h3 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.15rem', fontFamily: 'var(--font-display)' }}>
-                                📲 SMS Vonage — Lien d'accès personnel
-                            </h3>
-                            <button className="close-btn" onClick={() => setShowSmsModal(false)}>×</button>
+            {/* Lien d'accès au portail patient */}
+            {showLinkModal && selectedPatient && (
+                <div className="fiche-modal-overlay" onClick={() => setShowLinkModal(false)}>
+                    <div className="fiche-modal om-card" role="dialog" aria-modal="true" aria-labelledby="link-modal-title" onClick={(e) => e.stopPropagation()}>
+                        <div className="om-card-header">
+                            <h3 id="link-modal-title" className="om-title">SMS Vonage — lien d'accès patient</h3>
+                            <button className="om-btn om-btn--ghost om-btn--icon" onClick={() => setShowLinkModal(false)} aria-label="Fermer">
+                                <Icon name="x" />
+                            </button>
                         </div>
-
-                        <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-glass)', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
-                            <div style={{ fontSize: '0.85rem', color: '#ffffff', fontWeight: 700, marginBottom: '6px' }}>
-                                Sender ID configuré : <span style={{ color: 'var(--primary-cyan)' }}>OrthoMind</span>
-                            </div>
-                            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                                Destinataire : <strong>{selectedPatient.nom} {selectedPatient.prenom}</strong> ({selectedPatient.telephone || '06 XX XX XX XX'})
-                            </div>
+                        <p className="om-muted">
+                            Lien personnel de suivi pour <strong>{selectedPatient.prenom} {selectedPatient.nom}</strong>
+                            {selectedPatient.telephone ? ` (${selectedPatient.telephone})` : ''}.
+                        </p>
+                        <div className="fiche-link-box">
+                            <code>{patientLink}</code>
                         </div>
-
-                        <div style={{ background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Aperçu du SMS transmis au patient :</span>
-                            <p style={{ fontSize: '0.88rem', color: '#e2e8f0', margin: 0, lineHeight: '1.5' }}>
-                                "Bonjour {selectedPatient.prenom}, voici votre lien personnel et sécurisé pour votre suivi orthodontique OrthoMind : https://orthomind.app/patient/suivi-{selectedPatient.id.slice(-8)}"
-                            </p>
+                        <div className="fiche-sms-preview">
+                            <span className="om-label">Message SMS proposé</span>
+                            <p>Bonjour {selectedPatient.prenom}, voici votre lien personnel et sécurisé pour suivre votre traitement orthodontique : {patientLink}</p>
                         </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
-                            <button className="btn-cancel" onClick={() => setShowSmsModal(false)}>
-                                Fermer
+                        <p className="fiche-note">Envoi Vonage en mode démonstration : aucun SMS réel n'est encore expédié. Vous pouvez copier le lien pour le transmettre.</p>
+                        <div className="fiche-modal-actions">
+                            <button className="om-btn om-btn--ghost" onClick={() => { setShowLinkModal(false); setShowImmersionModal(true); }}>
+                                <Icon name="eye" /> Aperçu du portail
+                            </button>
+                            <button className="om-btn om-btn--secondary" onClick={copyPatientLink}>
+                                <Icon name="copy" /> {linkCopied ? 'Lien copié' : 'Copier le lien'}
                             </button>
                             <button
-                                className="btn-glass-secondary"
+                                className="om-btn om-btn--primary"
                                 onClick={() => {
-                                    setShowSmsModal(false);
-                                    setShowImmersionModal(true);
+                                    alert(`SMS préparé pour ${selectedPatient.prenom} (mode démonstration Vonage).`);
+                                    setShowLinkModal(false);
                                 }}
                             >
-                                👁️ Immersion Vision Patient →
-                            </button>
-                            <button
-                                className="btn-white-cta"
-                                onClick={() => {
-                                    alert(`✓ SMS envoyé avec succès à ${selectedPatient.prenom} via Vonage !`);
-                                    setShowSmsModal(false);
-                                }}
-                            >
-                                📲 Confirmer l'envoi du SMS
+                                <Icon name="send" /> Envoyer le SMS
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Patient Portal Immersion Modal */}
+            {/* Aperçu du portail patient */}
             {showImmersionModal && selectedPatient && (
-                <div className="patient-form-overlay" onClick={() => setShowImmersionModal(false)} style={{ zIndex: 1100, padding: '20px' }}>
-                    <div style={{ width: '100%', maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                <div className="fiche-modal-overlay fiche-modal-overlay--portal" onClick={() => setShowImmersionModal(false)}>
+                    <div className="fiche-portal-frame" onClick={(e) => e.stopPropagation()}>
                         <PatientPortal
                             patientData={selectedPatient}
                             onCloseImmersion={() => setShowImmersionModal(false)}
@@ -279,573 +326,349 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                 </div>
             )}
 
-            {/* Left Panel - Patient List */}
-            <div className="patients-list-panel">
-                <div className="patients-header">
-                    <button className="btn-add-patient" onClick={() => setShowForm(true)}>
-                        + Nouveau Patient
+            {/* Liste des patients */}
+            <aside className="patients-list-panel">
+                <div className="patients-list-header">
+                    <div className="patients-list-title">
+                        <h2 className="om-title">Patients</h2>
+                        <span className="om-badge">{patients.length}</span>
+                    </div>
+                    <button className="om-btn om-btn--primary om-btn--sm" onClick={() => setShowForm(true)}>
+                        <Icon name="plus" /> Nouveau
                     </button>
                 </div>
                 <div className="patients-search">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="11" cy="11" r="8" />
-                        <path d="M21 21l-4.35-4.35" />
-                    </svg>
+                    <Icon name="search" />
                     <input
-                        type="text"
-                        placeholder="Rechercher par nom ou n° dossier..."
+                        type="search"
+                        className="om-input"
+                        placeholder="Nom ou n° de dossier"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        aria-label="Rechercher un patient"
                     />
                 </div>
                 <div className="patients-list">
                     {loading ? (
-                        <div className="loading-state">Chargement...</div>
+                        <p className="patients-list-status">Chargement…</p>
                     ) : filteredPatients.length === 0 ? (
-                        <div className="empty-state">
-                            <p>Aucun patient trouvé</p>
-                        </div>
+                        <p className="patients-list-status">Aucun patient trouvé</p>
                     ) : (
                         filteredPatients.map((patient) => (
-                            <div
+                            <button
                                 key={patient.id}
-                                className={`patient-item ${selectedPatient?.id === patient.id ? 'active' : ''}`}
+                                className={`patient-row ${selectedPatient?.id === patient.id ? 'is-active' : ''}`}
                                 onClick={() => setSelectedPatient(patient)}
                             >
-                                <div className="patient-item-main">
-                                    <span className="patient-name">{patient.nom} {patient.prenom}</span>
-                                    <span className="patient-age">{patient.age}</span>
-                                </div>
-                                <div className="patient-item-sub">
-                                    <span className="patient-dossier">N° {patient.numeroDossier.slice(-8)}</span>
-                                    <span className="patient-praticien">{patient.praticien}</span>
-                                </div>
-                            </div>
+                                <span className="patient-avatar" aria-hidden="true">{patient.prenom[0]}{patient.nom[0]}</span>
+                                <span className="patient-row-text">
+                                    <span className="patient-row-name">{patient.nom} {patient.prenom}</span>
+                                    <span className="patient-row-meta">{patient.age || 'Âge inconnu'} · {patient.praticien}</span>
+                                </span>
+                            </button>
                         ))
                     )}
                 </div>
-            </div>
+            </aside>
 
-            {/* Right Panel - Patient Details */}
-            {selectedPatient ? (
-                <div className="patient-details-panel">
-                    {/* Dedicated Mobile Header Bar with Close / Back Button */}
-                    <div className="mobile-details-top-bar">
-                        <button
-                            className="btn-back-patients-mobile"
-                            onClick={() => setSelectedPatient(null)}
-                        >
-                            ← Retour aux patients
-                        </button>
-                        <button
-                            className="btn-close-mobile-x"
-                            onClick={() => setSelectedPatient(null)}
-                            aria-label="Fermer la fiche patient"
-                        >
-                            ✕
+            {/* Fiche patient */}
+            {selectedPatient && raw ? (
+                <section className="patient-details-panel" aria-label={`Fiche de ${selectedPatient.prenom} ${selectedPatient.nom}`}>
+                    <div className="fiche-mobile-bar">
+                        <button className="om-btn om-btn--ghost om-btn--sm" onClick={() => setSelectedPatient(null)}>
+                            <Icon name="arrowLeft" /> Patients
                         </button>
                     </div>
 
-                    {/* Explicit Espace Praticien Header Banner */}
-                    <div className="practitioner-notice-banner">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
-                            <span style={{ fontSize: '1rem' }}>🔒</span> ESPACE PRATICIEN — FICHE PATIENT CONFIDENTIELLE (Partagée Cabinet)
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                                Dossier consultable par l'équipe du cabinet • Lien SMS Vonage généré pour le patient
-                            </div>
-                            <button
-                                className="btn-close-desktop-fiche"
-                                onClick={() => setSelectedPatient(null)}
-                                title="Fermer la fiche patient"
-                            >
-                                ✕ Fermer
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Patient Header */}
-                    <div className="patient-header">
-                        <div className="patient-header-left">
-                            <div className="patient-initials">
+                    {/* En-tête */}
+                    <header className="fiche-header">
+                        <div className="fiche-identity">
+                            <span className="patient-avatar patient-avatar--lg" aria-hidden="true">
                                 {selectedPatient.prenom[0]}{selectedPatient.nom[0]}
-                            </div>
-                            <div className="patient-header-info">
-                                <h2>{selectedPatient.nom} {selectedPatient.prenom}</h2>
-                                <div className="patient-meta">
-                                    <span>{selectedPatient.age}</span>
-                                    <span>•</span>
-                                    <span>Suivi par {selectedPatient.praticien}</span>
-                                    <span>•</span>
-                                    <span>N° dossier: {selectedPatient.numeroDossier.slice(-8)}</span>
-                                </div>
+                            </span>
+                            <div>
+                                <h1 className="fiche-name">{selectedPatient.prenom} {selectedPatient.nom}</h1>
+                                <p className="fiche-meta">
+                                    {[
+                                        selectedPatient.age,
+                                        raw.sexe,
+                                        raw.type_patient,
+                                        `Dossier ${selectedPatient.numeroDossier.slice(-8)}`,
+                                    ].filter(Boolean).join(' · ')}
+                                </p>
                             </div>
                         </div>
-
-                        <div className="patient-header-right">
-                            <button
-                                className="btn-white-cta"
-                                onClick={() => setShowSmsModal(true)}
-                            >
-                                📲 SMS Vonage
+                        <div className="fiche-actions">
+                            <button className="om-btn om-btn--ghost" onClick={() => setShowImmersionModal(true)}>
+                                <Icon name="eye" /> Vision patient
                             </button>
-
-                            <button
-                                className="btn-glass-secondary"
-                                onClick={() => setShowImmersionModal(true)}
-                            >
-                                👁️ Immersion Vision Patient
+                            <button className="om-btn om-btn--secondary" onClick={() => setShowLinkModal(true)}>
+                                <Icon name="send" /> SMS Vonage
                             </button>
-
                             {onSelectPatientForAnalysis && (
-                                <button
-                                    className="btn-white-cta"
-                                    onClick={() => onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`)}
-                                >
-                                    ⚡ Lancer Diagnostic
+                                <button className="om-btn om-btn--primary" onClick={startAnalysis}>
+                                    <Icon name="sparkles" /> Lancer un diagnostic
                                 </button>
                             )}
-                        </div>
-                    </div>
-
-                    {/* Patient Info Sections */}
-                    <div className="patient-info-grid">
-                        <div className="info-section">
-                            <h4>📧 Contact & Portable</h4>
-                            <p style={{ fontWeight: 600 }}>{selectedPatient.email || 'Non renseigné'}</p>
-                            <p style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{selectedPatient.telephone || 'Non renseigné'}</p>
-                        </div>
-                        <div className="info-section">
-                            <h4>📲 Portail Patient Externe</h4>
-                            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Lien généré propre au patient :</p>
-                            <code style={{ fontSize: '0.78rem', color: '#ffffff', background: 'rgba(255, 255, 255, 0.06)', padding: '4px 8px', borderRadius: '6px', display: 'inline-block', marginBottom: '10px' }}>
-                                orthomind.app/patient/suivi-{selectedPatient.id.slice(-6)}
-                            </code>
-                            <button
-                                className="btn-glass-secondary"
-                                style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                                onClick={() => setShowImmersionModal(true)}
-                            >
-                                👁️ Immersion Vision Patient →
+                            <button className="om-btn om-btn--ghost om-btn--icon fiche-close" onClick={() => setSelectedPatient(null)} aria-label="Fermer la fiche">
+                                <Icon name="x" />
                             </button>
                         </div>
-                        <div className="info-section">
-                            <h4>⚠️ Allergies</h4>
-                            <p>{selectedPatient.allergies || 'Aucune allergie connue'}</p>
-                        </div>
-                        <div className="info-section">
-                            <h4>🩺 Contacts médicaux</h4>
-                            <p>Praticien référant : {selectedPatient.praticien}</p>
-                        </div>
-                    </div>
+                    </header>
 
-                    {/* Tabs */}
-                    <div className="patient-tabs">
-                        <button
-                            className={`tab ${activeTab === 'dep' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('dep')}
-                        >
-                            <img src={logoSeul} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
-                            <span>★ FICHE DEP SÉCURITÉ SOCIALE</span>
-                        </button>
-                        <button
-                            className={`tab ${activeTab === 'diagnostic' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('diagnostic')}
-                        >
-                            <span className="tab-icon">🩺</span>
-                            <span>DIAGNOSTICS & CONFERENCES ({patientAnalyses.length})</span>
-                        </button>
-                        <button
-                            className={`tab ${activeTab === 'synthese' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('synthese')}
-                        >
-                            <span className="tab-icon">⚡</span>
-                            <span>SYNTHÈSE GLOBALE</span>
-                        </button>
-                        <button
-                            className={`tab ${activeTab === 'rdv' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('rdv')}
-                        >
-                            <span className="tab-icon">📅</span>
-                            <span>RDV/SUIVI</span>
-                        </button>
-                        <button
-                            className={`tab ${activeTab === 'administratif' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('administratif')}
-                        >
-                            <span className="tab-icon">📁</span>
-                            <span>ADMINISTRATIF</span>
-                        </button>
-                        <button
-                            className={`tab ${activeTab === 'travaux' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('travaux')}
-                        >
-                            <img src={logoMonday} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
-                            <span>PLANNING MONDAY CABINET</span>
-                        </button>
-                    </div>
+                    {/* Résumé */}
+                    <dl className="om-dl fiche-summary">
+                        <Field label="Naissance" value={formatDate(raw.date_naissance)} />
+                        <Field label="Téléphone" value={selectedPatient.telephone} />
+                        <Field label="E-mail" value={selectedPatient.email} />
+                        <Field label="Praticien" value={selectedPatient.praticien} />
+                        <Field label="Allergies" value={null} />
+                        <div>
+                            <dt>Portail patient</dt>
+                            <dd>
+                                <button className="fiche-inline-link" onClick={() => setShowLinkModal(true)}>
+                                    suivi-{selectedPatient.id.slice(-6)}
+                                </button>
+                            </dd>
+                        </div>
+                    </dl>
 
-                    {/* Tab Content */}
-                    <div className="tab-content">
-                        {activeTab === 'travaux' && (
-                            <div className="travaux-content" style={{ marginTop: '10px' }}>
-                                <OnyxCephTravauxTable
-                                    patientName={`${selectedPatient.nom} ${selectedPatient.prenom}`}
-                                    patientId={selectedPatient.id}
-                                    filterCurrentPatientOnly={true}
-                                />
-                            </div>
+                    {/* Onglets */}
+                    <nav className="om-tabs fiche-tabs" role="tablist">
+                        {([
+                            ['dep', 'Fiche DEP', null],
+                            ['dossier', 'Diagnostics', patientAnalyses.length],
+                            ['synthese', 'Synthèse', null],
+                            ['rdv', 'RDV / suivi', patientAppointments.length],
+                            ['admin', 'Administratif', null],
+                            ['travaux', 'Planning Monday', null],
+                        ] as [FicheTab, string, number | null][]).map(([key, label, count]) => (
+                            <button
+                                key={key}
+                                role="tab"
+                                aria-selected={activeTab === key}
+                                className={`om-tab ${activeTab === key ? 'is-active' : ''}`}
+                                onClick={() => setActiveTab(key)}
+                            >
+                                {key === 'travaux' && <img src={logoMonday} alt="" className="om-tab-logo" />}
+                                {label}
+                                {count !== null && count > 0 && <span className="om-tab-count">{count}</span>}
+                            </button>
+                        ))}
+                    </nav>
+
+                    <div className="fiche-tab-content">
+                        {activeTab === 'dossier' && (
+                            patientAnalyses.length === 0 ? (
+                                <div className="om-empty">
+                                    <p>Aucune analyse n'est encore rattachée à ce patient.</p>
+                                    {onSelectPatientForAnalysis && (
+                                        <button className="om-btn om-btn--primary" onClick={startAnalysis}>
+                                            <Icon name="sparkles" /> Lancer une analyse
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="fiche-sessions">
+                                    {patientAnalyses.map((ana, idx) => {
+                                        const isAudio = ana.type === 'audio' || Boolean(ana.transcript);
+                                        const sessionKey = ana.id || `session-${idx}`;
+                                        const isOpen = openSessionId === sessionKey;
+                                        const date = new Date(ana.created_at);
+
+                                        return (
+                                            <article key={sessionKey} className={`om-accordion ${isOpen ? 'is-open' : ''}`}>
+                                                <button
+                                                    className="om-accordion-trigger"
+                                                    onClick={() => setOpenSessionId(isOpen ? null : sessionKey)}
+                                                    aria-expanded={isOpen}
+                                                >
+                                                    <span className={`session-icon ${isAudio ? 'session-icon--audio' : ''}`}>
+                                                        <Icon name={isAudio ? 'mic' : 'camera'} />
+                                                    </span>
+                                                    <span className="session-title">
+                                                        <span>{isAudio ? 'Consultation audio' : 'Analyse des clichés'}</span>
+                                                        <span className="session-date">
+                                                            {date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} à {date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </span>
+                                                    {idx === 0 && <span className="om-badge om-badge--accent">Plus récente</span>}
+                                                    <Icon name="chevronDown" className="om-accordion-chevron" />
+                                                </button>
+
+                                                {isOpen && (
+                                                    <div className="om-accordion-body">
+                                                        <div className="session-section">
+                                                            <h3 className="om-label">Diagnostic</h3>
+                                                            <ClinicalReport text={ana.diagnostic_text} />
+                                                        </div>
+                                                        {ana.traitement_text && (
+                                                            <div className="session-section">
+                                                                <h3 className="om-label">Plan de traitement</h3>
+                                                                <ClinicalReport text={ana.traitement_text} />
+                                                            </div>
+                                                        )}
+                                                        {ana.transcript && (
+                                                            <details className="session-transcript">
+                                                                <summary>Retranscription de la consultation</summary>
+                                                                <p>{ana.transcript}</p>
+                                                            </details>
+                                                        )}
+                                                        <div className="session-footer">
+                                                            <button className="om-btn om-btn--secondary om-btn--sm" onClick={() => openDepForSession(ana)}>
+                                                                <Icon name="file" /> Fiche DEP de cette séance
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </article>
+                                        );
+                                    })}
+                                </div>
+                            )
                         )}
 
                         {activeTab === 'dep' && (
                             <div>
-                                <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-glass)', borderRadius: '14px', padding: '14px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <img src={logoSeul} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
-                                        <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#ffffff', fontFamily: 'var(--font-display)' }}>
-                                            Fiche Diagnostic DEP Renseignements Médicaux (Sécurité Sociale) — OrthoMind
-                                        </span>
-                                    </div>
-                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid var(--border-glass)', padding: '4px 12px', borderRadius: '12px', fontWeight: 600 }}>
-                                        ✓ Remplie automatiquement lors de l'analyse patient
-                                    </span>
-                                </div>
-
+                                <p className="fiche-note fiche-note--block">
+                                    {depSession
+                                        ? `Pré-remplie à partir de l'analyse du ${formatDate(depSession.created_at)}. Vérifiez et complétez avant envoi.`
+                                        : 'Aucune analyse rattachée : fiche vierge à compléter.'}
+                                </p>
                                 <OrthoMindDepForm
+                                    key={depSessionId || 'blank'}
                                     depData={currentDepData || createDefaultDepData(selectedPatient.nom, selectedPatient.prenom, selectedPatient.id.slice(-4), selectedPatient.id)}
                                     patientName={`${selectedPatient.nom} ${selectedPatient.prenom}`}
                                     patientId={selectedPatient.id}
-                                    onSave={(updatedData) => {
-                                        setCurrentDepData(updatedData);
-                                        try {
-                                            const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
-                                            const localHistory = JSON.parse(localHistoryStr);
-                                            const idx = localHistory.findIndex((h: any) => 
-                                                (h.patient_name || '').toLowerCase().includes(selectedPatient.nom.toLowerCase()) ||
-                                                h.patient_id === selectedPatient.id
-                                            );
-                                            if (idx !== -1) {
-                                                localHistory[idx].dep_data = updatedData;
-                                            } else {
-                                                localHistory.unshift({
-                                                    id: 'mock-analysis-dep-' + Date.now(),
-                                                    patient_name: `${selectedPatient.nom} ${selectedPatient.prenom}`,
-                                                    patient_id: selectedPatient.id,
-                                                    created_at: new Date().toISOString(),
-                                                    diagnostic_text: 'Diagnostic DEP saisi manuellement',
-                                                    traitement_text: updatedData.planDeTraitement,
-                                                    dep_data: updatedData
-                                                });
-                                            }
-                                            localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
-                                            alert(`✓ Fiche Diagnostic DEP de ${selectedPatient.prenom} enregistrée avec succès sur sa Fiche Patient !`);
-                                        } catch (err) {
-                                            console.error('Error saving DEP form:', err);
-                                        }
-                                    }}
+                                    onSave={saveDep}
                                 />
                             </div>
                         )}
 
-                        {activeTab === 'diagnostic' && (
-                            <div className="diagnostic-content">
-                                <div className="diagnostic-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>Diagnostics & Consultation Audio de {selectedPatient.nom} {selectedPatient.prenom}</h4>
-                                    {onSelectPatientForAnalysis && (
-                                        <button
-                                            className="btn-white-cta"
-                                            onClick={() => onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`)}
-                                        >
-                                            + Nouveau Diagnostic pour {selectedPatient.prenom}
-                                        </button>
-                                    )}
-                                </div>
-
-                                {patientAnalyses.length === 0 ? (
-                                    <div className="diagnostic-empty">
-                                        <p style={{ marginBottom: '14px' }}>Aucun diagnostic n'a encore été rattaché à {selectedPatient.nom} {selectedPatient.prenom}.</p>
-                                        {onSelectPatientForAnalysis && (
-                                            <button
-                                                className="btn-white-cta"
-                                                onClick={() => onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`)}
-                                            >
-                                                ⚡ Effectuer un Diagnostic photo ou consultation audio
-                                            </button>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="patient-diagnostics-history-list" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                                        {patientAnalyses.map((ana, idx) => {
-                                            const isAudio = ana.type === 'audio' || Boolean(ana.transcript);
-                                            const sessionKey = ana.id || `session-${idx}`;
-                                            const isExpanded = Boolean(expandedSessionIds[sessionKey]);
-
-                                            return (
-                                                <div 
-                                                    key={sessionKey} 
-                                                    style={{ 
-                                                        background: isExpanded ? 'rgba(15, 23, 42, 0.75)' : 'rgba(15, 23, 42, 0.45)', 
-                                                        border: `1px solid ${isExpanded ? 'rgba(0, 242, 254, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`, 
-                                                        borderRadius: '14px', 
-                                                        overflow: 'hidden',
-                                                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                        boxShadow: isExpanded ? '0 8px 30px rgba(0, 242, 254, 0.08)' : 'none'
-                                                    }}
-                                                >
-                                                    {/* Drawer Header Bar - Retract & Expand Trigger */}
-                                                    <div 
-                                                        onClick={() => toggleSessionExpanded(sessionKey)}
-                                                        style={{ 
-                                                            display: 'flex', 
-                                                            justifyContent: 'space-between', 
-                                                            alignItems: 'center', 
-                                                            padding: '14px 18px',
-                                                            cursor: 'pointer',
-                                                            background: isExpanded ? 'rgba(0, 242, 254, 0.06)' : 'rgba(255, 255, 255, 0.02)',
-                                                            borderBottom: isExpanded ? '1px solid rgba(0, 242, 254, 0.2)' : 'none',
-                                                            userSelect: 'none'
-                                                        }}
-                                                    >
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                                                            <span style={{ 
-                                                                background: isAudio ? 'linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(124, 58, 237, 0.2))' : 'rgba(255, 255, 255, 0.08)',
-                                                                color: isAudio ? 'var(--primary-cyan)' : '#e2e8f0',
-                                                                border: isAudio ? '1px solid rgba(0, 242, 254, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
-                                                                padding: '4px 10px',
-                                                                borderRadius: '20px',
-                                                                fontSize: '0.78rem',
-                                                                fontWeight: 700
-                                                            }}>
-                                                                {isAudio ? '🎤 Consultation Audio & Synthèse RAG' : '📷 Diagnostic Clichés Photos'}
-                                                            </span>
-                                                            <strong style={{ color: '#ffffff', fontSize: '0.94rem' }}>
-                                                                Séance du {new Date(ana.created_at).toLocaleDateString('fr-FR')} à {new Date(ana.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                                            </strong>
-                                                        </div>
-
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                                                                Réf: #{ana.id?.slice(-6)}
-                                                            </span>
-                                                            
-                                                            {/* Flèche vers le bas / haut à droite */}
-                                                            <div style={{
-                                                                background: isExpanded ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.08)',
-                                                                color: isExpanded ? 'var(--primary-cyan)' : 'var(--text-secondary)',
-                                                                border: `1px solid ${isExpanded ? 'rgba(0, 242, 254, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
-                                                                borderRadius: '50%',
-                                                                width: '30px',
-                                                                height: '30px',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                fontSize: '0.82rem',
-                                                                fontWeight: 700,
-                                                                transition: 'transform 0.25s ease, background 0.2s ease',
-                                                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
-                                                            }}>
-                                                                ▼
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Retractable Drawer Content */}
-                                                    {isExpanded && (
-                                                        <div style={{ padding: '18px', background: 'rgba(10, 16, 29, 0.4)' }}>
-                                                            {/* Diagnostic Content */}
-                                                            <div style={{ marginBottom: '14px' }}>
-                                                                <h5 style={{ color: 'var(--primary-cyan)', margin: '0 0 6px 0', fontSize: '0.86rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                                    📋 Diagnostic & Observations :
-                                                                </h5>
-                                                                <p style={{ fontSize: '0.86rem', color: '#cbd5e1', whiteSpace: 'pre-line', margin: 0, lineHeight: '1.6' }}>
-                                                                    {ana.diagnostic_text}
-                                                                </p>
-                                                            </div>
-
-                                                            {/* Traitement Content if present */}
-                                                            {ana.traitement_text && (
-                                                                <div style={{ marginBottom: '14px', background: 'rgba(0, 242, 254, 0.04)', padding: '12px 14px', borderRadius: '10px', borderLeft: '3px solid var(--primary-cyan)' }}>
-                                                                    <h5 style={{ color: 'var(--primary-blue)', margin: '0 0 6px 0', fontSize: '0.86rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                                        💊 Plan Thérapeutique Conseillé :
-                                                                    </h5>
-                                                                    <p style={{ fontSize: '0.85rem', color: '#e2e8f0', whiteSpace: 'pre-line', margin: 0, lineHeight: '1.6' }}>
-                                                                        {ana.traitement_text}
-                                                                    </p>
-                                                                </div>
-                                                            )}
-
-                                                            {/* Transcript if present */}
-                                                            {ana.transcript && (
-                                                                <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '12px 14px', borderRadius: '10px', marginTop: '10px', marginBottom: '14px' }}>
-                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                                                                        🗣️ Verbatim / Retranscription Audio de la consultation :
-                                                                    </span>
-                                                                    <p style={{ fontSize: '0.82rem', color: '#94a3b8', fontStyle: 'italic', margin: 0, lineHeight: '1.5' }}>
-                                                                        "{ana.transcript}"
-                                                                    </p>
-                                                                </div>
-                                                            )}
-
-                                                            {/* OrthoMind DEP Diagnostic Form for this session */}
-                                                            <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '16px' }}>
-                                                                <h5 style={{ color: 'var(--primary-cyan)', margin: '0 0 10px 0', fontSize: '0.86rem', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                    <img src={logoSeul} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-                                                                    Fiche Diagnostic DEP Renseignements Médicaux (Sécurité Sociale)
-                                                                </h5>
-                                                                <OrthoMindDepForm
-                                                                    depData={ana.dep_data || extractDepDataFromAnalysis(
-                                                                        ana.diagnostic_text || '',
-                                                                        ana.traitement_text || '',
-                                                                        `${selectedPatient.nom} ${selectedPatient.prenom}`,
-                                                                        selectedPatient.id
-                                                                    )}
-                                                                    patientName={`${selectedPatient.nom} ${selectedPatient.prenom}`}
-                                                                    patientId={selectedPatient.id}
-                                                                    readOnly={false}
-                                                                    onSave={(updatedDep) => {
-                                                                        try {
-                                                                            const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
-                                                                            const localHistory = JSON.parse(localHistoryStr);
-                                                                            const matchIdx = localHistory.findIndex((h: any) => h.id === ana.id);
-                                                                            if (matchIdx !== -1) {
-                                                                                localHistory[matchIdx].dep_data = updatedDep;
-                                                                                localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
-                                                                            }
-                                                                            alert('✓ Fiche Diagnostic DEP de la séance mise à jour avec succès !');
-                                                                        } catch (e) {
-                                                                            console.error(e);
-                                                                        }
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
                         {activeTab === 'synthese' && (
-                            <div className="synthese-content">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                    <h4 style={{ margin: 0 }}>Synthèse Globale & Historique Médical du Patient</h4>
-                                    <span style={{ fontSize: '0.8rem', background: 'rgba(0, 242, 254, 0.1)', color: 'var(--primary-cyan)', padding: '4px 10px', borderRadius: '14px', fontWeight: 600 }}>
-                                        Dossier Praticien OrthoMind
-                                    </span>
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '15px', marginBottom: '20px' }}>
-                                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '14px', padding: '16px' }}>
-                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Diagnostic & Consultations Audio</span>
-                                        <strong style={{ fontSize: '1.4rem', color: 'var(--primary-cyan)' }}>{patientAnalyses.length} séance(s)</strong>
+                            <div className="fiche-synthese">
+                                <div className="fiche-stats">
+                                    <div className="om-card om-card--flat">
+                                        <span className="om-label">Diagnostics & consultations</span>
+                                        <strong className="fiche-stat-value">{patientAnalyses.length} séance{patientAnalyses.length > 1 ? 's' : ''}</strong>
                                     </div>
-                                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '14px', padding: '16px' }}>
-                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Praticien Référent</span>
-                                        <strong style={{ fontSize: '1.05rem', color: '#ffffff' }}>{selectedPatient.praticien}</strong>
+                                    <div className="om-card om-card--flat">
+                                        <span className="om-label">Praticien référent</span>
+                                        <strong className="fiche-stat-value">{selectedPatient.praticien}</strong>
                                     </div>
-                                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '14px', padding: '16px' }}>
-                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Portail Patient Lien SMS</span>
-                                        <strong style={{ fontSize: '0.9rem', color: '#10b981' }}>✓ Vonage Activé</strong>
+                                    <div className="om-card om-card--flat">
+                                        <span className="om-label">Dernière séance</span>
+                                        <strong className="fiche-stat-value">{patientAnalyses[0] ? formatDate(patientAnalyses[0].created_at) : '—'}</strong>
                                     </div>
                                 </div>
-
                                 {patientAnalyses.length > 0 ? (
-                                    <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '16px', padding: '20px' }}>
-                                        <h5 style={{ color: 'var(--primary-cyan)', marginTop: 0, marginBottom: '10px', fontSize: '0.95rem' }}>
-                                            💡 Résumé Synthétique de la dernière consultation :
-                                        </h5>
-                                        <p style={{ fontSize: '0.88rem', color: '#e2e8f0', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-line' }}>
-                                            {patientAnalyses[0].diagnostic_text}
-                                        </p>
+                                    <div className="om-card">
+                                        <h3 className="om-label fiche-admin-title">Résumé de la dernière consultation</h3>
+                                        <ClinicalReport text={patientAnalyses[0].diagnostic_text} />
                                     </div>
                                 ) : (
-                                    <div className="synthese-empty">
-                                        Aucune consultation audio ni diagnostic n'a encore été effectué pour ce patient. Lancez un nouveau diagnostic depuis le bouton ci-dessus.
-                                    </div>
+                                    <div className="om-empty"><p>Aucune consultation ni diagnostic pour ce patient.</p></div>
                                 )}
                             </div>
                         )}
 
                         {activeTab === 'rdv' && (
-                            <div className="rdv-content">
-                                <div className="rdv-header">
-                                    <h4>Commentaires & Rendez-vous</h4>
-                                    <div className="rdv-actions">
-                                        <button className="btn-action add">+ Ajouter</button>
-                                        <button className="btn-action">Modifier</button>
-                                        <button className="btn-action delete">Supprimer</button>
+                            <div className="fiche-rdv">
+                                <div className="fiche-section-bar">
+                                    <h3 className="om-title">Commentaires & rendez-vous</h3>
+                                    <div className="fiche-section-actions">
+                                        <button className="om-btn om-btn--secondary om-btn--sm"><Icon name="plus" /> Ajouter</button>
+                                        <button className="om-btn om-btn--ghost om-btn--sm">Modifier</button>
+                                        <button className="om-btn om-btn--danger om-btn--sm">Supprimer</button>
                                     </div>
                                 </div>
-                                <table className="rdv-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Heure</th>
-                                            <th>Type</th>
-                                            <th>Commentaire</th>
-                                            <th>État</th>
-                                            <th>Praticien</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loadingAppointments ? (
-                                            <tr><td colSpan={6} style={{ textAlign: 'center', padding: '20px' }}>Chargement des rendez-vous...</td></tr>
-                                        ) : patientAppointments.length === 0 ? (
-                                            <tr><td colSpan={6} style={{ textAlign: 'center', padding: '20px' }}>Aucun rendez-vous trouvé</td></tr>
-                                        ) : (
-                                            patientAppointments.map((apt) => (
+                            {loadingAppointments ? (
+                                <p className="om-muted">Chargement des rendez-vous…</p>
+                            ) : patientAppointments.length === 0 ? (
+                                <div className="om-empty"><p>Aucun rendez-vous enregistré.</p></div>
+                            ) : (
+                                <div className="fiche-table-wrap">
+                                    <table className="om-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Heure</th>
+                                                <th>Type</th>
+                                                <th>Commentaire</th>
+                                                <th>État</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {patientAppointments.map((apt) => (
                                                 <tr key={apt.id}>
                                                     <td>{apt.date}</td>
                                                     <td>{apt.heure}</td>
                                                     <td>{apt.type}</td>
-                                                    <td>{apt.commentaire || '-'}</td>
-                                                    <td><span className={`etat-badge ${getEtatClass(apt.etat)}`}>{apt.etat}</span></td>
-                                                    <td>{apt.praticien}</td>
+                                                    <td>{apt.commentaire || '—'}</td>
+                                                    <td><span className={`om-badge ${APPOINTMENT_STATUS[apt.etat] || ''}`}>{apt.etat}</span></td>
                                                 </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                             </div>
                         )}
 
-                        {activeTab === 'administratif' && (
-                            <div className="admin-content">
-                                <h4>Informations administratives & NIR</h4>
-                                <div className="admin-grid">
-                                    <div className="admin-field">
-                                        <label>N° Sécurité Sociale (NIR)</label>
-                                        <span className="value">{selectedPatient.numeroInterne || 'Non renseigné'}</span>
-                                    </div>
-                                    <div className="admin-field">
-                                        <label>Solde</label>
-                                        <span className="value">0,00 €</span>
-                                    </div>
-                                    <div className="admin-field">
-                                        <label>Suivi par</label>
-                                        <span className="value">{selectedPatient.praticien}</span>
-                                    </div>
-                                </div>
+                        {activeTab === 'travaux' && (
+                            <OnyxCephTravauxTable
+                                patientName={`${selectedPatient.nom} ${selectedPatient.prenom}`}
+                                patientId={selectedPatient.id}
+                                filterCurrentPatientOnly={true}
+                            />
+                        )}
+
+                        {activeTab === 'admin' && (
+                            <div className="fiche-admin">
+                                <section>
+                                    <h3 className="om-label fiche-admin-title">Patient</h3>
+                                    <dl className="om-dl">
+                                        <Field label="Civilité" value={raw.civilite} />
+                                        <Field label="Nom" value={raw.nom} />
+                                        <Field label="Prénom(s)" value={[raw.prenom, raw.deuxieme_prenom].filter(Boolean).join(' ')} />
+                                        <Field label="Date de naissance" value={formatDate(raw.date_naissance)} />
+                                        <Field label="Portable" value={raw.portable} />
+                                        <Field label="Téléphone fixe" value={raw.telephone} />
+                                    </dl>
+                                </section>
+                                <section>
+                                    <h3 className="om-label fiche-admin-title">Responsable légal / assuré</h3>
+                                    <dl className="om-dl">
+                                        <Field label="Nom" value={[raw.responsable_civilite, raw.responsable_prenom, raw.responsable_nom].filter(Boolean).join(' ')} />
+                                        <Field label="N° de sécurité sociale" value={raw.responsable_num_secu} />
+                                        <Field label="Adresse" value={[raw.responsable_adresse, raw.responsable_cp, raw.responsable_commune].filter(Boolean).join(', ')} />
+                                        <Field label="Téléphone" value={raw.responsable_portable1 || raw.responsable_telephone1} />
+                                        <Field label="E-mail" value={raw.responsable_email} />
+                                    </dl>
+                                </section>
+                                <section>
+                                    <h3 className="om-label fiche-admin-title">Correspondants</h3>
+                                    <dl className="om-dl">
+                                        <Field label="Adressé par" value={raw.envoye_par} />
+                                        <Field label="Dentiste traitant" value={raw.dentiste} />
+                                        <Field label="Praticien" value={raw.praticien} />
+                                    </dl>
+                                </section>
+                                <section>
+                                    <h3 className="om-label fiche-admin-title">Comptabilité</h3>
+                                    <dl className="om-dl">
+                                        <Field label="Solde" value="0,00 €" />
+                                    </dl>
+                                </section>
                             </div>
                         )}
                     </div>
-                </div>
+                </section>
             ) : (
-                <div className="patient-details-panel-empty">
-                    <div className="empty-details-state">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3, marginBottom: '16px', color: 'var(--primary-cyan)' }}>
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                        </svg>
-                        <h3>Aucun patient sélectionné</h3>
-                        <p>Sélectionnez un patient dans la liste de gauche ou ajoutez-en un nouveau pour consulter sa fiche.</p>
-                    </div>
+                <div className="patient-details-empty">
+                    <Icon name="users" size={40} />
+                    <h2 className="om-title">Aucun patient sélectionné</h2>
+                    <p className="om-muted">Choisissez un patient dans la liste ou créez un nouveau dossier.</p>
                 </div>
             )}
         </div>

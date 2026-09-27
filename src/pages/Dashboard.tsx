@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 import { supabase, uploadDentalPhoto } from '../lib/supabase';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
-import { analyzeDentition, getGeminiApiKey, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini } from '../services/geminiService';
+import { formatClinicalReport } from '../components/ClinicalReport';
+import { analyzeDentition, getGeminiApiKey, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import { AudioConsultation } from '../components/AudioConsultation';
 import defaultBookData from '../assets/cgs_volume_61.json';
@@ -240,7 +241,7 @@ const Dashboard = () => {
     const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
         { 
             role: 'assistant', 
-            content: 'Bonjour Dr. Desouches ! 👋\n\nJe suis **OrthoMind**, votre assistant clinique intelligent pour le cabinet YouSmile. Je suis connecté à votre base de connaissances.\n\nPosez-moi n\'importe quelle question sur vos cours, livres de référence en orthodontie indexés, ou cas cliniques.' 
+            content: 'Bonjour Dr Desouches,\n\nJe suis **OrthoMind**, votre assistant clinique intelligent pour le cabinet YouSmile. Je suis connecté à votre base de connaissances.\n\nPosez-moi n\'importe quelle question sur vos cours, livres de référence en orthodontie indexés, ou cas cliniques.' 
         }
     ]);
     const [chatInputValue, setChatInputValue] = useState('');
@@ -737,8 +738,8 @@ const Dashboard = () => {
         let logStep = 0;
         const fakeLogs = [
             '[SYSTEM] Alignement tridimensionnel & segmentation des couronnes dentaires...',
-            '[RAG] Interrogation de la base de 54 traités d\'orthodontie & atlas du vieillissement...',
-            '[RAG] Indexation vectorielle des 7 129 fragments scientifiques...',
+            '[RAG] Interrogation de la bibliothèque du cabinet (54 ouvrages)...',
+            '[RAG] Classement BM25 bilingue des fragments scientifiques...',
             '[RAG] Extraction des corrélations cliniques & calculs biomécaniques...',
             '[IA OrthoMind] Évaluation céphalométrique et classification d\'Angle (Classe I, II, III)...',
             '[IA OrthoMind] Évaluation du surplomb (overjet), du recouvrement (overbite) & symétrie...',
@@ -762,7 +763,7 @@ const Dashboard = () => {
                 analyzeDentition(imageFiles, (status) => {
                     setScanStatusText(status);
                     addLog(`[INFO] ${status}`);
-                }, currentPatient),
+                }, currentPatient, buildPatientContext(selectedPatientObj)),
                 minProcessPromise
             ]);
 
@@ -1045,93 +1046,8 @@ const Dashboard = () => {
         }
     };
 
-    // Formatter for custom markdown diagnostic output
-    const formatReportText = (text: string) => {
-        if (!text) return '';
-        
-        // Escape HTML tags/characters to prevent rendering errors with symbols like < or >
-        const escapedText = text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-
-        // Process line by line
-        const lines = escapedText.split('\n');
-        const processedLines: string[] = [];
-        let inUnorderedList = false;
-        let inOrderedList = false;
-
-        const applyInlineFormatting = (str: string): string => {
-            return str
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>');
-        };
-
-        for (let line of lines) {
-            const trimmedLine = line.trim();
-
-            // Match bullet list item: starts with "-" or "*" followed by space
-            const bulletMatch = trimmedLine.match(/^[-*]\s+(.*)$/);
-            // Match numbered list item: starts with one or more digits followed by "." and space
-            const numberMatch = trimmedLine.match(/^(\d+)\.\s+(.*)$/);
-
-            if (bulletMatch) {
-                if (inOrderedList) {
-                    processedLines.push('</ol>');
-                    inOrderedList = false;
-                }
-                if (!inUnorderedList) {
-                    processedLines.push('<ul>');
-                    inUnorderedList = true;
-                }
-                const content = applyInlineFormatting(bulletMatch[1]);
-                processedLines.push(`<li>${content}</li>`);
-            } else if (numberMatch) {
-                if (inUnorderedList) {
-                    processedLines.push('</ul>');
-                    inUnorderedList = false;
-                }
-                if (!inOrderedList) {
-                    processedLines.push('<ol>');
-                    inOrderedList = true;
-                }
-                const itemNumber = numberMatch[1];
-                const content = applyInlineFormatting(numberMatch[2]);
-                processedLines.push(`<li value="${itemNumber}">${content}</li>`);
-            } else {
-                // Not a list item. Close any active lists
-                if (inUnorderedList) {
-                    processedLines.push('</ul>');
-                    inUnorderedList = false;
-                }
-                if (inOrderedList) {
-                    processedLines.push('</ol>');
-                    inOrderedList = false;
-                }
-
-                if (trimmedLine === '') {
-                    // Empty line - represent as paragraph gap
-                    processedLines.push('<br/>');
-                } else {
-                    // Normal text line
-                    const content = applyInlineFormatting(trimmedLine);
-                    processedLines.push(`<p>${content}</p>`);
-                }
-            }
-        }
-
-        // Close any trailing lists
-        if (inUnorderedList) {
-            processedLines.push('</ul>');
-        }
-        if (inOrderedList) {
-            processedLines.push('</ol>');
-        }
-
-        return processedLines.join('\n');
-    };
+    // Rendu partagé des comptes-rendus (voir components/ClinicalReport)
+    const formatReportText = formatClinicalReport;
 
     return (
         <div className="dashboard-container">
@@ -1382,6 +1298,7 @@ const Dashboard = () => {
                                 <AudioConsultation 
                                     patientName={patientName} 
                                     selectedPatientId={selectedPatientObj?.id}
+                                    patient={selectedPatientObj}
                                     onSendToOrthoMind={handleAudioTranscriptToOrthoMind} 
                                     onViewPatientFile={() => handleTabClick('patients')}
                                 />
@@ -1402,7 +1319,7 @@ const Dashboard = () => {
                                         Rapport Clinique Officiel Certifié — OrthoMind AI
                                     </div>
                                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                                        RAG 54 Ouvrages PDF Validé ✓
+                                        Bibliothèque du cabinet consultée
                                     </span>
                                 </div>
 
@@ -1414,8 +1331,8 @@ const Dashboard = () => {
 
                                     {/* Metrics Chips */}
                                     <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
-                                        <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem' }}>Confiance: 98%</span>
-                                        <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem' }}>Source: RAG Indexed</span>
+                                        <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem' }}>À valider par le praticien</span>
+                                        <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem' }}>Source : clichés + bibliothèque du cabinet</span>
                                     </div>
 
                                     <div className="results-tabs">
@@ -1425,7 +1342,7 @@ const Dashboard = () => {
                                             style={{ display: 'flex', alignItems: 'center', gap: '6px', color: activeResultTab === 'dep' ? 'var(--primary-cyan)' : undefined }}
                                         >
                                             <img src={logoSeul} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
-                                            ★ Fiche DEP (Sécurité Sociale)
+                                            Fiche DEP (Sécurité sociale)
                                         </button>
                                         <button 
                                             className={`results-tab-btn ${activeResultTab === 'diag' ? 'active' : ''}`}
@@ -1474,7 +1391,7 @@ const Dashboard = () => {
                                                 Diagnostic & Observations Cliniques
                                             </h3>
                                             <div 
-                                                className="markdown-renderer"
+                                                className="markdown-renderer om-report"
                                                 dangerouslySetInnerHTML={{ __html: formatReportText(analysisResult.diagnostic) }}
                                             />
                                         </div>
@@ -1489,7 +1406,7 @@ const Dashboard = () => {
                                                 Stratégie Thérapeutique Conseillée
                                             </h3>
                                             <div 
-                                                className="markdown-renderer"
+                                                className="markdown-renderer om-report"
                                                 dangerouslySetInnerHTML={{ __html: formatReportText(analysisResult.traitement) }}
                                             />
                                         </div>
@@ -1506,6 +1423,7 @@ const Dashboard = () => {
                         <AudioConsultation 
                             patientName={patientName} 
                             selectedPatientId={selectedPatientObj?.id}
+                            patient={selectedPatientObj}
                             onSendToOrthoMind={handleAudioTranscriptToOrthoMind} 
                             onViewPatientFile={() => handleTabClick('patients')}
                         />
@@ -1580,8 +1498,8 @@ const Dashboard = () => {
                         {/* SECTION: BASE DE CONNAISSANCES PDF */}
                         <div className="kb-layout" style={{ marginTop: '10px', marginBottom: '10px' }}>
                             <div className="dashboard-header" style={{ marginBottom: '15px' }}>
-                                <h2 style={{ fontSize: '1.3rem', margin: 0 }}>Base de Connaissances Scientific & Ouvrages PDF</h2>
-                                <p style={{ fontSize: '0.88rem' }}>Enseignez à Casper la connaissance des plus grands livres scientifiques (RAG indexé).</p>
+                                <h2 style={{ fontSize: '1.3rem', margin: 0 }}>Base de connaissances & ouvrages PDF</h2>
+                                <p style={{ fontSize: '0.88rem' }}>Les ouvrages importés ici sont consultés par OrthoMind pour chaque analyse et consultation.</p>
                             </div>
 
                             {/* Upload Card */}
@@ -1629,7 +1547,7 @@ const Dashboard = () => {
                                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
                                         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                                     </svg>
-                                    Bibliothèque Scientifique de Casper ({books.length} livres indexés)
+                                    Bibliothèque du cabinet ({books.length} ouvrages indexés)
                                 </h3>
                                 
                                 {books.length === 0 ? (
@@ -2034,7 +1952,7 @@ const Dashboard = () => {
                                     Diagnostic Clinique
                                 </h3>
                                 <div 
-                                    className="markdown-renderer"
+                                    className="markdown-renderer om-report"
                                     dangerouslySetInnerHTML={{ __html: formatReportText(selectedHistoryItem.diagnostic_text) }}
                                 />
                             </div>
@@ -2049,7 +1967,7 @@ const Dashboard = () => {
                                     Stratégie Thérapeutique
                                 </h3>
                                 <div 
-                                    className="markdown-renderer"
+                                    className="markdown-renderer om-report"
                                     dangerouslySetInnerHTML={{ __html: formatReportText(selectedHistoryItem.traitement_text) }}
                                 />
                             </div>

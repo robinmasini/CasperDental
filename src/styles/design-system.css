@@ -1,0 +1,550 @@
+/* ============================================================================
+   OrthoMind — Design system
+   ----------------------------------------------------------------------------
+   Une seule source de vérité pour les couleurs, rayons, espacements et
+   composants de base. Principes : sobriété clinique, un seul accent (bleu
+   ciel), pas de néon ni de dégradés décoratifs, hiérarchie portée par la
+   typographie plutôt que par les emojis et les majuscules.
+   ============================================================================ */
+
+:root {
+  /* Surfaces */
+  --om-bg: #070b14;
+  --om-surface: rgba(15, 21, 36, 0.78);
+  --om-surface-solid: #0f1524;
+  --om-surface-raised: #151d30;
+  --om-surface-hover: #1a2338;
+  --om-border: rgba(148, 163, 184, 0.14);
+  --om-border-strong: rgba(148, 163, 184, 0.26);
+
+  /* Texte */
+  --om-text: #f1f5f9;
+  --om-text-2: #a3b0c2;
+  --om-text-3: #6b7a90;
+
+  /* Accent unique + états */
+  --om-accent: #38bdf8;
+  --om-accent-strong: #0ea5e9;
+  --om-accent-soft: rgba(56, 189, 248, 0.12);
+  --om-success: #34d399;
+  --om-success-soft: rgba(52, 211, 153, 0.12);
+  --om-warning: #fbbf24;
+  --om-warning-soft: rgba(251, 191, 36, 0.12);
+  --om-danger: #f87171;
+  --om-danger-soft: rgba(248, 113, 113, 0.12);
+
+  /* Géométrie */
+  --om-radius-sm: 8px;
+  --om-radius: 12px;
+  --om-radius-lg: 16px;
+  --om-space-1: 4px;
+  --om-space-2: 8px;
+  --om-space-3: 12px;
+  --om-space-4: 16px;
+  --om-space-5: 24px;
+  --om-space-6: 32px;
+
+  /* Typographie */
+  --om-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --om-font-display: 'Outfit', 'Inter', sans-serif;
+  --om-text-xs: 0.75rem;
+  --om-text-sm: 0.8125rem;
+  --om-text-base: 0.9rem;
+  --om-text-lg: 1.05rem;
+  --om-text-xl: 1.35rem;
+
+  --om-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --om-focus: 0 0 0 3px rgba(56, 189, 248, 0.35);
+  --om-transition: 160ms ease;
+
+  /* Harmonisation des anciennes variables vers la nouvelle palette */
+  --primary-cyan: var(--om-accent);
+  --primary-blue: var(--om-accent);
+  --text-primary: var(--om-text);
+  --text-secondary: var(--om-text-2);
+  --text-muted: var(--om-text-3);
+  --text-cyan: var(--om-accent);
+  --border-glass: var(--om-border);
+  --border-glass-bright: var(--om-border-strong);
+  --success-teal: var(--om-success);
+  --warning-gold: var(--om-warning);
+  --danger-rose: var(--om-danger);
+  --shadow-neon: none;
+  --shadow-neon-purple: none;
+  --radius-lg: var(--om-radius);
+  --radius-xl: var(--om-radius-lg);
+  --radius-2xl: var(--om-radius-lg);
+}
+
+/* ---------------------------------------------------------------------------
+   Boutons
+   --------------------------------------------------------------------------- */
+.om-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--om-space-2);
+  min-height: 38px;
+  padding: 0 var(--om-space-4);
+  font-family: var(--om-font);
+  font-size: var(--om-text-sm);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: var(--om-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background var(--om-transition), border-color var(--om-transition), color var(--om-transition);
+  text-decoration: none;
+}
+.om-btn:focus-visible { outline: none; box-shadow: var(--om-focus); }
+.om-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.om-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+.om-btn--primary { background: #f8fafc; color: #0b1120; }
+.om-btn--primary:hover:not(:disabled) { background: #ffffff; }
+
+.om-btn--secondary { background: var(--om-surface-raised); color: var(--om-text); border-color: var(--om-border-strong); }
+.om-btn--secondary:hover:not(:disabled) { background: var(--om-surface-hover); }
+
+.om-btn--ghost { background: transparent; color: var(--om-text-2); }
+.om-btn--ghost:hover:not(:disabled) { background: var(--om-surface-hover); color: var(--om-text); }
+
+.om-btn--danger { background: var(--om-danger-soft); color: var(--om-danger); border-color: rgba(248, 113, 113, 0.3); }
+.om-btn--danger:hover:not(:disabled) { background: rgba(248, 113, 113, 0.2); }
+
+.om-btn--sm { min-height: 30px; padding: 0 var(--om-space-3); font-size: var(--om-text-xs); }
+.om-btn--icon { width: 34px; min-height: 34px; padding: 0; }
+
+/* ---------------------------------------------------------------------------
+   Cartes & sections
+   --------------------------------------------------------------------------- */
+.om-card {
+  background: var(--om-surface);
+  border: 1px solid var(--om-border);
+  border-radius: var(--om-radius-lg);
+  padding: var(--om-space-5);
+}
+.om-card--flat { background: var(--om-surface-raised); padding: var(--om-space-4); border-radius: var(--om-radius); }
+
+.om-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--om-space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--om-space-4);
+}
+
+.om-title {
+  font-family: var(--om-font-display);
+  font-size: var(--om-text-lg);
+  font-weight: 600;
+  color: var(--om-text);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.om-label {
+  font-size: var(--om-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--om-text-3);
+}
+
+.om-muted { color: var(--om-text-2); font-size: var(--om-text-sm); }
+
+/* Grille de propriétés (libellé / valeur) */
+.om-dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--om-space-4) var(--om-space-5);
+  margin: 0;
+}
+.om-dl > div { min-width: 0; }
+.om-dl dt { font-size: var(--om-text-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--om-text-3); margin-bottom: 4px; }
+.om-dl dd { margin: 0; font-size: var(--om-text-base); color: var(--om-text); overflow-wrap: anywhere; }
+.om-dl dd.is-empty { color: var(--om-text-3); }
+
+/* ---------------------------------------------------------------------------
+   Badges
+   --------------------------------------------------------------------------- */
+.om-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 var(--om-space-2);
+  font-size: var(--om-text-xs);
+  font-weight: 600;
+  border-radius: 6px;
+  background: var(--om-surface-hover);
+  color: var(--om-text-2);
+  white-space: nowrap;
+}
+.om-badge--accent { background: var(--om-accent-soft); color: var(--om-accent); }
+.om-badge--success { background: var(--om-success-soft); color: var(--om-success); }
+.om-badge--warning { background: var(--om-warning-soft); color: var(--om-warning); }
+.om-badge--danger { background: var(--om-danger-soft); color: var(--om-danger); }
+
+/* ---------------------------------------------------------------------------
+   Onglets
+   --------------------------------------------------------------------------- */
+.om-tabs {
+  display: flex;
+  gap: var(--om-space-1);
+  border-bottom: 1px solid var(--om-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.om-tabs::-webkit-scrollbar { display: none; }
+
+.om-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--om-space-2);
+  padding: var(--om-space-3) var(--om-space-3);
+  margin-bottom: -1px;
+  font-family: var(--om-font);
+  font-size: var(--om-text-sm);
+  font-weight: 500;
+  color: var(--om-text-2);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--om-transition), border-color var(--om-transition);
+}
+.om-tab:hover { color: var(--om-text); }
+.om-tab.is-active { color: var(--om-text); border-bottom-color: var(--om-accent); }
+.om-tab-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--om-surface-hover);
+  color: var(--om-text-2);
+  font-size: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.om-tab.is-active .om-tab-count { background: var(--om-accent-soft); color: var(--om-accent); }
+
+/* ---------------------------------------------------------------------------
+   États vides
+   --------------------------------------------------------------------------- */
+.om-empty {
+  text-align: center;
+  padding: var(--om-space-6) var(--om-space-4);
+  border: 1px dashed var(--om-border-strong);
+  border-radius: var(--om-radius-lg);
+  color: var(--om-text-2);
+  font-size: var(--om-text-base);
+}
+.om-empty p { margin: 0 0 var(--om-space-4); }
+
+/* ---------------------------------------------------------------------------
+   Accordéon (séances)
+   --------------------------------------------------------------------------- */
+.om-accordion {
+  border: 1px solid var(--om-border);
+  border-radius: var(--om-radius);
+  background: var(--om-surface);
+  overflow: hidden;
+}
+.om-accordion + .om-accordion { margin-top: var(--om-space-3); }
+.om-accordion.is-open { border-color: var(--om-border-strong); }
+
+.om-accordion-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--om-space-3);
+  padding: var(--om-space-3) var(--om-space-4);
+  background: none;
+  border: none;
+  color: var(--om-text);
+  font-family: var(--om-font);
+  font-size: var(--om-text-base);
+  text-align: left;
+  cursor: pointer;
+}
+.om-accordion-trigger:hover { background: var(--om-surface-hover); }
+.om-accordion-trigger:focus-visible { outline: none; box-shadow: inset var(--om-focus); }
+.om-accordion-chevron { margin-left: auto; color: var(--om-text-3); transition: transform var(--om-transition); flex-shrink: 0; }
+.om-accordion.is-open .om-accordion-chevron { transform: rotate(180deg); }
+.om-accordion-body { padding: var(--om-space-4); border-top: 1px solid var(--om-border); }
+
+/* ---------------------------------------------------------------------------
+   Rendu des comptes-rendus cliniques
+   --------------------------------------------------------------------------- */
+.om-report {
+  font-size: var(--om-text-base);
+  line-height: 1.65;
+  color: #d5dde8;
+}
+.om-report h4 {
+  font-family: var(--om-font);
+  font-size: var(--om-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--om-text);
+  margin: var(--om-space-5) 0 var(--om-space-2);
+}
+.om-report h4:first-child { margin-top: 0; }
+.om-report p { margin: 0 0 var(--om-space-2); }
+.om-report ul, .om-report ol { margin: 0 0 var(--om-space-3); padding-left: 1.2rem; }
+.om-report li { margin-bottom: 6px; }
+.om-report li::marker { color: var(--om-text-3); }
+.om-report strong { color: var(--om-text); font-weight: 600; }
+.om-report hr { border: none; border-top: 1px solid var(--om-border); margin: var(--om-space-5) 0; }
+.om-report .om-report-alert {
+  padding: var(--om-space-3) var(--om-space-4);
+  border-radius: var(--om-radius-sm);
+  background: var(--om-warning-soft);
+  color: #fde68a;
+  margin-bottom: var(--om-space-4);
+}
+.om-report .om-report-quote {
+  border-left: 2px solid var(--om-border-strong);
+  padding-left: var(--om-space-3);
+  color: var(--om-text-2);
+  font-style: italic;
+}
+
+.om-cite {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 5px;
+  margin: 0 1px;
+  border-radius: 4px;
+  background: var(--om-accent-soft);
+  color: var(--om-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  vertical-align: 1px;
+  font-style: normal;
+}
+
+/* ---------------------------------------------------------------------------
+   Champs
+   --------------------------------------------------------------------------- */
+.om-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 var(--om-space-3);
+  font-family: var(--om-font);
+  font-size: var(--om-text-base);
+  color: var(--om-text);
+  background: var(--om-surface-solid);
+  border: 1px solid var(--om-border-strong);
+  border-radius: var(--om-radius-sm);
+  outline: none;
+  transition: border-color var(--om-transition), box-shadow var(--om-transition);
+}
+.om-input:focus { border-color: var(--om-accent); box-shadow: var(--om-focus); }
+.om-input::placeholder { color: var(--om-text-3); }
+
+/* Table */
+.om-table { width: 100%; border-collapse: collapse; font-size: var(--om-text-sm); }
+.om-table th {
+  text-align: left;
+  font-size: var(--om-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--om-text-3);
+  padding: var(--om-space-2) var(--om-space-3);
+  border-bottom: 1px solid var(--om-border);
+}
+.om-table td { padding: var(--om-space-3); border-bottom: 1px solid var(--om-border); color: var(--om-text); }
+.om-table tr:last-child td { border-bottom: none; }
+
+/* ---------------------------------------------------------------------------
+   Cases à cocher & boutons radio harmonisés (toute l'application)
+   --------------------------------------------------------------------------- */
+input[type='checkbox'],
+input[type='radio'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 0;
+  border: 1.5px solid var(--om-border-strong);
+  border-radius: 4px;
+  background: var(--om-surface-solid) center / 12px no-repeat;
+  cursor: pointer;
+  transition: background-color var(--om-transition), border-color var(--om-transition);
+  vertical-align: middle;
+}
+input[type='radio'] { border-radius: 50%; }
+input[type='checkbox']:hover,
+input[type='radio']:hover { border-color: var(--om-accent); }
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible { outline: none; box-shadow: var(--om-focus); }
+input[type='checkbox']:checked {
+  background-color: var(--om-accent);
+  border-color: var(--om-accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2304121d' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+}
+input[type='radio']:checked {
+  border-color: var(--om-accent);
+  background-image: radial-gradient(circle, var(--om-accent) 0 4px, transparent 4.5px);
+  background-size: auto;
+}
+input[type='checkbox']:disabled,
+input[type='radio']:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------------------------------------------------------------------------
+   Alias des anciennes classes de boutons → mêmes styles que .om-btn
+   --------------------------------------------------------------------------- */
+.btn-white-cta,
+.glass-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--om-space-2);
+  min-height: 40px;
+  padding: 0 var(--om-space-5);
+  background: #f8fafc !important;
+  color: #0b1120 !important;
+  border: 1px solid #f8fafc !important;
+  border-radius: var(--om-radius-sm);
+  font-family: var(--om-font);
+  font-size: var(--om-text-sm);
+  font-weight: 600;
+  box-shadow: none;
+  transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--om-transition);
+}
+.btn-white-cta:hover,
+.glass-btn-primary:hover {
+  background: #ffffff !important;
+  box-shadow: none;
+  transform: none;
+}
+
+.btn-glass-secondary,
+.glass-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--om-space-2);
+  min-height: 40px;
+  padding: 0 var(--om-space-5);
+  background: var(--om-surface-raised);
+  color: var(--om-text);
+  border: 1px solid var(--om-border-strong);
+  border-radius: var(--om-radius-sm);
+  font-family: var(--om-font);
+  font-size: var(--om-text-sm);
+  font-weight: 600;
+  box-shadow: none;
+  transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--om-transition);
+}
+.btn-glass-secondary:hover,
+.glass-btn-secondary:hover {
+  background: var(--om-surface-hover);
+  border-color: var(--om-border-strong);
+  transform: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Harmonisation des panneaux et boutons historiques du tableau de bord
+   (chargé avant les CSS de composants : les sélecteurs sont renforcés via
+   :where()/double classe là où c'est nécessaire)
+   --------------------------------------------------------------------------- */
+.glass-panel.glass-panel {
+  background: var(--om-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--om-border);
+  border-radius: var(--om-radius-lg);
+  box-shadow: none;
+}
+.glass-panel.glass-panel:hover {
+  background: var(--om-surface);
+  border-color: var(--om-border);
+}
+
+.glass-btn.glass-btn {
+  min-height: 44px;
+  padding: 0 var(--om-space-5);
+  border-radius: var(--om-radius-sm);
+  font-family: var(--om-font);
+  font-size: var(--om-text-sm);
+  font-weight: 600;
+  gap: var(--om-space-2);
+  transform: none;
+}
+.glass-btn.glass-btn:hover { transform: none; }
+
+.glass-input.glass-input {
+  background: var(--om-surface-solid);
+  border: 1px solid var(--om-border-strong);
+  border-radius: var(--om-radius-sm);
+  font-family: var(--om-font);
+  font-size: var(--om-text-base);
+}
+.glass-input.glass-input:focus { border-color: var(--om-accent); box-shadow: var(--om-focus); }
+
+.btn-add-quick-patient.btn-add-quick-patient,
+.btn-create-missing.btn-create-missing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 var(--om-space-4);
+  background: var(--om-surface-raised);
+  border: 1px solid var(--om-border-strong);
+  border-radius: var(--om-radius-sm);
+  color: var(--om-text);
+  font-family: var(--om-font);
+  font-size: var(--om-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: none;
+}
+.btn-add-quick-patient.btn-add-quick-patient:hover,
+.btn-create-missing.btn-create-missing:hover { background: var(--om-surface-hover); transform: none; }
+
+/* Bandeau "synthèse" imbriqué dans la carte de retranscription : pas de double cadre */
+.transcript-card .synthesis-cta-banner.synthesis-cta-banner {
+  background: var(--om-surface-raised);
+  border-color: var(--om-border);
+}
+
+/* ---------------------------------------------------------------------------
+   Bandeaux d'information
+   --------------------------------------------------------------------------- */
+.om-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--om-space-4);
+  flex-wrap: wrap;
+  padding: var(--om-space-3) var(--om-space-4);
+  margin-bottom: var(--om-space-4);
+  border-radius: var(--om-radius);
+  border: 1px solid var(--om-border);
+  background: var(--om-surface-raised);
+  font-size: var(--om-text-sm);
+  color: var(--om-text-2);
+}
+.om-notice p { margin: 0; flex: 1; min-width: 220px; line-height: 1.5; }
+.om-notice strong { color: var(--om-text); }
+.om-notice--warning { background: var(--om-warning-soft); border-color: rgba(251, 191, 36, 0.3); }
+.om-notice--warning strong { color: var(--om-warning); }
+.om-notice--danger { background: var(--om-danger-soft); border-color: rgba(248, 113, 113, 0.3); }
+.om-notice--danger strong { color: var(--om-danger); }

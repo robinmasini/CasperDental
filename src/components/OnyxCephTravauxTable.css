@@ -581,3 +581,165 @@
         transform: translateY(0);
     }
 }
+
+/* ============================================================================
+   Harmonisation design system (structure, colonnes et statuts Monday inchangés)
+   ============================================================================ */
+.onyxceph-container {
+    background: var(--om-surface-solid);
+    border: 1px solid var(--om-border);
+    border-radius: var(--om-radius-lg);
+    box-shadow: none;
+    padding: var(--om-space-5);
+    font-family: var(--om-font);
+}
+
+.onyxceph-top-bar {
+    margin-bottom: var(--om-space-4);
+}
+
+.onyxceph-header-title h3 {
+    font-family: var(--om-font-display);
+    font-size: var(--om-text-lg);
+    font-weight: 600;
+    gap: var(--om-space-3);
+}
+
+.onyxceph-logo {
+    height: 22px;
+    width: auto;
+    object-fit: contain;
+}
+
+.onyxceph-views-nav {
+    gap: var(--om-space-1);
+    border-bottom-color: var(--om-border);
+    padding-bottom: 0;
+    margin-bottom: var(--om-space-4);
+}
+
+.onyxceph-view-tab {
+    border-radius: 0;
+    padding: var(--om-space-2) var(--om-space-3);
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    font-family: var(--om-font);
+    font-size: var(--om-text-sm);
+    font-weight: 500;
+    color: var(--om-text-2);
+}
+
+.onyxceph-view-tab:hover {
+    background: none;
+    color: var(--om-text);
+}
+
+.onyxceph-view-tab.active {
+    background: none;
+    color: var(--om-text);
+    border-bottom-color: var(--om-accent);
+}
+
+.onyxceph-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--om-space-4);
+    flex-wrap: wrap;
+    margin-bottom: var(--om-space-5);
+}
+
+.onyxceph-actions-main,
+.onyxceph-actions-tools {
+    display: flex;
+    align-items: center;
+    gap: var(--om-space-3);
+    flex-wrap: wrap;
+}
+
+.onyxceph-actions-tools {
+    gap: var(--om-space-1);
+}
+
+.btn-add-element {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 var(--om-space-4);
+    background: #f8fafc;
+    color: #0b1120;
+    border: none;
+    border-radius: var(--om-radius-sm);
+    font-family: var(--om-font);
+    font-size: var(--om-text-sm);
+    font-weight: 600;
+    box-shadow: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-add-element:hover {
+    background: #ffffff;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-add-element--sm {
+    min-height: 30px;
+    padding: 0 var(--om-space-3);
+    font-size: var(--om-text-xs);
+}
+
+.onyxceph-search-input {
+    width: 240px;
+    height: 38px;
+    padding: 0 var(--om-space-3);
+    background: var(--om-surface-raised);
+    border: 1px solid var(--om-border-strong);
+    border-radius: var(--om-radius-sm);
+    color: var(--om-text);
+    font-family: var(--om-font);
+    font-size: var(--om-text-sm);
+    outline: none;
+}
+
+.onyxceph-search-input:focus {
+    border-color: var(--om-accent);
+    box-shadow: var(--om-focus);
+}
+
+.onyxceph-tool-btn {
+    min-height: 34px;
+    padding: 0 var(--om-space-3);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--om-radius-sm);
+    color: var(--om-text-2);
+    font-family: var(--om-font);
+    font-size: var(--om-text-sm);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.onyxceph-tool-btn:hover {
+    background: var(--om-surface-hover);
+    color: var(--om-text);
+}
+
+.onyxceph-filter-toggle {
+    border-color: var(--om-border-strong);
+}
+
+.onyxceph-filter-toggle.is-active {
+    background: var(--om-accent-soft);
+    border-color: transparent;
+    color: var(--om-accent);
+}
+
+.onyxceph-add-row-bar input {
+    background: transparent;
+    border: 1px dashed var(--om-border-strong);
+    border-radius: var(--om-radius-sm);
+    color: var(--om-text);
+    font-family: var(--om-font);
+}

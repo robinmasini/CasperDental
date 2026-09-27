@@ -180,26 +180,19 @@ const OnyxCephTravauxTable: React.FC<OnyxCephTravauxTableProps> = ({
             <div className="onyxceph-top-bar">
                 <div className="onyxceph-header-title">
                     <h3>
-                        <img src={logoMonday} alt="Monday logo" style={{ width: '56px', height: '56px', objectFit: 'contain' }} />
+                        <img src={logoMonday} alt="Monday" className="onyxceph-logo" />
                         Planning Monday cabinet
                     </h3>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {patientName && (
-                        <button
-                            className="onyxceph-tool-btn"
-                            style={{
-                                background: showOnlyThisPatient ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.06)',
-                                color: showOnlyThisPatient ? 'var(--primary-cyan)' : '#cbd5e1',
-                                borderColor: showOnlyThisPatient ? 'var(--primary-cyan)' : 'rgba(255, 255, 255, 0.12)'
-                            }}
-                            onClick={() => setShowOnlyThisPatient(!showOnlyThisPatient)}
-                        >
-                            👤 {showOnlyThisPatient ? `Filtré : ${patientName}` : 'Voir tous les patients'}
-                        </button>
-                    )}
-                </div>
+                {patientName && (
+                    <button
+                        className={`onyxceph-tool-btn onyxceph-filter-toggle ${showOnlyThisPatient ? 'is-active' : ''}`}
+                        onClick={() => setShowOnlyThisPatient(!showOnlyThisPatient)}
+                    >
+                        {showOnlyThisPatient ? `Filtré : ${patientName}` : 'Voir tous les patients'}
+                    </button>
+                )}
             </div>
 
             {/* Views Tabs Navigation */}
@@ -212,20 +205,24 @@ const OnyxCephTravauxTable: React.FC<OnyxCephTravauxTableProps> = ({
 
             {/* Action Bar */}
             <div className="onyxceph-actions-row">
-                <button className="btn-add-element" onClick={() => handleAddQuickRow('SEPTEMBRE 2026')}>
-                    + Ajouter élément
-                </button>
-                <input
-                    type="text"
-                    className="onyxceph-search-input"
-                    placeholder="🔍 Rechercher n'importe quoi..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                />
-                <button className="onyxceph-tool-btn">👤 Personne</button>
-                <button className="onyxceph-tool-btn">⚙️ Filtre</button>
-                <button className="onyxceph-tool-btn">⇅ Trier</button>
-                <button className="onyxceph-tool-btn">👁️ Masquer</button>
+                <div className="onyxceph-actions-main">
+                    <button className="btn-add-element" onClick={() => handleAddQuickRow('SEPTEMBRE 2026')}>
+                        + Ajouter un élément
+                    </button>
+                    <input
+                        type="search"
+                        className="onyxceph-search-input"
+                        placeholder="Rechercher…"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <div className="onyxceph-actions-tools">
+                    <button className="onyxceph-tool-btn">Personne</button>
+                    <button className="onyxceph-tool-btn">Filtre</button>
+                    <button className="onyxceph-tool-btn">Trier</button>
+                    <button className="onyxceph-tool-btn">Masquer</button>
+                </div>
             </div>
 
             {/* Month Groups Loop */}
@@ -459,7 +456,7 @@ const OnyxCephTravauxTable: React.FC<OnyxCephTravauxTableProps> = ({
                                             if (e.key === 'Enter') handleAddQuickRow(month);
                                         }}
                                     />
-                                    <button className="btn-add-element" style={{ padding: '4px 10px', fontSize: '0.78rem' }} onClick={() => handleAddQuickRow(month)}>
+                                    <button className="btn-add-element btn-add-element--sm" onClick={() => handleAddQuickRow(month)}>
                                         Ajouter
                                     </button>
                                 </div>

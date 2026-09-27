@@ -396,3 +396,264 @@
   background: rgba(239, 68, 68, 0.25);
   color: #ffffff;
 }
+
+/* ============================================================================
+   Harmonisation design system (surcharge — structure et contenu inchangés)
+   ============================================================================ */
+.dep-form-container {
+  background: var(--om-surface-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--om-border);
+  border-radius: var(--om-radius-lg);
+  box-shadow: none;
+  padding: var(--om-space-5);
+  margin: 0;
+  font-family: var(--om-font);
+  color: var(--om-text);
+}
+
+.dep-form-container.is-live-filling {
+  border-color: var(--om-accent);
+  box-shadow: 0 0 0 1px var(--om-accent-soft);
+  animation: none;
+}
+
+.dep-window-header {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--om-border);
+  border-radius: 0;
+  padding: 0 0 var(--om-space-4);
+  margin-bottom: var(--om-space-5);
+  gap: var(--om-space-4);
+}
+
+.dep-title-text h3 {
+  font-family: var(--om-font-display);
+  font-size: var(--om-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.dep-meta-info {
+  margin-top: 4px;
+  gap: var(--om-space-3);
+  font-size: var(--om-text-xs);
+  color: var(--om-text-3);
+  flex-wrap: wrap;
+}
+
+.dep-patient-badge {
+  background: var(--om-surface-hover);
+  color: var(--om-text);
+  border-radius: 6px;
+  font-size: var(--om-text-xs);
+  font-weight: 600;
+}
+
+.dep-semestre-bar {
+  background: var(--om-surface-raised);
+  border: 1px solid var(--om-border);
+  border-radius: var(--om-radius-sm);
+  padding: 6px 8px;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.semestre-label {
+  font-size: var(--om-text-xs);
+  font-weight: 600;
+  color: var(--om-text-2);
+}
+
+.ap-pill {
+  min-width: 42px;
+  padding: 5px 8px;
+  font-size: var(--om-text-xs);
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.ap-pill.active {
+  background: var(--om-accent);
+  color: #04121d;
+  border-color: var(--om-accent);
+  box-shadow: none;
+}
+
+.ap-pill.inactive {
+  background: transparent;
+  color: var(--om-text-2);
+}
+
+.ap-pill.inactive:hover {
+  background: var(--om-surface-hover);
+  color: var(--om-text);
+}
+
+.dep-section-box {
+  background: none;
+  border: 1px solid var(--om-border);
+  border-radius: var(--om-radius);
+  box-shadow: none;
+  padding: var(--om-space-5);
+  margin-bottom: var(--om-space-5);
+}
+
+.dep-section-header {
+  margin-bottom: var(--om-space-4);
+}
+
+.dep-section-title {
+  font-family: var(--om-font);
+  font-size: var(--om-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--om-text);
+}
+
+.dep-section-title img {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.anomalie-column {
+  background: var(--om-surface-raised);
+  border: 1px solid var(--om-border);
+  border-radius: var(--om-radius);
+  box-shadow: none;
+}
+
+.anomalie-column-title {
+  color: var(--om-text);
+  font-size: var(--om-text-sm);
+  font-weight: 600;
+  border-bottom-color: var(--om-border);
+}
+
+.dep-param-label {
+  font-size: var(--om-text-xs);
+  font-weight: 600;
+  color: var(--om-text-2);
+}
+
+.dep-checkbox-group {
+  gap: 6px 14px;
+}
+
+.dep-checkbox-item {
+  font-size: var(--om-text-sm);
+  color: var(--om-text-2);
+  border-radius: 6px;
+}
+
+.dep-checkbox-item.is-checked {
+  color: var(--om-text);
+  background: var(--om-accent-soft);
+  border-color: transparent;
+}
+
+.dep-checkbox-item input,
+.dep-form-container input[type='checkbox'],
+.dep-form-container input[type='radio'] {
+  accent-color: var(--om-accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.dep-text-input,
+.dep-textarea {
+  background: var(--om-surface-solid);
+  border: 1px solid var(--om-border-strong);
+  border-radius: var(--om-radius-sm);
+  color: var(--om-text);
+  font-family: var(--om-font);
+  font-size: var(--om-text-sm);
+}
+
+.dep-text-input:focus,
+.dep-textarea:focus {
+  border-color: var(--om-accent);
+  box-shadow: var(--om-focus);
+  outline: none;
+}
+
+.dep-legend-bar {
+  background: none;
+  border: none;
+  border-top: 1px solid var(--om-border);
+  border-radius: 0;
+  padding: var(--om-space-4) 0 0;
+  font-size: var(--om-text-xs);
+  color: var(--om-text-3);
+}
+
+.dep-actions-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--om-space-3);
+  margin-top: var(--om-space-5);
+  padding-top: var(--om-space-5);
+  border-top: 1px solid var(--om-border);
+}
+
+.btn-orthomind-cta,
+.btn-orthomind-secondary,
+.btn-orthomind-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--om-space-2);
+  min-height: 42px;
+  padding: 0 var(--om-space-5);
+  font-family: var(--om-font);
+  font-size: var(--om-text-sm);
+  font-weight: 600;
+  border-radius: var(--om-radius-sm);
+  box-shadow: none;
+  transform: none;
+  transition: background var(--om-transition), border-color var(--om-transition);
+}
+
+.btn-orthomind-cta {
+  background: #f8fafc;
+  color: #0b1120;
+  border: 1px solid #f8fafc;
+}
+
+.btn-orthomind-cta:hover,
+.btn-orthomind-cta:active {
+  background: #ffffff;
+  color: #0b1120;
+  box-shadow: none;
+  transform: none;
+}
+
+.btn-orthomind-secondary {
+  background: var(--om-surface-raised);
+  color: var(--om-text);
+  border: 1px solid var(--om-border-strong);
+}
+
+.btn-orthomind-secondary:hover {
+  background: var(--om-surface-hover);
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-orthomind-danger {
+  background: transparent;
+  color: var(--om-danger);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+.btn-orthomind-danger:hover {
+  background: var(--om-danger-soft);
+  transform: none;
+  box-shadow: none;
+}

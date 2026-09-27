@@ -9,9 +9,12 @@ import {
     formatOrthodonticTranscript,
     TranscriptionProvider
 } from '../services/transcriptionService';
-import { synthesizeAudioConsultation, AnalysisResult } from '../services/geminiService';
+import { synthesizeAudioConsultation, AnalysisResult, buildPatientContext } from '../services/geminiService';
+import { Patient } from '../services/patientService';
 import logoSeul from '../assets/logo-seul.png';
 import OrthoMindDepForm from './OrthoMindDepForm';
+import ClinicalReport from './ClinicalReport';
+import Icon from './Icon';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import { OrthoMindAvatar } from './OrthoMindAvatar';
@@ -19,6 +22,7 @@ import { OrthoMindAvatar } from './OrthoMindAvatar';
 interface AudioConsultationProps {
     patientName?: string;
     selectedPatientId?: string;
+    patient?: Patient | null;
     onSendToOrthoMind?: (transcriptText: string) => void;
     onViewPatientFile?: (patientId?: string) => void;
 }
@@ -72,6 +76,7 @@ const CLINICAL_REFLECTION_STEPS: ReflectionStep[] = [
 export const AudioConsultation: React.FC<AudioConsultationProps> = ({
     patientName = '',
     selectedPatientId = '',
+    patient = null,
     onSendToOrthoMind,
     onViewPatientFile
 }) => {
@@ -451,33 +456,30 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
         }]);
 
         // Launch API query asynchronously in parallel
+        let apiSettled = false;
         const apiPromise = synthesizeAudioConsultation(textToAnalyze, patientName, (status) => {
             setSynthesisStatus(status);
-        });
+            setReflectionLogs(prev => [...prev, { time: new Date().toLocaleTimeString('fr-FR'), text: `• ${status}` }]);
+        }, buildPatientContext(patient));
+        apiPromise.finally(() => { apiSettled = true; }).catch(() => {});
 
-        // Multi-stage clinical reflection loop with real RAG logs
+        // Progression affichée pendant le raisonnement (s'arrête dès que la synthèse est prête)
         const reflectionSteps = [
-            { title: "Ingestion & Parsing Phonétique du Dialogue de Charles...", log: "🗣️ Analyse syntaxique du dialogue. Entités cliniques de Charles isolées." },
-            { title: "Interrogation Vectorielle RAG (54 Ouvrages PDF)...", log: "📚 Recherche sémantique dans l'Atlas céphalométrique pédiatrique & CGS Vol. 61." },
-            { title: "Évaluation de l'Endognathie & Canines Incluses 13/23...", log: "🦷 Analyse du manque de place maxillaire et du risque d'inclusion des canines 13/23." },
-            { title: "Évaluation de la Ventilation Buccale & Marqueurs Cliniques...", log: "🌬️ Corrélation des cernes infra-orbitaires et de la respiration buccale." },
-            { title: "Calcul de la Déviation Mandibulaire & Rétrognathie...", log: "⚖️ Analyse du déverrouillage de la Classe II et du recentrage de la mandibule droite." },
-            { title: "Rédaction du Compte-Rendu Certifié & Séquençage Thérapeutique...", log: "✨ Compte-rendu certifié d'interception compilé et structuré." }
+            { title: "Extraction des faits cliniques du dialogue...", log: "🗣️ Lecture de la retranscription et correction des termes techniques." },
+            { title: "Recherche dans la bibliothèque du cabinet...", log: "📚 Recherche bilingue dans les 54 ouvrages de référence." },
+            { title: "Analyse occlusale tridimensionnelle...", log: "🦷 Raisonnement sagittal, vertical et transversal." },
+            { title: "Élaboration du plan de traitement...", log: "⚖️ Option recommandée, alternatives et points de vigilance." },
+            { title: "Rédaction du compte-rendu...", log: "✍️ Mise en forme du compte-rendu et des références citées." }
         ];
 
-        for (let i = 0; i < reflectionSteps.length; i++) {
+        for (let i = 0; i < reflectionSteps.length && !apiSettled; i++) {
             setReflectionStepIndex(i);
-            const progressVal = Math.round(((i + 1) / reflectionSteps.length) * 92);
-            setReflectionProgress(progressVal);
+            setReflectionProgress(Math.round(((i + 1) / reflectionSteps.length) * 92));
             setSynthesisStatus(reflectionSteps[i].title);
-            
-            const nowTime = new Date().toLocaleTimeString('fr-FR');
             setReflectionLogs(prev => [
                 ...prev,
-                { time: nowTime, text: reflectionSteps[i].log }
+                { time: new Date().toLocaleTimeString('fr-FR'), text: reflectionSteps[i].log }
             ]);
-
-            // Delay per step for realistic deep clinical reasoning (3.0s per step = 18s total)
             await new Promise(res => setTimeout(res, 3000));
         }
 
@@ -492,7 +494,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             const endTimeStr = new Date().toLocaleTimeString('fr-FR');
             setReflectionLogs(prev => [
                 ...prev,
-                { time: endTimeStr, text: "✓ Réflexion clinique finalisée. 54 ouvrages consultés. Score de confiance: 98%." }
+                { time: endTimeStr, text: "✓ Compte-rendu finalisé. À relire et valider par le praticien." }
             ]);
             
             await new Promise(res => setTimeout(res, 400));
@@ -532,56 +534,16 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
         return dynamicHeight;
     };
 
-    // Render formatted markdown helper
-    const renderReportMarkdown = (text: string) => {
-        if (!text) return null;
-        const lines = text.split('\n');
-        return lines.map((line, idx) => {
-            const trimmed = line.trim();
-            if (!trimmed) return <div key={idx} style={{ height: '8px' }} />;
-            
-            if (/^\d+\./.test(trimmed) || trimmed.startsWith('###') || (trimmed.startsWith('**') && trimmed.endsWith('**'))) {
-                const cleanHeader = trimmed.replace(/^###\s*/, '').replace(/\*\*/g, '');
-                return (
-                    <h4 key={idx} style={{ color: 'var(--primary-cyan)', marginTop: '16px', marginBottom: '8px', fontSize: '0.98rem', fontWeight: 700 }}>
-                        {cleanHeader}
-                    </h4>
-                );
-            }
-
-            if (trimmed.startsWith('-') || trimmed.startsWith('*')) {
-                const cleanBullet = trimmed.replace(/^[-*]\s*/, '');
-                const parts = cleanBullet.split(/\*\*(.*?)\*\*/g);
-                return (
-                    <li key={idx} style={{ marginLeft: '18px', marginBottom: '6px', fontSize: '0.9rem', lineHeight: '1.6', color: '#e2e8f0' }}>
-                        {parts.map((p, pIdx) => pIdx % 2 === 1 ? <strong key={pIdx} style={{ color: '#ffffff' }}>{p}</strong> : p)}
-                    </li>
-                );
-            }
-
-            const parts = trimmed.split(/\*\*(.*?)\*\*/g);
-            return (
-                <p key={idx} style={{ margin: '0 0 8px 0', fontSize: '0.92rem', lineHeight: '1.6', color: '#cbd5e1' }}>
-                    {parts.map((p, pIdx) => pIdx % 2 === 1 ? <strong key={pIdx} style={{ color: '#ffffff' }}>{p}</strong> : p)}
-                </p>
-            );
-        });
-    };
-
     return (
         <div className="audio-consultation-container">
             {(!patientName || !patientName.trim()) && (
-                <div style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)', borderRadius: '14px', padding: '14px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                    <div style={{ color: '#f87171', fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '1.2rem' }}>⚠️</span>
-                        <span>Sélection de patient obligatoire : Veuillez d'abord sélectionner un patient pour démarrer la consultation audio et rattacher l'analyse à son dossier médical.</span>
-                    </div>
+                <div className="om-notice om-notice--warning">
+                    <p>
+                        <strong>Patient requis.</strong> Sélectionnez un patient pour démarrer la consultation et rattacher le compte-rendu à son dossier.
+                    </p>
                     {onViewPatientFile && (
-                        <button
-                            onClick={() => onViewPatientFile()}
-                            style={{ background: 'linear-gradient(135deg, var(--primary-cyan), var(--primary-blue))', color: '#090d16', border: 'none', borderRadius: '10px', padding: '8px 16px', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                            Choisir un patient →
+                        <button className="om-btn om-btn--secondary om-btn--sm" onClick={() => onViewPatientFile()}>
+                            Choisir un patient
                         </button>
                     )}
                 </div>
@@ -634,7 +596,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                                 style={{ padding: '4px 8px', fontSize: '0.75rem' }}
                                 onClick={() => setShowApiKeyInput(!showApiKeyInput)}
                             >
-                                🔑 {apiKey ? 'Clé configurée' : 'Configurer Clé'}
+                                {apiKey ? 'Clé configurée' : 'Configurer la clé'}
                             </button>
                         )}
                     </div>
@@ -662,9 +624,9 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                     {/* Left Column: Live Micro Recorder Subcard */}
                     <div className={`audio-recorder-subcard ${recordingState === 'recording' ? 'is-recording' : ''} ${recordingState === 'paused' ? 'is-paused' : ''}`}>
                         <div className="subcard-header-row">
-                            <span className="subcard-icon">🎙️</span>
+                            <span className="subcard-icon"><Icon name="mic" size={18} /></span>
                             <div>
-                                <h3 className="subcard-title">Enregistrement Direct Micro</h3>
+                                <h3 className="subcard-title">Enregistrement direct</h3>
                                 <p className="subcard-subtitle">Enregistrement oral en direct pendant la consultation</p>
                             </div>
                         </div>
@@ -674,10 +636,10 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                             <div className={`status-badge-recording ${recordingState}`}>
                                 <span className="pulse-dot"></span>
                                 {recordingState === 'idle' && 'Prêt pour l\'enregistrement'}
-                                {recordingState === 'recording' && '🔴 Enregistrement en cours...'}
+                                {recordingState === 'recording' && 'Enregistrement en cours…'}
                                 {recordingState === 'paused' && '⏸️ Consultation en pause'}
-                                {recordingState === 'transcribing' && '✨ Traitement en cours...'}
-                                {recordingState === 'stopped' && '✓ Audio capturé'}
+                                {recordingState === 'transcribing' && 'Traitement en cours…'}
+                                {recordingState === 'stopped' && 'Audio capturé'}
                             </div>
 
                             <div className="timer-badge">
@@ -755,7 +717,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Réécoute de l'enregistrement micro :</span>
                                 <audio controls src={audioUrl} className="custom-audio-player" />
                                 <button className="transcript-action-btn" onClick={handleDownloadAudio} style={{ marginTop: '4px' }}>
-                                    📥 Télécharger (.mp4)
+                                    Télécharger (.mp4)
                                 </button>
                             </div>
                         )}
@@ -770,9 +732,9 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                     >
                         <div className="uploader-header-row">
                             <div className="uploader-title-group">
-                                <span className="uploader-icon">📁</span>
+                                <span className="uploader-icon"><Icon name="file" size={18} /></span>
                                 <div>
-                                    <h3 className="subcard-title">Analyse Différée — Import MP4</h3>
+                                    <h3 className="subcard-title">Import d'un fichier audio</h3>
                                     <p className="subcard-subtitle">Glissez un fichier audio en cas d'imprévu technique</p>
                                 </div>
                             </div>
@@ -790,11 +752,11 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                                 style={{ display: 'none' }} 
                             />
                             <div className="dropzone-inner">
-                                <span className="dropzone-cloud-icon">🎵</span>
+                                <span className="dropzone-cloud-icon"><Icon name="plus" size={20} /></span>
                                 {uploadedFileName ? (
                                     <div className="uploaded-file-info">
                                         <strong style={{ color: 'var(--primary-cyan)', fontSize: '0.88rem', display: 'block', marginBottom: '2px' }}>
-                                            ✓ {uploadedFileName}
+                                            {uploadedFileName}
                                         </strong>
                                         <span style={{ fontSize: '0.76rem', color: '#94a3b8' }}>
                                             Fichier chargé. Cliquez pour remplacer.
@@ -812,7 +774,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                         {/* Integrated Player for dropped audio */}
                         {uploadedFileName && audioUrl && (
                             <div className="audio-player-box" style={{ marginTop: '8px', paddingTop: '8px' }}>
-                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>🔊 Écoute & Contrôle du fichier importé :</span>
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Écoute du fichier importé</span>
                                 <audio controls src={audioUrl} className="custom-audio-player" />
                             </div>
                         )}
@@ -836,13 +798,13 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
                     <div className="transcript-actions-row">
                         <button className="transcript-action-btn" onClick={handleFormatOrthodonticTerms} disabled={!transcript}>
-                            ✨ Formater Vocabulaire
+                            Formater le vocabulaire
                         </button>
                         <button className="transcript-action-btn" onClick={handleCopyTranscript} disabled={!transcript}>
-                            {isCopied ? '✓ Copié !' : '📋 Copier'}
+                            {isCopied ? 'Copié' : 'Copier'}
                         </button>
                         <button className="transcript-action-btn" onClick={() => setTranscript('')} disabled={!transcript}>
-                            🗑️ Effacer
+                            Effacer
                         </button>
                     </div>
                 </div>
@@ -852,7 +814,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                         <span className="step-spinner" style={{ width: '22px', height: '22px', borderWidth: '2.5px', flexShrink: 0 }}></span>
                         <div>
                             <strong style={{ color: 'var(--primary-cyan)', fontSize: '0.92rem', display: 'block', marginBottom: '2px' }}>
-                                🎙️ Retranscription vocale de l'audio en cours par l'IA...
+                                Retranscription de l'audio en cours…
                             </strong>
                             <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
                                 L'IA analyse le fichier audio pour extraire le dialogue exact entre le praticien et le patient. Le texte apparaîtra ci-dessous dès la fin de l'écoute.
@@ -909,7 +871,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                         </button>
                         {(!transcript && !interimText) && (
                             <span style={{ fontSize: '0.76rem', color: '#fbbf24', fontWeight: 600 }}>
-                                ⚠️ Chargez & vérifiez le texte de retranscription ci-dessus avant de pouvoir lancer le compte-rendu.
+                                Chargez et vérifiez la retranscription ci-dessus avant de lancer le compte-rendu.
                             </span>
                         )}
                     </div>
@@ -986,10 +948,10 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
                         <div style={{ display: 'flex', gap: '8px' }}>
                             <span style={{ background: 'rgba(255,255,255,0.06)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                                Source: Dialogue Orale + RAG 54 Livres
+                                Source : consultation + bibliothèque du cabinet
                             </span>
                             <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>
-                                Confiance: 98%
+                                À valider par le praticien
                             </span>
                         </div>
                     </div>
@@ -1000,7 +962,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                             className="reflection-journal-toggle-btn"
                             onClick={() => setShowReflectionJournal(!showReflectionJournal)}
                         >
-                            <span>🧠 Journal de Réflexion & Trajectoire Clinique l'IA (5 étapes)</span>
+                            <span>Journal de raisonnement (5 étapes)</span>
                             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-cyan)' }}>
                                 {showReflectionJournal ? '▲ Masquer' : '▼ Déplier la trajectoire de réflexion'}
                             </span>
@@ -1033,25 +995,25 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                                 style={{ display: 'flex', alignItems: 'center', gap: '6px', color: activeSynthesisTab === 'dep' ? 'var(--primary-cyan)' : undefined }}
                             >
                                 <img src={logoSeul} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
-                                ★ Fiche DEP (Sécurité Sociale)
+                                Fiche DEP (Sécurité sociale)
                             </button>
                             <button
                                 className={`synthesis-tab-btn ${activeSynthesisTab === 'diag' ? 'active' : ''}`}
                                 onClick={() => setActiveSynthesisTab('diag')}
                             >
-                                📋 Diagnostic & Observations
+                                Diagnostic & observations
                             </button>
                             <button
                                 className={`synthesis-tab-btn ${activeSynthesisTab === 'treat' ? 'active' : ''}`}
                                 onClick={() => setActiveSynthesisTab('treat')}
                             >
-                                💊 Plan de Traitement Conseillé
+                                Plan de traitement
                             </button>
                         </div>
 
                         <div className="transcript-actions-row">
                             <button className="transcript-action-btn" onClick={handleCopyReport}>
-                                {isReportCopied ? '✓ Compte-Rendu Copié !' : '📋 Copier le Rapport'}
+                                {isReportCopied ? 'Compte-rendu copié' : 'Copier le compte-rendu'}
                             </button>
 
                             <button 
@@ -1063,7 +1025,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                                     }
                                 }}
                             >
-                                {isSavedToPatient ? '✓ Enregistré dans Fiche Patient' : '💾 Enregistrer dans Fiche Patient'}
+                                {isSavedToPatient ? 'Enregistré dans la fiche patient' : 'Enregistrer dans la fiche patient'}
                             </button>
 
                             {onViewPatientFile && (
@@ -1072,13 +1034,13 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                                     style={{ borderColor: 'rgba(0, 242, 254, 0.5)', color: 'var(--primary-cyan)' }}
                                     onClick={() => onViewPatientFile(selectedPatientId)}
                                 >
-                                    👁️ Voir la Fiche Patient ({patientName || 'Praticien'})
+                                    Voir la fiche patient
                                 </button>
                             )}
 
                             {onSendToOrthoMind && (
                                 <button className="transcript-action-btn" style={{ borderColor: 'rgba(0, 242, 254, 0.4)', color: 'var(--primary-cyan)' }} onClick={() => onSendToOrthoMind(transcript)}>
-                                    🚀 Ouvrir dans l'Assistant OrthoMind
+                                    Ouvrir dans l'assistant OrthoMind
                                 </button>
                             )}
                         </div>
@@ -1088,7 +1050,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                     {savedMessage && (
                         <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', padding: '12px 16px', marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                             <div style={{ color: '#10b981', fontWeight: 600, fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span>🔒</span> {savedMessage}
+                                {savedMessage}
                             </div>
                             {onViewPatientFile && (
                                 <button
@@ -1121,9 +1083,9 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                                         <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
                                         <polyline points="14 2 14 8 20 8" />
                                     </svg>
-                                    Diagnostic Clinique & Synthèse des Échanges
+                                    Diagnostic clinique & synthèse des échanges
                                 </h3>
-                                {renderReportMarkdown(synthesisResult.diagnostic)}
+                                <ClinicalReport text={synthesisResult.diagnostic} />
                             </div>
                         ) : (
                             <div>
@@ -1133,9 +1095,9 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                                         <polyline points="2 17 12 22 22 17" />
                                         <polyline points="2 12 17 22 12" />
                                     </svg>
-                                    Stratégie Thérapeutique Conseillée & Sequence d'Aligneurs
+                                    Plan de traitement conseillé
                                 </h3>
-                                {renderReportMarkdown(synthesisResult.traitement)}
+                                <ClinicalReport text={synthesisResult.traitement} />
                             </div>
                         )}
                     </div>
