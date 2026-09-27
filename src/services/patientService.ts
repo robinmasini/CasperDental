@@ -56,16 +56,16 @@ const SEED_PATIENTS: Patient[] = [
         id: 'patient-seed-1',
         created_at: new Date('2026-09-01').toISOString(),
         civilite: 'M.',
-        nom: 'MASINI',
-        prenom: 'Robin',
-        date_naissance: '2002-08-24',
+        nom: 'DURAND',
+        prenom: 'Lucas',
+        date_naissance: '2003-04-12',
         sexe: 'M',
         type_patient: 'Adulte',
         praticien: 'Dr. Renaud Desouches',
-        portable: '0603096001',
-        telephone: '0603096001',
-        email: 'robin.masini@gmail.com',
-        responsable_num_secu: '1020820820976',
+        portable: '0600000001',
+        telephone: '0600000001',
+        email: 'lucas.durand@exemple.test',
+        responsable_num_secu: '',
         suivi_exclusif: false
     },
     {
@@ -78,10 +78,10 @@ const SEED_PATIENTS: Patient[] = [
         sexe: 'F',
         type_patient: 'Adulte',
         praticien: 'Dr. Renaud Desouches',
-        portable: '0612345678',
-        telephone: '0612345678',
-        email: 'camille.legrand@email.fr',
-        responsable_num_secu: '2951175123456',
+        portable: '0600000002',
+        telephone: '0600000002',
+        email: 'camille.legrand@exemple.test',
+        responsable_num_secu: '',
         suivi_exclusif: false
     }
 ];

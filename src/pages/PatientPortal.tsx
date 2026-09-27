@@ -22,7 +22,7 @@ export const PatientPortal = ({ patientData, onCloseImmersion }: PatientPortalPr
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
-    const patientName = patientData ? `${patientData.prenom} ${patientData.nom}` : 'Robin MASINI';
+    const patientName = patientData ? `${patientData.prenom} ${patientData.nom}` : 'Patient démo';
     const patientFirstName = patientData ? patientData.prenom : 'Robin';
     const praticienName = patientData?.praticien || 'Dr. Renaud Desouches';
 
