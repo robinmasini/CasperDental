@@ -5,10 +5,9 @@
 
 .patients-container {
     display: flex;
-    gap: var(--om-space-4);
+    flex-direction: column;
     height: calc(100vh - 100px);
     max-height: calc(100vh - 100px);
-    overflow: hidden;
     font-family: var(--om-font);
 }
 
@@ -16,8 +15,9 @@
    Liste
    --------------------------------------------------------------------------- */
 .patients-list-panel {
-    width: 300px;
-    flex-shrink: 0;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     background: var(--om-surface);
@@ -42,8 +42,8 @@
 
 .patients-search {
     position: relative;
+    max-width: 420px;
     padding: 0 var(--om-space-4) var(--om-space-3);
-    border-bottom: 1px solid var(--om-border);
 }
 
 .patients-search svg {
@@ -71,11 +71,68 @@
     font-size: var(--om-text-sm);
 }
 
+.patients-list-head,
+.patient-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) 1fr 1fr 1fr 110px;
+    align-items: center;
+    column-gap: var(--om-space-4);
+}
+
+.patients-list-head {
+    padding: var(--om-space-2) var(--om-space-3);
+    border-bottom: 1px solid var(--om-border);
+    margin-bottom: var(--om-space-1);
+    font-size: var(--om-text-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--om-text-3);
+}
+
+.patients-list-head > span:first-child {
+    padding-left: calc(34px + var(--om-space-3));
+}
+
+.patient-row > .patient-avatar {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.patient-row > .patient-row-text {
+    grid-column: 1;
+    grid-row: 1;
+    padding-left: calc(34px + var(--om-space-3));
+}
+
+.patient-row-col {
+    font-size: var(--om-text-sm);
+    color: var(--om-text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.patient-row-col--muted {
+    color: var(--om-text-3);
+}
+
+.patient-row-open {
+    font-size: var(--om-text-xs);
+    font-weight: 600;
+    color: var(--om-accent);
+    opacity: 0;
+    transition: opacity var(--om-transition);
+    white-space: nowrap;
+}
+
+.patient-row:hover .patient-row-open,
+.patient-row:focus-visible .patient-row-open {
+    opacity: 1;
+}
+
 .patient-row {
     width: 100%;
-    display: flex;
-    align-items: center;
-    gap: var(--om-space-3);
     padding: var(--om-space-2) var(--om-space-3);
     border: none;
     border-radius: var(--om-radius-sm);
@@ -153,15 +210,43 @@
 /* ---------------------------------------------------------------------------
    Fiche
    --------------------------------------------------------------------------- */
+/* La fiche s'ouvre dans une fenêtre au-dessus de la liste */
+.fiche-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--om-space-5);
+    background: rgba(3, 6, 12, 0.66);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: fiche-fade-in 0.16s ease-out;
+}
+
 .patient-details-panel {
-    flex: 1;
+    width: min(1100px, 100%);
+    height: min(880px, calc(100vh - 48px));
     min-width: 0;
     display: flex;
     flex-direction: column;
-    background: var(--om-surface);
-    border: 1px solid var(--om-border);
+    background: var(--om-surface-solid);
+    border: 1px solid var(--om-border-strong);
     border-radius: var(--om-radius-lg);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
     overflow-y: auto;
+    animation: fiche-pop-in 0.18s ease-out;
+}
+
+@keyframes fiche-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fiche-pop-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.99); }
+    to { opacity: 1; transform: none; }
 }
 
 .fiche-mobile-bar {
@@ -432,19 +517,39 @@
         overflow: visible;
     }
 
+    .patients-search {
+        max-width: none;
+    }
+
+    .patients-list-head {
+        display: none;
+    }
+
+    .patient-row {
+        grid-template-columns: 1fr;
+    }
+
+    .patient-row-col,
+    .patient-row-open {
+        display: none;
+    }
+
+    .fiche-overlay {
+        padding: 0;
+    }
+
     .patient-row {
         padding: var(--om-space-3);
     }
 
     /* La fiche s'ouvre en plein écran */
     .patient-details-panel {
-        position: fixed;
-        inset: 0;
-        z-index: 1200;
+        width: 100%;
+        height: 100%;
         border-radius: 0;
         border: none;
+        box-shadow: none;
         background: var(--om-bg);
-        overflow-y: auto;
         animation: fiche-slide-up 0.22s ease-out;
     }
 

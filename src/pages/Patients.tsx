@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Patient, getPatients } from '../services/patientService';
 import { getAppointmentsByPatientId } from '../services/appointmentService';
 import PatientForm from '../components/PatientForm';
@@ -122,9 +123,6 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             const data = await getPatients();
             const displayPatients = data.map(convertToDisplayPatient);
             setPatients(displayPatients);
-            if (displayPatients.length > 0 && window.innerWidth > 768) {
-                setSelectedPatient(displayPatients[0]);
-            }
             setLoading(false);
         };
         fetchPatients();
@@ -193,6 +191,24 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
         fetchPatientAppointments();
         loadPatientDiagnostics();
     }, [selectedPatient]);
+
+    // La fiche est une fenêtre : Échap la ferme (sauf si une sous-fenêtre est ouverte)
+    useEffect(() => {
+        if (!selectedPatient) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            if (showImmersionModal) setShowImmersionModal(false);
+            else if (showLinkModal) setShowLinkModal(false);
+            else setSelectedPatient(null);
+        };
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        window.addEventListener('keydown', onKey);
+        return () => {
+            window.removeEventListener('keydown', onKey);
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [selectedPatient, showLinkModal, showImmersionModal]);
 
     const filteredPatients = patients.filter(p =>
         `${p.nom} ${p.prenom}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -272,7 +288,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             )}
 
             {/* Lien d'accès au portail patient */}
-            {showLinkModal && selectedPatient && (
+            {showLinkModal && selectedPatient && createPortal(
                 <div className="fiche-modal-overlay" onClick={() => setShowLinkModal(false)}>
                     <div className="fiche-modal om-card" role="dialog" aria-modal="true" aria-labelledby="link-modal-title" onClick={(e) => e.stopPropagation()}>
                         <div className="om-card-header">
@@ -312,10 +328,10 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         </div>
                     </div>
                 </div>
-            )}
+            , document.body)}
 
             {/* Aperçu du portail patient */}
-            {showImmersionModal && selectedPatient && (
+            {showImmersionModal && selectedPatient && createPortal(
                 <div className="fiche-modal-overlay fiche-modal-overlay--portal" onClick={() => setShowImmersionModal(false)}>
                     <div className="fiche-portal-frame" onClick={(e) => e.stopPropagation()}>
                         <PatientPortal
@@ -324,10 +340,10 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         />
                     </div>
                 </div>
-            )}
+            , document.body)}
 
             {/* Liste des patients */}
-            <aside className="patients-list-panel">
+            <section className="patients-list-panel">
                 <div className="patients-list-header">
                     <div className="patients-list-title">
                         <h2 className="om-title">Patients</h2>
@@ -349,6 +365,15 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                     />
                 </div>
                 <div className="patients-list">
+                    {!loading && filteredPatients.length > 0 && (
+                        <div className="patients-list-head" aria-hidden="true">
+                            <span>Patient</span>
+                            <span>Naissance</span>
+                            <span>Téléphone</span>
+                            <span>N° de dossier</span>
+                            <span />
+                        </div>
+                    )}
                     {loading ? (
                         <p className="patients-list-status">Chargement…</p>
                     ) : filteredPatients.length === 0 ? (
@@ -365,15 +390,26 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                     <span className="patient-row-name">{patient.nom} {patient.prenom}</span>
                                     <span className="patient-row-meta">{patient.age || 'Âge inconnu'} · {patient.praticien}</span>
                                 </span>
+                                <span className="patient-row-col">{formatDate(patient.dateNaissance)}</span>
+                                <span className="patient-row-col">{patient.telephone || '—'}</span>
+                                <span className="patient-row-col patient-row-col--muted">Dossier {patient.numeroDossier.slice(-8)}</span>
+                                <span className="patient-row-open">Ouvrir la fiche</span>
                             </button>
                         ))
                     )}
                 </div>
-            </aside>
+            </section>
 
-            {/* Fiche patient */}
-            {selectedPatient && raw ? (
-                <section className="patient-details-panel" aria-label={`Fiche de ${selectedPatient.prenom} ${selectedPatient.nom}`}>
+            {/* Fiche patient — fenêtre */}
+            {selectedPatient && raw && createPortal(
+                <div className="fiche-overlay" onClick={() => setSelectedPatient(null)}>
+                <section
+                    className="patient-details-panel"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`Fiche de ${selectedPatient.prenom} ${selectedPatient.nom}`}
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <div className="fiche-mobile-bar">
                         <button className="om-btn om-btn--ghost om-btn--sm" onClick={() => setSelectedPatient(null)}>
                             <Icon name="arrowLeft" /> Patients
@@ -410,8 +446,8 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                     <Icon name="sparkles" /> Lancer un diagnostic
                                 </button>
                             )}
-                            <button className="om-btn om-btn--ghost om-btn--icon fiche-close" onClick={() => setSelectedPatient(null)} aria-label="Fermer la fiche">
-                                <Icon name="x" />
+                            <button className="om-btn om-btn--ghost fiche-close" onClick={() => setSelectedPatient(null)} aria-label="Fermer la fiche" title="Fermer (Échap)">
+                                <Icon name="x" /> Fermer
                             </button>
                         </div>
                     </header>
@@ -664,12 +700,8 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         )}
                     </div>
                 </section>
-            ) : (
-                <div className="patient-details-empty">
-                    <Icon name="users" size={40} />
-                    <h2 className="om-title">Aucun patient sélectionné</h2>
-                    <p className="om-muted">Choisissez un patient dans la liste ou créez un nouveau dossier.</p>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
