@@ -386,8 +386,8 @@
     position: absolute;
     inset: -28px -28px -8px;
     /* La base du buste se fond dans le panneau */
-    -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 97%);
-    mask-image: linear-gradient(to bottom, #000 72%, transparent 97%);
+    -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 42%, #000 62%, transparent 100%);
+    mask-image: radial-gradient(ellipse 50% 50% at 50% 42%, #000 62%, transparent 100%);
     z-index: 3;
     opacity: 0;
     transition: opacity 0.6s ease;

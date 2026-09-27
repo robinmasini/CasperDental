@@ -81,9 +81,9 @@ const Robot3D = ({ state, onReady, onError }: Robot3DProps) => {
                 pivot.add(model);
                 scene.add(pivot);
 
-                // Cadrage buste : la tête occupe le haut du cadre
-                camera.position.set(0, 0.25, 4.3);
-                camera.lookAt(0, 0.15, 0);
+                // Cadrage sur la tête : le corps descend hors du cadre
+                camera.position.set(0, 0.6, 3.0);
+                camera.lookAt(0, 0.5, 0);
 
                 const resize = () => {
                     const { clientWidth: w, clientHeight: h } = container;
