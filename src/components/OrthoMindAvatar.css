@@ -380,3 +380,32 @@
         transform: scaleY(1);
     }
 }
+
+/* ===== Robot 3D temps réel ===== */
+.robot3d-canvas {
+    position: absolute;
+    inset: -28px -28px -8px;
+    /* La base du buste se fond dans le panneau */
+    -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 97%);
+    mask-image: linear-gradient(to bottom, #000 72%, transparent 97%);
+    z-index: 3;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+}
+
+.robot3d-canvas.is-ready {
+    opacity: 1;
+}
+
+.robot3d-canvas canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* Une fois la 3D prête, l'image de secours s'efface */
+.orthomind-avatar-container.is-3d .avatar-image-wrapper {
+    opacity: 0;
+    transition: opacity 0.6s ease;
+}

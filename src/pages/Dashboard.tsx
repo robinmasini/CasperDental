@@ -1179,7 +1179,7 @@ const Dashboard = () => {
                                 {/* Robot OrthoMind en haut */}
                                 <div className="merged-avatar-zone">
                                     <div className="merged-avatar-wrapper">
-                                        <OrthoMindAvatar state={analysisAvatarState} />
+                                        <OrthoMindAvatar state={analysisAvatarState} use3D />
                                     </div>
                                     {isScanning ? (
                                         <div className="hud-console-logs merged-console">
