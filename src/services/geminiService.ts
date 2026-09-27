@@ -134,7 +134,7 @@ export const searchKnowledgeBase = async (keywords: string[]): Promise<string> =
 // une liste qui finit par renvoyer des 404, on interroge l'API une fois pour
 // connaître les modèles disponibles sur la clé et on classe les meilleurs.
 // ============================================================================
-type ModelTier = 'expert' | 'fast';
+export type ModelTier = 'expert' | 'fast';
 
 const STATIC_MODEL_FALLBACK: Record<ModelTier, string[]> = {
     expert: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'],
@@ -189,8 +189,30 @@ const resolveModelChain = async (apiKey: string, tier: ModelTier): Promise<strin
     return [...new Set(chain)].slice(0, 4);
 };
 
+// Vérifie une clé Gemini et indique le modèle expert qui sera utilisé
+export const testGeminiKey = async (apiKey: string): Promise<{ ok: true; model: string } | { ok: false; error: string }> => {
+    try {
+        const bearer = isBearerKey(apiKey);
+        const url = `https://generativelanguage.googleapis.com/v1beta/models?pageSize=200${bearer ? '' : `&key=${apiKey}`}`;
+        const response = await fetch(url, { headers: bearer ? { Authorization: `Bearer ${apiKey}` } : {} });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            return { ok: false, error: err.error?.message || `Erreur ${response.status}` };
+        }
+        const data = await response.json();
+        const models = (data.models || [])
+            .filter((m: any) => (m.supportedGenerationMethods || []).includes('generateContent'))
+            .map((m: any) => String(m.name).replace(/^models\//, ''));
+        const best = rankModels(models, 'expert')[0];
+        availableModelsPromise = Promise.resolve(models); // réutilisé par les analyses suivantes
+        return best ? { ok: true, model: best } : { ok: false, error: 'Aucun modèle Gemini disponible pour cette clé.' };
+    } catch (e: any) {
+        return { ok: false, error: e?.message || 'Réseau indisponible' };
+    }
+};
+
 // Helper to call Gemini with retries and model fallbacks
-const executeGeminiCall = async (
+export const executeGeminiCall = async (
     endpointPath: string,
     apiBody: any,
     apiKey: string,
@@ -256,7 +278,7 @@ const executeGeminiCall = async (
 };
 
 // Concatène toutes les parties texte (les modèles "thinking" peuvent en renvoyer plusieurs)
-const extractText = (data: any): string =>
+export const extractText = (data: any): string =>
     (data?.candidates?.[0]?.content?.parts || [])
         .filter((p: any) => typeof p.text === 'string' && !p.thought)
         .map((p: any) => p.text)

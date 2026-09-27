@@ -5,11 +5,10 @@ import {
     AudioRecorder,
     isSpeechRecognitionSupported,
     transcribeAudioWithAPI,
-    getInstantAudioTranscript,
     formatOrthodonticTranscript,
     TranscriptionProvider
 } from '../services/transcriptionService';
-import { synthesizeAudioConsultation, AnalysisResult, buildPatientContext } from '../services/geminiService';
+import { synthesizeAudioConsultation, AnalysisResult, buildPatientContext, getGeminiApiKey } from '../services/geminiService';
 import { Patient } from '../services/patientService';
 import logoSeul from '../assets/logo-seul.png';
 import OrthoMindDepForm from './OrthoMindDepForm';
@@ -126,20 +125,18 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
             setRecordingState('stopped');
             setTranscript('');
             setIsTranscribingAudio(true);
-            setStatusMessage(`⚡ Analyse et extraction automatique du fichier audio "${file.name}" par l'IA...`);
+            setStatusMessage(`Retranscription de « ${file.name} » en cours (quelques dizaines de secondes pour une consultation)…`);
 
-            let apiText = '';
             try {
-                apiText = await transcribeAudioWithAPI(file, provider, apiKey);
-            } catch (err) {
+                const apiText = await transcribeAudioWithAPI(file, provider, apiKey, file.name);
+                setTranscript(apiText.trim());
+                setStatusMessage(`Retranscription de « ${file.name} » terminée. Relisez-la ci-dessous puis lancez le compte-rendu.`);
+            } catch (err: any) {
                 console.warn('API audio transcription notice:', err);
+                setStatusMessage(`Retranscription automatique impossible : ${err?.message || err}. Configurez la clé Gemini dans l'onglet Configuration, ou saisissez le texte de la consultation ci-dessous.`);
+            } finally {
+                setIsTranscribingAudio(false);
             }
-
-            const finalText = (apiText && apiText.trim()) ? apiText.trim() : getInstantAudioTranscript(file.name);
-
-            setTranscript(finalText);
-            setIsTranscribingAudio(false);
-            setStatusMessage(`✓ Retranscription vocale de "${file.name}" effectuée et chargée instantanément ! Vous pouvez vérifier les propos capturés ci-dessous puis cliquer sur "Lancer le compte rendu".`);
         } catch (err: any) {
             console.error('Failed to load audio file:', err);
             setStatusMessage(`Erreur de lecture du fichier : ${err.message}`);
@@ -337,16 +334,21 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 setAudioUrl(url);
             }
 
-            // External API Transcription if chosen (OpenAI Whisper / Groq / Mistral)
-            if (provider !== 'webspeech' && blob.size > 0) {
+            // Retranscription de qualité de l'enregistrement complet (Gemini, ou Whisper/Groq
+            // si choisi) : la reconnaissance temps réel du navigateur n'est qu'un brouillon
+            if (blob.size > 0 && (provider !== 'webspeech' || getGeminiApiKey())) {
+                setIsTranscribingAudio(true);
+                setStatusMessage('Retranscription de la consultation en cours…');
                 try {
                     const apiText = await transcribeAudioWithAPI(blob, provider, apiKey);
                     setTranscript(apiText);
-                    setStatusMessage('✓ Transcription API réussie ! Cliquez sur le CTA ci-dessous pour synthétiser la séance.');
+                    setStatusMessage('Retranscription terminée. Relisez-la puis lancez le compte-rendu.');
                 } catch (apiErr: any) {
                     console.error('API transcription error:', apiErr);
-                    setStatusMessage(`Erreur API Whisper/Groq : ${apiErr.message}. Utilisation du texte capturé.`);
+                    setStatusMessage(`Retranscription automatique impossible (${apiErr.message}). Texte capté en direct conservé.`);
                     if (liveResult) setTranscript(liveResult);
+                } finally {
+                    setIsTranscribingAudio(false);
                 }
             } else if (liveResult) {
                 setTranscript(liveResult);

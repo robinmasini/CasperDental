@@ -7,7 +7,7 @@ import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import { formatClinicalReport } from '../components/ClinicalReport';
 
 const MAX_ANALYSIS_PHOTOS = 10;
-import { analyzeDentition, getGeminiApiKey, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
+import { analyzeDentition, getGeminiApiKey, testGeminiKey, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import { AudioConsultation } from '../components/AudioConsultation';
 import defaultBookData from '../assets/cgs_volume_61.json';
@@ -433,14 +433,22 @@ const Dashboard = () => {
         navigate('/');
     };
 
-    // Save API key
-    const saveApiKey = () => {
-        if (geminiKey.trim()) {
-            localStorage.setItem('casper_gemini_api_key', geminiKey.trim());
-            alert('Clé API enregistrée localement de façon sécurisée !');
-        } else {
+    // Save API key (vérifiée auprès de Google avant enregistrement)
+    const [keyStatus, setKeyStatus] = useState<{ tone: 'ok' | 'error' | 'pending'; text: string } | null>(null);
+    const saveApiKey = async () => {
+        const key = geminiKey.trim();
+        if (!key) {
             localStorage.removeItem('casper_gemini_api_key');
-            alert('Clé API effacée du stockage local.');
+            setKeyStatus({ tone: 'error', text: 'Clé effacée : les analyses IA sont désactivées.' });
+            return;
+        }
+        setKeyStatus({ tone: 'pending', text: 'Vérification de la clé auprès de Google…' });
+        const result = await testGeminiKey(key);
+        if (result.ok) {
+            localStorage.setItem('casper_gemini_api_key', key);
+            setKeyStatus({ tone: 'ok', text: `Clé valide et enregistrée. Modèle utilisé pour les analyses : ${result.model}.` });
+        } else {
+            setKeyStatus({ tone: 'error', text: `Clé refusée : ${result.error}` });
         }
     };
 
@@ -1599,13 +1607,13 @@ const Dashboard = () => {
                         </div>
 
                         <div className="glass-panel settings-card">
-                            <h2>Clé d'API Gemini <span style={{ fontSize: '0.8rem', fontWeight: 'normal', opacity: 0.8, background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '3px 8px', borderRadius: '12px', marginLeft: '8px' }}>Optionnelle (Mode autonome actif)</span></h2>
+                            <h2>Intelligence artificielle (Google Gemini) <span className={`om-badge ${getGeminiApiKey() ? 'om-badge--success' : 'om-badge--warning'}`} style={{ marginLeft: '8px', verticalAlign: 'middle' }}>{getGeminiApiKey() ? 'Clé configurée' : 'Non configurée'}</span></h2>
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '15px' }}>
-                                OrthoMind et Casper fonctionnent immédiatement pour tous les utilisateurs sans aucune clé requise. Vous pouvez facultativement renseigner votre propre clé Google AI Studio si vous souhaitez utiliser votre propre quota d'API.
+                                La clé Gemini est nécessaire pour l'analyse des clichés, la retranscription et la synthèse des consultations audio, et l'assistant OrthoMind. Sans clé, l'application reste en mode hors-ligne et ne produit aucun diagnostic.
                             </p>
                             
                             <div className="settings-row">
-                                <label htmlFor="gemini-api-key">Clé d'API Google Gemini (Facultatif)</label>
+                                <label htmlFor="gemini-api-key">Clé d'API Google Gemini</label>
                                 <div style={{ display: 'flex', gap: '10px' }}>
                                     <input 
                                         type={showKey ? 'text' : 'password'}
@@ -1628,11 +1636,17 @@ const Dashboard = () => {
                                 </div>
                             </div>
 
+                            {keyStatus && (
+                                <div className={`om-notice ${keyStatus.tone === 'error' ? 'om-notice--danger' : keyStatus.tone === 'pending' ? '' : 'om-notice--success'}`} role="status">
+                                    <p>{keyStatus.text}</p>
+                                </div>
+                            )}
                             <button 
                                 className="glass-btn glass-btn-primary save-settings-btn"
                                 onClick={saveApiKey}
+                                disabled={keyStatus?.tone === 'pending'}
                             >
-                                Enregistrer la clé
+                                Vérifier et enregistrer la clé
                             </button>
                         </div>
 

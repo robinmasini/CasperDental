@@ -7,7 +7,7 @@
  * 4. Orthodontic terms auto-formatter
  */
 
-import { getGeminiApiKey } from './geminiService';
+import { getGeminiApiKey, executeGeminiCall, extractText } from './geminiService';
 
 // Extend Window interface for Web Speech API cross-browser support
 declare global {
@@ -295,98 +295,114 @@ export class AudioRecorder {
 }
 
 /**
- * Transcribe Audio Blob using Gemini Multimodal Audio API
+ * Transcription médicale d'une consultation par Gemini (compréhension audio native).
+ * - locuteurs identifiés (Praticien / Patient / Parent),
+ * - vocabulaire orthodontique et numérotation FDI restitués,
+ * - aucune invention : passages inaudibles signalés.
+ * Les fichiers volumineux passent par l'API Files de Gemini (limite ~20 Mo en ligne).
  */
-export const transcribeAudioWithGemini = async (
-    audioBlob: Blob,
-    customApiKey?: string
-): Promise<string> => {
-    const apiKey = customApiKey || getGeminiApiKey();
+const TRANSCRIPTION_PROMPT = `Tu es le secrétaire médical du cabinet d'orthodontie du Dr Renaud Desouches. Retranscris intégralement et fidèlement cet enregistrement de consultation d'orthodontie, en français.
 
-    if (!apiKey) {
-        throw new Error("Clé API Gemini non configurée ou invalide.");
-    }
+Règles :
+1. Identifie chaque prise de parole sur une nouvelle ligne, préfixée par le locuteur : « Praticien : », « Patient : », « Parent : » ou « Assistante : » (déduis-le du contexte).
+2. Orthographie correctement le vocabulaire orthodontique : Classe I / II division 1 / II division 2 / III d'Angle, surplomb, recouvrement, supraclusion, béance, articulé inversé, endognathie, disjoncteur, quad-helix, aligneurs, taquets, stripping (IPR), élastiques, mini-vis, contention, téléradiographie, panoramique, CBCT, canine incluse, agénésie, etc.
+3. Écris les dents en notation FDI chiffrée (« la treize » → « la 13 », « vingt-trois » → « 23 ») et les mesures en chiffres (« six millimètres » → « 6 mm »).
+4. N'invente rien, ne résume pas, ne corrige pas les propos. Marque un passage incompréhensible par [inaudible].
+5. Réponds uniquement avec la retranscription, sans introduction ni commentaire.`;
 
-    // Convert Blob to Base64
-    const base64Data = await new Promise<string>((resolve, reject) => {
+const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
             const res = reader.result as string;
-            const base64 = res.includes(',') ? res.split(',')[1] : res;
-            resolve(base64);
+            resolve(res.includes(',') ? res.split(',')[1] : res);
         };
         reader.onerror = reject;
-        reader.readAsDataURL(audioBlob);
+        reader.readAsDataURL(blob);
     });
 
-    let mimeType = audioBlob.type || 'audio/mp4';
-    if (mimeType.includes('codecs')) {
-        mimeType = mimeType.split(';')[0];
+const normalizeAudioMime = (blob: Blob, fileName?: string): string => {
+    let mime = (blob.type || '').split(';')[0];
+    const name = (fileName || '').toLowerCase();
+    if (!mime) {
+        if (name.endsWith('.mp3')) mime = 'audio/mp3';
+        else if (name.endsWith('.wav')) mime = 'audio/wav';
+        else if (name.endsWith('.ogg')) mime = 'audio/ogg';
+        else if (name.endsWith('.webm')) mime = 'audio/webm';
+        else mime = 'audio/mp4';
     }
-    if (!mimeType || mimeType === 'audio/x-m4a') mimeType = 'audio/mp4';
+    // Une vidéo MP4 importée est traitée comme sa piste audio
+    if (mime === 'audio/x-m4a' || mime === 'video/mp4') mime = 'audio/mp4';
+    if (mime === 'audio/mpeg') mime = 'audio/mp3';
+    return mime;
+};
 
-    const prompt = `Tu es le transcripteur médical du cabinet d'orthodontie du Dr. Desouches. Écoute très attentivement cet enregistrement audio de consultation d'orthodontie et retranscris EXACTEMENT tout le dialogue oral échangé entre le praticien et le patient.
-Restitue fidèlement les termes cliniques (Classe d'Angle, hygiène, gencive, tartre, encombrement, aligneurs, gouttières, overjet, overbite, stripping, etc.).
-Rends UNIQUEMENT le texte de la retranscription en français sans aucun commentaire introductif ni conclusion.`;
+const INLINE_AUDIO_LIMIT = 14 * 1024 * 1024; // marge sous la limite de ~20 Mo (base64 +33 %)
 
-    const apiBody = {
-        contents: [
-            {
-                parts: [
-                    { text: prompt },
-                    {
-                        inlineData: {
-                            mimeType: mimeType,
-                            data: base64Data
-                        }
-                    }
-                ]
-            }
-        ],
-        generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 8192
-        }
-    };
+// Envoi d'un gros fichier via l'API Files de Gemini (upload résumable)
+const uploadAudioToGeminiFiles = async (blob: Blob, mimeType: string, apiKey: string): Promise<string> => {
+    const start = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+            'X-Goog-Upload-Protocol': 'resumable',
+            'X-Goog-Upload-Command': 'start',
+            'X-Goog-Upload-Header-Content-Length': String(blob.size),
+            'X-Goog-Upload-Header-Content-Type': mimeType,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ file: { display_name: 'consultation-orthomind' } }),
+    });
+    const uploadUrl = start.headers.get('X-Goog-Upload-URL') || start.headers.get('x-goog-upload-url');
+    if (!start.ok || !uploadUrl) throw new Error(`Envoi du fichier audio refusé (${start.status}).`);
 
-    const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-    let lastError: any = null;
+    const upload = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+            'X-Goog-Upload-Offset': '0',
+            'X-Goog-Upload-Command': 'upload, finalize',
+        },
+        body: blob,
+    });
+    const uploaded = await upload.json();
+    let file = uploaded.file;
+    if (!file?.uri) throw new Error('Envoi du fichier audio incomplet.');
 
-    for (const model of models) {
-        try {
-            const isBearer = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
-            const url = isBearer
-                ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
-                : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    // Le fichier doit être « ACTIVE » avant de pouvoir être utilisé
+    for (let i = 0; i < 30 && file.state === 'PROCESSING'; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        file = await (await fetch(`https://generativelanguage.googleapis.com/v1beta/${file.name}?key=${apiKey}`)).json();
+    }
+    if (file.state === 'FAILED') throw new Error('Gemini n\'a pas pu lire ce fichier audio.');
+    return file.uri;
+};
 
-            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-            if (isBearer) {
-                headers['Authorization'] = `Bearer ${apiKey}`;
-            }
+export const transcribeAudioWithGemini = async (
+    audioBlob: Blob,
+    customApiKey?: string,
+    fileName?: string
+): Promise<string> => {
+    const apiKey = customApiKey || getGeminiApiKey();
+    if (!apiKey) throw new Error('Clé API Gemini non configurée.');
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(apiBody)
-            });
+    const mimeType = normalizeAudioMime(audioBlob, fileName);
+    const isBearer = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
 
-            if (response.ok) {
-                const data = await response.json();
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text && text.trim()) {
-                    return text.trim();
-                }
-            } else {
-                const errData = await response.json().catch(() => ({}));
-                console.warn(`Gemini audio transcription failed on ${model}:`, errData);
-            }
-        } catch (err: any) {
-            lastError = err;
-            console.warn(`Network error transcribing audio with ${model}:`, err);
-        }
+    let audioPart: any;
+    if (audioBlob.size > INLINE_AUDIO_LIMIT && !isBearer) {
+        const fileUri = await uploadAudioToGeminiFiles(audioBlob, mimeType, apiKey);
+        audioPart = { fileData: { mimeType, fileUri } };
+    } else {
+        audioPart = { inlineData: { mimeType, data: await blobToBase64(audioBlob) } };
     }
 
-    throw lastError || new Error("Erreur lors de la retranscription de l'audio.");
+    const data = await executeGeminiCall('generateContent', {
+        contents: [{ parts: [{ text: TRANSCRIPTION_PROMPT }, audioPart] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 32768 },
+    }, apiKey, undefined, 'expert');
+
+    const text = extractText(data);
+    if (!text) throw new Error('Retranscription vide.');
+    return text;
 };
 
 /**
@@ -395,22 +411,27 @@ Rends UNIQUEMENT le texte de la retranscription en français sans aucun commenta
 export const transcribeAudioWithAPI = async (
     audioBlob: Blob,
     provider: TranscriptionProvider,
-    apiKey?: string
+    apiKey?: string,
+    fileName?: string
 ): Promise<string> => {
-    // Try Gemini API first if configured
+    // Gemini en priorité : compréhension audio native, locuteurs et vocabulaire
     const geminiKey = getGeminiApiKey();
+    let geminiError: unknown = null;
     if (geminiKey && audioBlob.size > 0) {
         try {
-            const geminiText = await transcribeAudioWithGemini(audioBlob, geminiKey);
+            const geminiText = await transcribeAudioWithGemini(audioBlob, geminiKey, fileName);
             if (geminiText && geminiText.trim()) return geminiText;
         } catch (geminiErr) {
-            console.warn('Gemini audio transcription fallback attempt failed:', geminiErr);
+            geminiError = geminiErr;
+            console.warn('Gemini audio transcription failed:', geminiErr);
         }
     }
 
-    const keyToUse = apiKey || geminiKey;
-    if (!keyToUse) {
-        return '';
+    // Whisper / Groq / Mistral uniquement avec leur propre clé
+    const keyToUse = apiKey;
+    if (!keyToUse || provider === 'webspeech') {
+        if (geminiError) throw geminiError;
+        throw new Error('Aucune clé de retranscription configurée (clé Gemini dans Configuration).');
     }
 
     try {
@@ -443,22 +464,6 @@ export const transcribeAudioWithAPI = async (
     }
 
     return '';
-};
-
-/**
- * Fast instant transcription for imported consultation audio files (MP4/M4A/WAV/MP3).
- * Extracts text in < 0.5s without starting audio playback or micro listening.
- */
-export const getInstantAudioTranscript = (fileName?: string): string => {
-    return formatOrthodonticTranscript(`Praticien (Dr. Desouches): Alors aujourd'hui, je vais vous parler de votre fils Charles et vous expliquer un peu ce qui va et ce qui ne va pas dans sa bouche. En premier lieu, on voit qu'il a une mâchoire du haut qui est trop étroite. D'ailleurs, on peut le constater avec la radio panoramique : il n'a pas la place pour positionner toutes ses dents. Les dents de lait sont bien alignées, mais quand on regarde à l'étage sous-jacent, vous voyez clairement qu'il n'y a pas la place pour que tout le monde puisse descendre, en particulier les deux canines (13 et 23) qui sont très hautes et n'ont absolument pas de place pour sortir. Même chose pour les incisives latérales qui sont plus larges que l'espace dédié.
-
-Praticien: Le fait d'élargir la mâchoire du haut va avoir plusieurs conséquences majeures :
-1. Permettre de positionner toutes les dents définitives en augmentant la circonférence de l'arcade en arc de cercle.
-2. Améliorer la ventilation nasale : le plancher du nez étant le plafond de la mâchoire du haut, élargir le palais va élargir le passage de l'air et permettre à Charles de mieux respirer par le nez. Charles a d'ailleurs des cernes sous les yeux et un palais blanchâtre, signes typiques d'une respiration buccale nocturne la bouche ouverte.
-
-Praticien: Deuxièmement, la mâchoire du bas (mandibule) est trop en arrière (Classe II / rétromandibulie) et le menton est en retrait. La mâchoire du haut trop étroite coince la mâchoire du bas et l'empêche de grandir vers l'avant.
-
-Praticien: Enfin, comme la mâchoire du haut est trop petite par rapport à la mandibule (comme un couvercle trop petit sur une boîte), Charles a dévié sa mâchoire du bas vers la droite pour trouver une position de confort. On constate une incoïncidence du milieu du haut et du milieu du bas, ainsi qu'une asymétrie d'emboîtement à droite et à gauche. Dès qu'on va élargir la mâchoire du haut, la mandibule va pouvoir se recentrer et s'avancer spontanément.`);
 };
 
 /**
