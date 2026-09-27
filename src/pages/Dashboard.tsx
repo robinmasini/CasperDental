@@ -5,6 +5,8 @@ import Logo from '../components/Logo';
 import { supabase, uploadDentalPhoto } from '../lib/supabase';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import { formatClinicalReport } from '../components/ClinicalReport';
+import CameraCapture from '../components/CameraCapture';
+import Icon from '../components/Icon';
 
 const MAX_ANALYSIS_PHOTOS = 10;
 import { analyzeDentition, getGeminiApiKey, testGeminiKey, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
@@ -690,6 +692,11 @@ const Dashboard = () => {
     };
 
     // Handle images selection via file input
+    // Caméra intégrée (prise en rafale sur mobile)
+    const [showCamera, setShowCamera] = useState(false);
+    const canUseCamera = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia
+        && typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const filesArray = Array.from(e.target.files);
@@ -1234,6 +1241,27 @@ const Dashboard = () => {
 
                                 <div className="patient-input-group">
                                     <label>Clichés dentaires (jusqu'à {MAX_ANALYSIS_PHOTOS} photos)</label>
+                                    {canUseCamera && (
+                                        <button
+                                            type="button"
+                                            className="om-btn om-btn--primary camera-launch-btn"
+                                            onClick={() => setShowCamera(true)}
+                                            disabled={isScanning || isProcessingFiles || imageFiles.length >= MAX_ANALYSIS_PHOTOS}
+                                        >
+                                            <Icon name="camera" size={18} /> Prendre les clichés en rafale
+                                        </button>
+                                    )}
+                                    {showCamera && (
+                                        <CameraCapture
+                                            maxShots={MAX_ANALYSIS_PHOTOS - imageFiles.length}
+                                            startIndex={imageFiles.length}
+                                            onClose={() => setShowCamera(false)}
+                                            onDone={async (files) => {
+                                                setShowCamera(false);
+                                                await processAndAddFiles(files);
+                                            }}
+                                        />
+                                    )}
                                     <input
                                         type="file"
                                         id="dental-photos-input"
@@ -1267,7 +1295,7 @@ const Dashboard = () => {
                                                     <circle cx="8.5" cy="8.5" r="1.5" />
                                                     <polyline points="21 15 16 10 5 21" />
                                                 </svg>
-                                                <div className="dropzone-title">Sélectionner les clichés dentaires</div>
+                                                <div className="dropzone-title">{canUseCamera ? 'Ou choisir dans la photothèque' : 'Sélectionner les clichés dentaires'}</div>
                                                 <div className="dropzone-subtitle">Formats JPEG, PNG, HEIC supportés. Maximum {MAX_ANALYSIS_PHOTOS} images.</div>
                                             </>
                                         )}

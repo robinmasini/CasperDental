@@ -2304,3 +2304,11 @@
   margin: 0 auto;
 }
 
+
+/* Bouton caméra intégrée (mobile) */
+.camera-launch-btn {
+    width: 100%;
+    min-height: 48px;
+    margin: 4px 0 12px;
+    font-size: 0.95rem;
+}
