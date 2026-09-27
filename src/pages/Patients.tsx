@@ -411,8 +411,11 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="fiche-mobile-bar">
-                        <button className="om-btn om-btn--ghost om-btn--sm" onClick={() => setSelectedPatient(null)}>
+                        <button className="om-btn om-btn--ghost" onClick={() => setSelectedPatient(null)}>
                             <Icon name="arrowLeft" /> Patients
+                        </button>
+                        <button className="om-btn om-btn--secondary" onClick={() => setSelectedPatient(null)} aria-label="Fermer la fiche">
+                            <Icon name="x" /> Fermer
                         </button>
                     </div>
 

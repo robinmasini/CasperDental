@@ -555,6 +555,8 @@
 
     .fiche-mobile-bar {
         display: flex;
+        align-items: center;
+        justify-content: space-between;
         position: sticky;
         top: 0;
         z-index: 2;
@@ -594,10 +596,14 @@
         gap: var(--om-space-3) var(--om-space-4);
     }
 
+    .fiche-mobile-bar .om-btn {
+        min-height: 40px;
+    }
+
     .fiche-tabs {
         padding: 0 var(--om-space-2);
         position: sticky;
-        top: 49px;
+        top: 57px;
         z-index: 1;
         background: var(--om-bg);
     }
