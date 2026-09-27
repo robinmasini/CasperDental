@@ -107,6 +107,12 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
     const handleAudioFileSelect = async (file: File) => {
         if (!file) return;
+        if (!patientName || !patientName.trim()) {
+            alert("⚠️ Aucune consultation audio ne peut être démarrée sans patient. Veuillez d'abord sélectionner un patient avant de charger un fichier audio.");
+            setStatusMessage("⚠️ Veuillez d'abord choisir un patient pour rattacher l'analyse audio à son dossier.");
+            if (onViewPatientFile) onViewPatientFile();
+            return;
+        }
         try {
             const url = URL.createObjectURL(file);
             setAudioBlob(file);
@@ -242,6 +248,12 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
     // Start Recording Session
     const handleStartRecording = async () => {
+        if (!patientName || !patientName.trim()) {
+            alert("⚠️ Aucune consultation audio ne peut être démarrée sans patient. Veuillez d'abord sélectionner un patient avant de lancer l'enregistrement.");
+            setStatusMessage("⚠️ Veuillez d'abord choisir un patient pour rattacher l'analyse audio à son dossier.");
+            if (onViewPatientFile) onViewPatientFile();
+            return;
+        }
         try {
             setAudioUrl(null);
             setAudioBlob(null);
@@ -558,6 +570,23 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
     return (
         <div className="audio-consultation-container">
+            {(!patientName || !patientName.trim()) && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)', borderRadius: '14px', padding: '14px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ color: '#f87171', fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                        <span>Sélection de patient obligatoire : Veuillez d'abord sélectionner un patient pour démarrer la consultation audio et rattacher l'analyse à son dossier médical.</span>
+                    </div>
+                    {onViewPatientFile && (
+                        <button
+                            onClick={() => onViewPatientFile()}
+                            style={{ background: 'linear-gradient(135deg, var(--primary-cyan), var(--primary-blue))', color: '#090d16', border: 'none', borderRadius: '10px', padding: '8px 16px', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                            Choisir un patient →
+                        </button>
+                    )}
+                </div>
+            )}
+
             {/* Unified Master Studio Rectangle */}
             <div className="audio-studio-unified-card">
                 {/* Master Header Row */}

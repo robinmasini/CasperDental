@@ -99,15 +99,15 @@ const Dashboard = () => {
     const currentDate = currentDateRaw.charAt(0).toUpperCase() + currentDateRaw.slice(1);
     
     // Tabs state
-    const [activeTab, setActiveTab] = useState<'analyse' | 'audio' | 'patients' | 'knowledge' | 'config'>(() => {
+    const [activeTab, setActiveTab] = useState<'analyse' | 'audio' | 'patients' | 'config'>(() => {
         const saved = localStorage.getItem('casper_active_tab');
-        if (saved === 'orthomind' || saved === 'history') return 'analyse';
+        if (saved === 'orthomind' || saved === 'history' || saved === 'knowledge') return 'analyse';
         return (saved as any) || 'analyse';
     });
 
     const isPatientAccount = (user?.email || '').toLowerCase().trim() === 'test@patient.com' || user?.profession === 'Patient OrthoMind' || user?.specialty === 'Espace Patient';
 
-    const handleTabClick = (tab: 'analyse' | 'audio' | 'patients' | 'knowledge' | 'config') => {
+    const handleTabClick = (tab: 'analyse' | 'audio' | 'patients' | 'config') => {
         if (isPatientAccount && tab !== 'analyse') {
             alert('Fonctionnalité à venir...');
             return;
@@ -716,12 +716,15 @@ const Dashboard = () => {
 
     // Launch optical scanning and orthodontics analysis
     const handleStartAnalysis = async () => {
+        const currentPatient = (patientName || '').trim();
+        if (!currentPatient) {
+            alert('⚠️ Aucune analyse ne peut être démarrée sans patient. Veuillez d\'abord sélectionner ou créer un patient.');
+            return;
+        }
         if (imageFiles.length === 0) {
             alert('Veuillez déposer au moins 1 photo de dentition (recommandé: 5-6).');
             return;
         }
-
-        const currentPatient = patientName.trim() || 'Patient Anonyme';
 
         // Initialize scanning console and state
         setIsScanning(true);
@@ -1191,17 +1194,6 @@ const Dashboard = () => {
                             </button>
 
                             <button 
-                                className={`sidebar-nav-btn ${activeTab === 'knowledge' ? 'active' : ''}`}
-                                onClick={() => handleTabClick('knowledge')}
-                            >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                                    <path d="M22 3h-6a4 4 0 0 1 4 4v14a3 3 0 0 1 3-3h7z" />
-                                </svg>
-                                Connaissances PDF
-                            </button>
-
-                            <button 
                                 className="sidebar-nav-btn"
                                 onClick={() => setShowHistoryModal(true)}
                             >
@@ -1261,28 +1253,6 @@ const Dashboard = () => {
                 {/* TAB 1: CLINICAL ANALYSIS */}
                 {activeTab === 'analyse' && (
                     <>
-                        {/* Welcome Card Banner */}
-                        <div className="welcome-banner-container">
-                            <div className="welcome-banner" style={{ '--banner-bg': `url(${welcomeCardImg})` } as React.CSSProperties}>
-                                <div className="banner-overlay"></div>
-                                <div className="banner-content">
-                                    <div className="banner-text-side">
-                                        <h1 className="banner-greeting">Bienvenue,</h1>
-                                        <a href="https://casperdental.fr/" target="_blank" rel="noopener noreferrer" className="banner-logo-wrapper">
-                                            <img src={casperLogoWelcome} alt="Casper Dental" className="banner-casper-logo" />
-                                        </a>
-                                        <div className="banner-subtext">
-                                            <p>Ravi de vous revoir !</p>
-                                            <p>{isPatientAccount ? 'Consultez votre Espace Patient' : 'Consultez votre Espace Praticien'}</p>
-                                        </div>
-                                        <div className="banner-date-section">
-                                            <p className="date-caption">Date d'aujourd'hui</p>
-                                            <p className="date-display">{currentDate}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
                         <div className="analyse-grid">
                             {/* Panel unique : Robot + Formulaire */}
@@ -1551,115 +1521,35 @@ const Dashboard = () => {
                     />
                 )}
 
-                {/* TAB 2: KNOWLEDGE BASE PDF UPLOAD */}
-                {activeTab === 'knowledge' && (
-                    <div className="kb-layout">
-                        <div className="dashboard-header">
-                            <h1>Base de Connaissances Orthodontiques</h1>
-                            <p>Enseignez à Casper la connaissance des plus grands livres scientifiques. Chargez les fichiers PDF pour en faire ses repères diagnostics.</p>
-                        </div>
-
-                        {/* Upload Card */}
-                        <div className="glass-panel kb-upload-card">
-                            <input 
-                                type="file" 
-                                id="pdf-doc-input" 
-                                accept="application/pdf"
-                                onChange={handlePdfUpload}
-                                style={{ display: 'none' }}
-                                disabled={isUploadingPdf}
-                            />
-                            
-                            <label htmlFor="pdf-doc-input" className="pdf-upload-zone">
-                                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                    <polyline points="14 2 14 8 20 8" />
-                                    <line x1="12" y1="18" x2="12" y2="12" />
-                                    <polyline points="9 15 12 12 15 15" />
-                                </svg>
-                                <div className="dropzone-title">Sélectionner un livre ou cours d'orthodontie (PDF)</div>
-                                <div className="dropzone-subtitle">Le fichier sera converti en blocs textuels indexés dans Supabase.</div>
-                            </label>
-
-                            {isUploadingPdf && (
-                                <div className="indexing-progress-card">
-                                    <div className="progress-header">
-                                        <span>{pdfStatusText}</span>
-                                        <span>{pdfProgress}%</span>
-                                    </div>
-                                    <div className="progress-bar-bg">
-                                        <div className="progress-bar-fill" style={{ width: `${pdfProgress}%` }}></div>
-                                    </div>
-                                    <div className="progress-details">
-                                        Ne fermez pas l'onglet. Extraction de texte sémantique et écriture Supabase en cours...
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Books catalog table */}
-                        <div className="glass-panel kb-books-card">
-                            <h2 style={{ display: 'flex', alignItems: 'center' }}>
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', color: 'var(--primary-cyan)', filter: 'drop-shadow(0 0 4px rgba(0, 242, 254, 0.4))' }}>
-                                    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-3.12 3 3 0 0 1 0-4.88 2.5 2.5 0 0 1 0-3.12A2.5 2.5 0 0 1 9.5 2Z" />
-                                    <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-3.12 3 3 0 0 0 0-4.88 2.5 2.5 0 0 0 0-3.12A2.5 2.5 0 0 0 14.5 2Z" />
-                                </svg>
-                                Bibliothèque Scientifique de Casper ({books.length} livres indexés)
-                            </h2>
-                            
-                            {books.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                                    Aucun livre d'orthodontie n'est encore enregistré dans la base Supabase.
-                                </div>
-                            ) : (
-                                <div className="glass-table-container">
-                                    <table className="glass-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Titre du Livre</th>
-                                                <th>Nom de fichier</th>
-                                                <th>Taille</th>
-                                                <th>Pages</th>
-                                                <th>Date d'ajout</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {books.map((book) => (
-                                                <tr key={book.id}>
-                                                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{book.title}</td>
-                                                    <td>{book.file_name}</td>
-                                                    <td>{(book.file_size / (1024 * 1024)).toFixed(2)} MB</td>
-                                                    <td>{book.total_pages} pages</td>
-                                                    <td>{new Date(book.created_at).toLocaleDateString('fr-FR')}</td>
-                                                    <td>
-                                                        <button 
-                                                            className="delete-table-btn"
-                                                            onClick={() => handleDeleteBook(book.id)}
-                                                            title="Supprimer ce livre"
-                                                        >
-                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                <polyline points="3 6 5 6 21 6" />
-                                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                                            </svg>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
                 {/* TAB 4: CONFIGURATION / API */}
                 {activeTab === 'config' && (
                     <div className="settings-layout">
+                        {/* Welcome Card Banner */}
+                        <div className="welcome-banner-container">
+                            <div className="welcome-banner" style={{ '--banner-bg': `url(${welcomeCardImg})` } as React.CSSProperties}>
+                                <div className="banner-overlay"></div>
+                                <div className="banner-content">
+                                    <div className="banner-text-side">
+                                        <h1 className="banner-greeting">Bienvenue,</h1>
+                                        <a href="https://casperdental.fr/" target="_blank" rel="noopener noreferrer" className="banner-logo-wrapper">
+                                            <img src={casperLogoWelcome} alt="Casper Dental" className="banner-casper-logo" />
+                                        </a>
+                                        <div className="banner-subtext">
+                                            <p>Ravi de vous revoir !</p>
+                                            <p>{isPatientAccount ? 'Consultez votre Espace Patient' : 'Consultez votre Espace Praticien'}</p>
+                                        </div>
+                                        <div className="banner-date-section">
+                                            <p className="date-caption">Date d'aujourd'hui</p>
+                                            <p className="date-display">{currentDate}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="dashboard-header">
                             <h1>Configuration & Statut</h1>
-                            <p>Gérez vos clés d'API IA et surveillez l'état de synchronisation de vos bases de stockage en ligne.</p>
+                            <p>Gérez vos clés d'API IA, la base de connaissances scientifique et surveillez l'état de vos services.</p>
                         </div>
 
                         <div className="glass-panel settings-card">
@@ -1684,6 +1574,107 @@ const Dashboard = () => {
                                     </svg>
                                     Ouvrir l'Assistant OrthoMind
                                 </button>
+                            </div>
+                        </div>
+
+                        {/* SECTION: BASE DE CONNAISSANCES PDF */}
+                        <div className="kb-layout" style={{ marginTop: '10px', marginBottom: '10px' }}>
+                            <div className="dashboard-header" style={{ marginBottom: '15px' }}>
+                                <h2 style={{ fontSize: '1.3rem', margin: 0 }}>Base de Connaissances Scientific & Ouvrages PDF</h2>
+                                <p style={{ fontSize: '0.88rem' }}>Enseignez à Casper la connaissance des plus grands livres scientifiques (RAG indexé).</p>
+                            </div>
+
+                            {/* Upload Card */}
+                            <div className="glass-panel kb-upload-card" style={{ marginBottom: '20px' }}>
+                                <input 
+                                    type="file" 
+                                    id="pdf-doc-input" 
+                                    accept="application/pdf"
+                                    onChange={handlePdfUpload}
+                                    style={{ display: 'none' }}
+                                    disabled={isUploadingPdf}
+                                />
+                                
+                                <label htmlFor="pdf-doc-input" className="pdf-upload-zone">
+                                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="12" y1="18" x2="12" y2="12" />
+                                        <polyline points="9 15 12 12 15 15" />
+                                    </svg>
+                                    <div className="dropzone-title">Sélectionner un livre ou cours d'orthodontie (PDF)</div>
+                                    <div className="dropzone-subtitle">Le fichier sera converti en blocs textuels indexés dans Supabase.</div>
+                                </label>
+
+                                {isUploadingPdf && (
+                                    <div className="indexing-progress-card">
+                                        <div className="progress-header">
+                                            <span>{pdfStatusText}</span>
+                                            <span>{pdfProgress}%</span>
+                                        </div>
+                                        <div className="progress-bar-bg">
+                                            <div className="progress-bar-fill" style={{ width: `${pdfProgress}%` }}></div>
+                                        </div>
+                                        <div className="progress-details">
+                                            Ne fermez pas l'onglet. Extraction de texte sémantique et écriture Supabase en cours...
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Books catalog table */}
+                            <div className="glass-panel kb-books-card">
+                                <h3 style={{ display: 'flex', alignItems: 'center', fontSize: '1.1rem', marginBottom: '15px' }}>
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', color: 'var(--primary-cyan)', filter: 'drop-shadow(0 0 4px rgba(0, 242, 254, 0.4))' }}>
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                    </svg>
+                                    Bibliothèque Scientifique de Casper ({books.length} livres indexés)
+                                </h3>
+                                
+                                {books.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                        Aucun livre d'orthodontie n'est encore enregistré dans la base Supabase.
+                                    </div>
+                                ) : (
+                                    <div className="glass-table-container">
+                                        <table className="glass-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Titre du Livre</th>
+                                                    <th>Nom de fichier</th>
+                                                    <th>Taille</th>
+                                                    <th>Pages</th>
+                                                    <th>Date d'ajout</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {books.map((book) => (
+                                                    <tr key={book.id}>
+                                                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{book.title}</td>
+                                                        <td>{book.file_name}</td>
+                                                        <td>{(book.file_size / (1024 * 1024)).toFixed(2)} MB</td>
+                                                        <td>{book.total_pages} pages</td>
+                                                        <td>{new Date(book.created_at).toLocaleDateString('fr-FR')}</td>
+                                                        <td>
+                                                            <button 
+                                                                className="delete-table-btn"
+                                                                onClick={() => handleDeleteBook(book.id)}
+                                                                title="Supprimer ce livre"
+                                                            >
+                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                    <polyline points="3 6 5 6 21 6" />
+                                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                                </svg>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -2300,33 +2291,29 @@ const Dashboard = () => {
                         <span className="mobile-navbar-label">Patients</span>
                     </button>
 
-                    {/* Center Button - Audio Consultation / Casper */}
+                    {/* Center Element - OrthoMind Logo */}
                     <button 
-                        className={`mobile-navbar-tab mobile-navbar-center-btn ${activeTab === 'audio' ? 'active' : ''}`}
-                        onClick={() => handleTabClick('audio')}
-                        title="Consultation Audio"
+                        className="mobile-navbar-tab mobile-navbar-logo-center"
+                        onClick={() => handleTabClick('analyse')}
+                        title="OrthoMind"
                     >
-                        <div className="center-icon-badge">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                <line x1="12" y1="19" x2="12" y2="23" />
-                                <line x1="8" y1="23" x2="16" y2="23" />
-                            </svg>
+                        <div className="center-logo-badge">
+                            <img src={logoSeul} alt="OrthoMind Logo" className="mobile-navbar-logo-img" />
                         </div>
-                        <span className="mobile-navbar-label">Audio</span>
                     </button>
 
                     <button 
-                        className={`mobile-navbar-tab ${activeTab === 'knowledge' ? 'active' : ''}`}
-                        onClick={() => handleTabClick('knowledge')}
-                        title="Base de Connaissances"
+                        className={`mobile-navbar-tab ${activeTab === 'audio' ? 'active' : ''}`}
+                        onClick={() => handleTabClick('audio')}
+                        title="Consultation Audio"
                     >
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                            <line x1="12" y1="19" x2="12" y2="23" />
+                            <line x1="8" y1="23" x2="16" y2="23" />
                         </svg>
-                        <span className="mobile-navbar-label">Savoir</span>
+                        <span className="mobile-navbar-label">Audio</span>
                     </button>
 
                     <button 
