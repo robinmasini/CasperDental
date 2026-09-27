@@ -5,6 +5,8 @@ import Logo from '../components/Logo';
 import { supabase, uploadDentalPhoto } from '../lib/supabase';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import { formatClinicalReport } from '../components/ClinicalReport';
+
+const MAX_ANALYSIS_PHOTOS = 10;
 import { analyzeDentition, getGeminiApiKey, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import { AudioConsultation } from '../components/AudioConsultation';
@@ -668,12 +670,12 @@ const Dashboard = () => {
                 }
             }
             
-            // Limit to 6 photos max
-            setImageFiles(prev => [...prev, ...processedFiles].slice(0, 6));
+            // Limite du nombre de clichés par analyse
+            setImageFiles(prev => [...prev, ...processedFiles].slice(0, MAX_ANALYSIS_PHOTOS));
 
             // Generate preview URLs
             const newPreviews = processedFiles.map(file => URL.createObjectURL(file));
-            setPreviewUrls(prev => [...prev, ...newPreviews].slice(0, 6));
+            setPreviewUrls(prev => [...prev, ...newPreviews].slice(0, MAX_ANALYSIS_PHOTOS));
         } finally {
             setIsProcessingFiles(false);
         }
@@ -723,7 +725,7 @@ const Dashboard = () => {
             return;
         }
         if (imageFiles.length === 0) {
-            alert('Veuillez déposer au moins 1 photo de dentition (recommandé: 5-6).');
+            alert(`Veuillez déposer au moins 1 photo de dentition (jusqu'à ${MAX_ANALYSIS_PHOTOS}).`);
             return;
         }
 
@@ -1223,7 +1225,7 @@ const Dashboard = () => {
                                 />
 
                                 <div className="patient-input-group">
-                                    <label>Clichés dentaires (Recommandé : 5-6 photos)</label>
+                                    <label>Clichés dentaires (jusqu'à {MAX_ANALYSIS_PHOTOS} photos)</label>
                                     <input
                                         type="file"
                                         id="dental-photos-input"
@@ -1258,7 +1260,7 @@ const Dashboard = () => {
                                                     <polyline points="21 15 16 10 5 21" />
                                                 </svg>
                                                 <div className="dropzone-title">Sélectionner les clichés dentaires</div>
-                                                <div className="dropzone-subtitle">Formats JPEG, PNG, HEIC supportés. Maximum 6 images.</div>
+                                                <div className="dropzone-subtitle">Formats JPEG, PNG, HEIC supportés. Maximum {MAX_ANALYSIS_PHOTOS} images.</div>
                                             </>
                                         )}
                                     </label>

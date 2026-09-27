@@ -58,40 +58,55 @@ export const getGeminiApiKey = (): string => {
     return '';
 };
 
+// Réduit un cliché à 2048 px sur le plus grand côté (JPEG) : 10 photos pleine
+// résolution dépasseraient la limite de taille d'une requête Gemini (~20 Mo).
+const MAX_IMAGE_EDGE = 2048;
+
+const downscaleImage = async (file: File): Promise<Blob | null> => {
+    try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
+        if (scale === 1 && file.size < 2.5 * 1024 * 1024 && file.type === 'image/jpeg') {
+            bitmap.close();
+            return null; // déjà raisonnable
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close();
+        return await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+    } catch {
+        return null; // format non décodable par le navigateur (ex. HEIC) : on garde l'original
+    }
+};
+
+const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+
 // Convert a File object to base64 inline data format for Gemini
 export const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const base64Data = (reader.result as string).split(',')[1];
+    const resized = await downscaleImage(file);
+    if (resized) {
+        return { inlineData: { data: await blobToBase64(resized), mimeType: 'image/jpeg' } };
+    }
 
-            // Safe fallback for MIME type if empty (common on macOS/iOS browsers for HEIC files)
-            let mimeType = file.type;
-            if (!mimeType) {
-                const nameLower = file.name.toLowerCase();
-                if (nameLower.endsWith('.heic')) {
-                    mimeType = 'image/heic';
-                } else if (nameLower.endsWith('.heif')) {
-                    mimeType = 'image/heif';
-                } else if (nameLower.endsWith('.png')) {
-                    mimeType = 'image/png';
-                } else if (nameLower.endsWith('.webp')) {
-                    mimeType = 'image/webp';
-                } else {
-                    mimeType = 'image/jpeg'; // Safe fallback
-                }
-            }
-
-            resolve({
-                inlineData: {
-                    data: base64Data,
-                    mimeType: mimeType
-                }
-            });
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
+    // Safe fallback for MIME type if empty (common on macOS/iOS browsers for HEIC files)
+    let mimeType = file.type;
+    if (!mimeType) {
+        const nameLower = file.name.toLowerCase();
+        if (nameLower.endsWith('.heic')) mimeType = 'image/heic';
+        else if (nameLower.endsWith('.heif')) mimeType = 'image/heif';
+        else if (nameLower.endsWith('.png')) mimeType = 'image/png';
+        else if (nameLower.endsWith('.webp')) mimeType = 'image/webp';
+        else mimeType = 'image/jpeg';
+    }
+    return { inlineData: { data: await blobToBase64(file), mimeType } };
 };
 
 // Convert base64 data string to inline data format
