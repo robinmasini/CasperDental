@@ -149,10 +149,23 @@ export const searchKnowledgeBase = async (keywords: string[]): Promise<string> =
 // ============================================================================
 export type ModelTier = 'expert' | 'fast';
 
+// Utilisé seulement si la liste des modèles de la clé est inaccessible
 const STATIC_MODEL_FALLBACK: Record<ModelTier, string[]> = {
-    expert: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'],
-    fast: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+    expert: ['gemini-3.8-pro', 'gemini-3.8-flash', 'gemini-2.5-pro', 'gemini-2.5-flash'],
+    fast: ['gemini-3.8-flash', 'gemini-2.5-flash'],
 };
+
+// Modèles retirés par Google (« no longer available », 404…) : mémorisés pour ne plus les essayer
+const RETIRED_MODELS_KEY = 'orthomind_retired_gemini_models';
+const retiredModels: Set<string> = (() => {
+    try { return new Set(JSON.parse(localStorage.getItem(RETIRED_MODELS_KEY) || '[]')); } catch { return new Set(); }
+})();
+const markModelRetired = (model: string) => {
+    retiredModels.add(model);
+    try { localStorage.setItem(RETIRED_MODELS_KEY, JSON.stringify([...retiredModels])); } catch { /* stockage indisponible */ }
+};
+const isRetirementError = (status: number, message: string) =>
+    status === 404 || /no longer available|not found|is not supported for generateContent|has been deprecated|was shut down/i.test(message);
 
 let availableModelsPromise: Promise<string[] | null> | null = null;
 
@@ -211,20 +224,24 @@ const rankModels = (models: string[], tier: ModelTier): string[] => {
     const isPro = (name: string) => /-pro/.test(name);
     const isPreview = (name: string) => /preview|exp/.test(name);
 
-    return candidates.sort((a, b) => {
-        if (tier === 'expert' && isPro(a) !== isPro(b)) return isPro(a) ? -1 : 1;
-        if (tier === 'fast' && isPro(a) !== isPro(b)) return isPro(a) ? 1 : -1;
-        if (version(a) !== version(b)) return version(b) - version(a);
-        if (isPreview(a) !== isPreview(b)) return isPreview(a) ? 1 : -1;
-        return a.length - b.length; // alias courts ("gemini-2.5-pro") avant les versions datées
-    });
+    // La génération la plus récente passe en premier ; à version égale, « pro » pour
+    // les analyses expertes, « flash » pour les tâches rapides ; les versions stables
+    // avant les préversions.
+    return candidates
+        .filter(name => !retiredModels.has(name))
+        .sort((a, b) => {
+            if (version(a) !== version(b)) return version(b) - version(a);
+            if (isPro(a) !== isPro(b)) return (tier === 'expert') === isPro(a) ? -1 : 1;
+            if (isPreview(a) !== isPreview(b)) return isPreview(a) ? 1 : -1;
+            return a.length - b.length; // alias courts ("gemini-3.8-pro") avant les versions datées
+        });
 };
 
 const resolveModelChain = async (apiKey: string, tier: ModelTier): Promise<string[]> => {
     const available = await listAvailableModels(apiKey);
-    const ranked = available ? rankModels(available, tier).slice(0, 3) : [];
-    const chain = [...ranked, ...STATIC_MODEL_FALLBACK[tier].filter(m => !available || available.includes(m))];
-    return [...new Set(chain)].slice(0, 4);
+    const ranked = available ? rankModels(available, tier) : [];
+    const fallback = STATIC_MODEL_FALLBACK[tier].filter(m => !retiredModels.has(m) && (!available || available.includes(m)));
+    return [...new Set([...ranked.slice(0, 5), ...fallback])].slice(0, 6);
 };
 
 // Vérifie une clé Gemini et indique le modèle expert qui sera utilisé
@@ -283,9 +300,13 @@ export const executeGeminiCall = async (
     options: GeminiCallOptions = {}
 ): Promise<any> => {
     const models = await resolveModelChain(apiKey, tier);
+    const tried = new Set<string>();
     let lastError: any = null;
 
-    for (const model of models) {
+    for (let m = 0; m < models.length; m++) {
+        const model = models[m];
+        if (tried.has(model)) continue;
+        tried.add(model);
         const maxRetries = 2; // 3 attempts total per model
         let dropThinking = false;
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -317,6 +338,14 @@ export const executeGeminiCall = async (
                     const errorData = await response.json().catch(() => ({}));
                     const message: string = errorData.error?.message || `Status: ${response.status}`;
                     lastError = new Error(`[${model}] ${message}`);
+                    if (isRetirementError(response.status, message)) {
+                        // Modèle retiré : on le mémorise et on essaie celui que Google recommande
+                        markModelRetired(model);
+                        const suggested = message.match(/use (?:models\/)?(gemini-[\w.-]+)/i)?.[1];
+                        if (suggested && !tried.has(suggested) && !models.includes(suggested)) models.splice(m + 1, 0, suggested);
+                        console.warn(`[Gemini] ${model} retiré par Google${suggested ? `, essai de ${suggested}` : ''}`);
+                        break;
+                    }
                     if (response.status === 400 && body.generationConfig?.thinkingConfig && !dropThinking) {
                         // Paramètre de réflexion non reconnu par ce modèle : on réessaie sans
                         dropThinking = true;
