@@ -6,10 +6,11 @@ import { supabase, uploadDentalPhoto } from '../lib/supabase';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import { formatClinicalReport } from '../components/ClinicalReport';
 import CameraCapture from '../components/CameraCapture';
+import { AiMissingBanner, AiReportMeta } from '../components/AiStatus';
 import Icon from '../components/Icon';
 
 const MAX_ANALYSIS_PHOTOS = 10;
-import { analyzeDentition, getGeminiApiKey, testGeminiKey, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
+import { analyzeDentition, getGeminiApiKey, testGeminiKey, describeAiFailure, AnalysisResult, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import { AudioConsultation } from '../components/AudioConsultation';
 import defaultBookData from '../assets/cgs_volume_61.json';
@@ -225,8 +226,8 @@ const Dashboard = () => {
     const [isScanning, setIsScanning] = useState(false);
     const [consoleLogs, setConsoleLogs] = useState<Array<{ time: string; msg: string }>>([]);
     const [scanStatusText, setScanStatusText] = useState('');
-    const [analysisResult, setAnalysisResult] = useState<{ diagnostic: string; traitement: string } | null>(null);
-    const [activeResultTab, setActiveResultTab] = useState<'diag' | 'treat'>('diag');
+    const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+    const [activeResultTab, setActiveResultTab] = useState<'diag' | 'treat' | 'dep'>('diag');
 
     // PDF Knowledge Base States
     const [books, setBooks] = useState<BookDocument[]>([]);
@@ -450,7 +451,7 @@ const Dashboard = () => {
             localStorage.setItem('casper_gemini_api_key', key);
             setKeyStatus({ tone: 'ok', text: `Clé valide et enregistrée. Modèle utilisé pour les analyses : ${result.model}.` });
         } else {
-            setKeyStatus({ tone: 'error', text: `Clé refusée : ${result.error}` });
+            setKeyStatus({ tone: 'error', text: `Clé refusée : ${describeAiFailure(result.error)}` });
         }
     };
 
@@ -1184,6 +1185,10 @@ const Dashboard = () => {
             <main className="dashboard-content-area">
                 
                 {/* TAB 1: CLINICAL ANALYSIS */}
+                {(activeTab === 'analyse' || activeTab === 'audio') && (
+                    <AiMissingBanner onConfigure={() => handleTabClick('config')} />
+                )}
+
                 {activeTab === 'analyse' && (
                     <>
 
@@ -1367,11 +1372,7 @@ const Dashboard = () => {
                                         <div className="patient-badge">Patient: {patientName || 'Anonyme'}</div>
                                     </div>
 
-                                    {/* Metrics Chips */}
-                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
-                                        <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem' }}>À valider par le praticien</span>
-                                        <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem' }}>Source : clichés + bibliothèque du cabinet</span>
-                                    </div>
+                                    <AiReportMeta meta={analysisResult.meta} source="Source : clichés + bibliothèque du cabinet" />
 
                                     <div className="results-tabs">
                                         <button 

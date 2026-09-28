@@ -157,6 +157,8 @@ interface IndexedDoc {
     length: number;
     weight: number;
     tf: Map<string, number>;
+    /** Position dans le corpus (ordre de lecture du livre), absente pour les fragments externes */
+    pos?: number;
 }
 
 interface Bm25Index {
@@ -188,6 +190,7 @@ const buildIndex = (chunks: KnowledgeChunk[]): Bm25Index => {
     for (const chunk of chunks) {
         const doc = indexChunk(chunk);
         const docIdx = docs.length;
+        doc.pos = docIdx;
         docs.push(doc);
         totalLength += doc.length;
         doc.tf.forEach((tf, term) => {
@@ -395,6 +398,23 @@ export const searchKnowledge = async (queries: string[], options: SearchOptions 
         .slice(0, Math.ceil(topK / 2))
         .sort((a, b) => b.score - a.score);
     const guaranteedKeys = new Set(guaranteed.map(g => docKey(g.doc)));
+    // Un fragment fait ~1 000 caractères et s'arrête souvent en pleine phrase :
+    // on lui ajoute la suite du texte du même livre pour donner un paragraphe complet.
+    const withContinuation = (doc: IndexedDoc): string => {
+        const text = doc.chunk.content;
+        if (doc.pos === undefined) return text;
+        const next = index.docs[doc.pos + 1];
+        if (!next || next.chunk.book_title !== doc.chunk.book_title) return text;
+        const samePage = next.chunk.page_number === doc.chunk.page_number
+            || (next.chunk.page_number ?? 0) === (doc.chunk.page_number ?? 0) + 1;
+        if (!samePage) return text;
+        // Les fragments se chevauchent : on ne recopie pas la partie commune
+        const probe = next.chunk.content.slice(0, 60);
+        const overlapAt = probe ? text.lastIndexOf(probe) : -1;
+        const continuation = overlapAt >= 0 ? next.chunk.content.slice(text.length - overlapAt) : next.chunk.content;
+        return `${text} ${continuation.trim()}`.trim();
+    };
+
     const ranked = [
         ...guaranteed,
         ...[...fused.values()].filter(f => !guaranteedKeys.has(docKey(f.doc))).sort((a, b) => b.score - a.score),
@@ -407,7 +427,7 @@ export const searchKnowledge = async (queries: string[], options: SearchOptions 
         const count = perBook.get(title) || 0;
         if (count >= maxPerBook) continue;
         perBook.set(title, count + 1);
-        passages.push({ ...doc.chunk, id: `S${passages.length + 1}`, score: Math.round(score * 100) / 100 });
+        passages.push({ ...doc.chunk, content: withContinuation(doc), id: `S${passages.length + 1}`, score: Math.round(score * 100) / 100 });
         if (passages.length >= topK) break;
     }
 

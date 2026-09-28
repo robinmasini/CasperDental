@@ -9,10 +9,23 @@ import {
 
 export { loadLocalCompiledKnowledge } from './knowledgeBase';
 
+export interface AnalysisMeta {
+    /** "gemini" : rapport rédigé par l'IA ; "offline" : relevé automatique sans IA */
+    engine: 'gemini' | 'offline';
+    model?: string;
+    passages: number;
+    citedPassages: number;
+    /** Cause lisible quand l'IA n'a pas pu répondre */
+    failure?: string;
+}
+
 export interface AnalysisResult {
     diagnostic: string;
     traitement: string;
+    meta?: AnalysisMeta;
 }
+
+export const isAiConfigured = () => Boolean(getGeminiApiKey());
 
 // Informations patient utiles au raisonnement clinique (l'âge conditionne
 // fortement la stratégie : interception en croissance vs compensation adulte)
@@ -234,19 +247,47 @@ export const testGeminiKey = async (apiKey: string): Promise<{ ok: true; model: 
     }
 };
 
+// Dernier modèle ayant effectivement répondu (affiché dans les rapports)
+let lastRespondingModel: string | null = null;
+export const getLastRespondingModel = () => lastRespondingModel;
+
+// Réglages de réflexion par famille de modèles
+const withModelConfig = (apiBody: any, model: string, deepThinking: boolean, dropThinking: boolean) => {
+    const body = JSON.parse(JSON.stringify(apiBody));
+    const gen = (body.generationConfig = body.generationConfig || {});
+    const legacy = /gemini-(1\.5|2\.0)/.test(model);
+    // Les anciens modèles plafonnent à 8192 tokens de sortie
+    if (legacy && gen.maxOutputTokens > 8192) gen.maxOutputTokens = 8192;
+    if (deepThinking && !dropThinking && !legacy) {
+        if (/gemini-2\.5/.test(model)) {
+            gen.thinkingConfig = { thinkingBudget: /pro/.test(model) ? 24576 : 16384 };
+        } else {
+            gen.thinkingConfig = { thinkingLevel: 'high' };
+        }
+    }
+    return body;
+};
+
+export interface GeminiCallOptions {
+    /** Laisse le modèle réfléchir en profondeur avant de répondre (analyses cliniques) */
+    deepThinking?: boolean;
+}
+
 // Helper to call Gemini with retries and model fallbacks
 export const executeGeminiCall = async (
     endpointPath: string,
     apiBody: any,
     apiKey: string,
     onStatusUpdate?: (status: string) => void,
-    tier: ModelTier = 'fast'
+    tier: ModelTier = 'fast',
+    options: GeminiCallOptions = {}
 ): Promise<any> => {
     const models = await resolveModelChain(apiKey, tier);
     let lastError: any = null;
 
     for (const model of models) {
         const maxRetries = 2; // 3 attempts total per model
+        let dropThinking = false;
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
             let retryable = true;
             try {
@@ -254,9 +295,10 @@ export const executeGeminiCall = async (
                     onStatusUpdate(`Tentative avec ${model} (essai ${attempt + 1}/${maxRetries + 1})...`);
                 }
 
+                const body = withModelConfig(apiBody, model, !!options.deepThinking, dropThinking);
                 const response = await geminiFetch(
                     `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpointPath}`,
-                    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(apiBody) },
+                    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
                     apiKey
                 );
 
@@ -264,14 +306,25 @@ export const executeGeminiCall = async (
                     const data = await response.json();
                     if (extractText(data)) {
                         console.log(`[Gemini] Réponse obtenue avec ${model}`);
+                        lastRespondingModel = model;
                         return data;
                     }
-                    lastError = new Error(`[${model}] Réponse vide (${data.candidates?.[0]?.finishReason || 'raison inconnue'})`);
+                    const reason = data.candidates?.[0]?.finishReason || data.promptFeedback?.blockReason || 'raison inconnue';
+                    lastError = new Error(`[${model}] Réponse vide (${reason})`);
+                    // Réponse vide pour cause de limite ou de filtre : un nouvel essai identique n'y changera rien
+                    retryable = false;
                 } else {
                     const errorData = await response.json().catch(() => ({}));
-                    lastError = new Error(`[${model}] ${errorData.error?.message || `Status: ${response.status}`}`);
-                    // 400/401/403/404 : inutile d'insister sur ce modèle
-                    retryable = response.status === 429 || response.status >= 500;
+                    const message: string = errorData.error?.message || `Status: ${response.status}`;
+                    lastError = new Error(`[${model}] ${message}`);
+                    if (response.status === 400 && body.generationConfig?.thinkingConfig && !dropThinking) {
+                        // Paramètre de réflexion non reconnu par ce modèle : on réessaie sans
+                        dropThinking = true;
+                        continue;
+                    }
+                    // Quota épuisé (pas une simple saturation) : on passe au modèle suivant
+                    const quotaExhausted = response.status === 429 && /quota|limit: 0|billing/i.test(message);
+                    retryable = !quotaExhausted && (response.status === 429 || response.status >= 500);
                 }
                 console.warn(`Gemini call failed on ${model} (attempt ${attempt + 1}): ${lastError.message}`);
             } catch (err: any) {
@@ -288,6 +341,17 @@ export const executeGeminiCall = async (
     }
 
     throw lastError || new Error("Échec de toutes les tentatives d'appel Gemini.");
+};
+
+// Traduit une erreur technique en cause compréhensible pour le praticien
+export const describeAiFailure = (err: unknown): string => {
+    const msg = String((err as any)?.message || err || '');
+    if (/OAuth 2 access token|ACCESS_TOKEN_TYPE_UNSUPPORTED/i.test(msg)) return 'Google refuse la clé au format « AQ. » (problème connu des nouvelles clés AI Studio) : créez une clé dans Google Cloud Console, restreinte à « Generative Language API ».';
+    if (/API key not valid|invalid authentication|API_KEY_INVALID|401|403|PERMISSION_DENIED/i.test(msg)) return 'la clé Gemini est refusée par Google (vérifiez-la dans Configuration).';
+    if (/quota|limit: 0|billing|RESOURCE_EXHAUSTED|429/i.test(msg)) return 'le quota Gemini est épuisé (activez la facturation du projet Google ou réessayez plus tard).';
+    if (/Failed to fetch|NetworkError|network/i.test(msg)) return 'le réseau est indisponible.';
+    if (/SAFETY|blockReason|PROHIBITED/i.test(msg)) return 'la réponse a été bloquée par les filtres de Google.';
+    return msg ? `erreur Gemini : ${msg.slice(0, 160)}` : 'erreur inconnue.';
 };
 
 // Concatène toutes les parties texte (les modèles "thinking" peuvent en renvoyer plusieurs)
@@ -311,8 +375,11 @@ const parseJsonResponse = <T>(text: string): T | null => {
     }
 };
 
-// Extraction robuste des sections <diagnostic> / <traitement>
-const parseReportSections = (resultText: string): AnalysisResult | null => {
+// Extraction robuste des sections <diagnostic> / <traitement>.
+// Une réponse de l'IA n'est jamais jetée : si les balises manquent, on découpe
+// sur le titre du plan de traitement, sinon tout va dans le diagnostic.
+const parseReportSections = (rawText: string): AnalysisResult | null => {
+    const resultText = rawText.replace(/```(?:xml|markdown)?/gi, '');
     const diagMatch = resultText.match(/<diagnostic>([\s\S]*?)<\/diagnostic>/i);
     const traitMatch = resultText.match(/<traitement>([\s\S]*?)<\/traitement>/i);
 
@@ -331,14 +398,39 @@ const parseReportSections = (resultText: string): AnalysisResult | null => {
         traitement = resultText.substring(start).replace(/<\/traitement>/gi, '').trim();
     }
 
-    return diagnostic && traitement ? { diagnostic, traitement } : null;
+    // Aucune balise : découpage sur le premier titre de traitement
+    if (!diagnostic && !traitement) {
+        const plain = resultText.replace(/<\/?(diagnostic|traitement)>/gi, '').trim();
+        if (!plain) return null;
+        const split = plain.search(/^\s*(#+\s*)?(\*\*)?\s*(\d+\.\s*)?(PLAN DE TRAITEMENT|PLAN THÉRAPEUTIQUE|TRAITEMENT|OBJECTIFS THÉRAPEUTIQUES)/im);
+        if (split > 0) {
+            diagnostic = plain.slice(0, split).trim();
+            traitement = plain.slice(split).trim();
+        } else {
+            diagnostic = plain;
+        }
+    }
+
+    if (!diagnostic && traitement) diagnostic = traitement;
+    if (!traitement) traitement = '(Plan de traitement non généré : relancez l\'analyse pour l\'obtenir.)';
+    return diagnostic ? { diagnostic, traitement } : null;
 };
 
 // Ajoute les références réellement citées à la fin du diagnostic
-const attachReferences = (report: AnalysisResult, passages: RetrievedPassage[]): AnalysisResult => ({
-    diagnostic: report.diagnostic + buildReferencesSection(`${report.diagnostic}\n${report.traitement}`, passages),
-    traitement: report.traitement,
-});
+const attachReferences = (report: AnalysisResult, passages: RetrievedPassage[]): AnalysisResult => {
+    const fullText = `${report.diagnostic}\n${report.traitement}`;
+    const cited = new Set((fullText.match(/\[S\d+\]/g) || []).map(m => m.slice(1, -1)));
+    return {
+        diagnostic: report.diagnostic + buildReferencesSection(fullText, passages),
+        traitement: report.traitement,
+        meta: {
+            engine: 'gemini',
+            model: getLastRespondingModel() || undefined,
+            passages: passages.length,
+            citedPassages: passages.filter(p => cited.has(p.id)).length,
+        },
+    };
+};
 
 // ============================================================================
 // Règles d'expertise communes à toutes les analyses
@@ -405,12 +497,14 @@ export interface ClinicalAnalysisInput {
     imageFiles?: File[];
     passages?: RetrievedPassage[];
     mode?: 'images' | 'audio';
+    failure?: string;
 }
 
-const OFFLINE_BANNER = `⚠️ **MODE HORS-LIGNE — ANALYSE NON RÉALISÉE PAR L'IA** : aucune clé Gemini valide n'a répondu. Le contenu ci-dessous est un relevé automatique de mots-clés, à ne pas utiliser comme diagnostic. Configurez la clé API dans l'onglet Configuration puis relancez l'analyse.`;
-
 export const generateDeepClinicalAnalysis = (input: ClinicalAnalysisInput): AnalysisResult => {
+    const failure = input.failure || 'aucune clé Gemini n\'est configurée.';
+    const OFFLINE_BANNER = `⚠️ **ANALYSE NON RÉALISÉE PAR L'IA** — cause : ${failure} Le contenu ci-dessous est un simple relevé automatique, à ne pas utiliser comme diagnostic. Corrigez la cause (onglet Configuration) puis relancez l'analyse.`;
     const passages = input.passages || [];
+    const meta = { engine: 'offline' as const, passages: passages.length, citedPassages: 0, failure };
     const excerpts = passages.length
         ? `\n\n---\n📚 **PASSAGES PERTINENTS DE LA BIBLIOTHÈQUE (lecture recommandée) :**\n${formatPassagesAsExcerpts(passages)}`
         : '';
@@ -418,7 +512,8 @@ export const generateDeepClinicalAnalysis = (input: ClinicalAnalysisInput): Anal
     if (input.mode === 'images') {
         return {
             diagnostic: `${OFFLINE_BANNER}\n\n1. ANALYSE DES CLICHÉS :\n- L'analyse visuelle des photographies nécessite le moteur de vision Gemini : **aucun constat n'a pu être établi**.${excerpts}`,
-            traitement: `1. PLAN DE TRAITEMENT :\n- Non élaboré en mode hors-ligne. Relancez l'analyse une fois la clé API configurée.`,
+            traitement: `1. PLAN DE TRAITEMENT :\n- Non élaboré sans IA. Relancez l'analyse une fois la cause corrigée.`,
+            meta,
         };
     }
 
@@ -456,7 +551,7 @@ ${teeth.length ? `- **Dents citées (FDI)** : ${teeth.join(', ')}` : ''}${excerp
     const traitement = `1. PLAN DE TRAITEMENT :
 - Non élaboré en mode hors-ligne : le plan doit être rédigé par le praticien ou généré une fois la clé API configurée.`;
 
-    return { diagnostic, traitement };
+    return { diagnostic, traitement, meta };
 };
 
 // ============================================================================
@@ -487,6 +582,7 @@ export const analyzeDentition = async (
 
     // Étape 1 — lecture clinique des clichés et formulation des requêtes documentaires
     let findings: VisionFindings = {};
+    let failure: string | undefined = apiKey ? undefined : 'aucune clé Gemini n\'est configurée.';
     if (apiKey) {
         onStatusUpdate?.('Lecture clinique des clichés (constats visuels)...');
         try {
@@ -521,7 +617,7 @@ Réponds uniquement en JSON :
     ];
     const passages = await searchKnowledge(
         queries.length ? queries : ['orthodontic diagnosis malocclusion', 'treatment planning'],
-        { topK: 14 }
+        { topK: 16 }
     );
     onStatusUpdate?.(`${passages.length} passages de référence retenus — rédaction du rapport expert...`);
 
@@ -553,19 +649,22 @@ ${DIAGNOSTIC_TEMPLATE}
 ${TREATMENT_TEMPLATE}`;
 
         try {
+            onStatusUpdate?.('Raisonnement clinique approfondi en cours (jusqu\'à 1 à 2 minutes)...');
             const resultData = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: finalPrompt }, ...imageParts] }],
-                generationConfig: { temperature: 0.2, maxOutputTokens: 16384 },
-            }, apiKey, onStatusUpdate, 'expert');
+                generationConfig: { temperature: 0.2, maxOutputTokens: 32768 },
+            }, apiKey, onStatusUpdate, 'expert', { deepThinking: true });
             const report = parseReportSections(extractText(resultData));
             if (report) return attachReferences(report, passages);
+            failure = 'la réponse de Gemini était vide.';
         } catch (err) {
-            console.warn('API Gemini final analysis failed completely, running fallback mock generator:', err);
+            console.warn('API Gemini final analysis failed completely:', err);
+            failure = describeAiFailure(err);
         }
     }
 
-    onStatusUpdate?.('Mode hors-ligne : relevé documentaire uniquement...');
-    return generateDeepClinicalAnalysis({ mode: 'images', patientName, imageFiles, passages });
+    onStatusUpdate?.('Analyse IA impossible : relevé documentaire uniquement...');
+    return generateDeepClinicalAnalysis({ mode: 'images', patientName, imageFiles, passages, failure });
 };
 
 // ============================================================================
@@ -587,8 +686,8 @@ Réponds uniquement en JSON : {"requetes": ["..."]}` }] }],
     }
 };
 
-const getFallbackChatResponse = (passages: RetrievedPassage[]): string => {
-    const base = `⚠️ **Mode hors-ligne** : aucune clé Gemini valide n'a répondu, je ne peux pas formuler de raisonnement clinique. Configurez la clé API dans l'onglet Configuration.`;
+const getFallbackChatResponse = (passages: RetrievedPassage[], failure = 'la réponse de Gemini était vide.'): string => {
+    const base = `⚠️ **Je ne peux pas raisonner sur votre question** — cause : ${failure} Corrigez-la dans l'onglet Configuration.`;
     return passages.length
         ? `${base}\n\nVoici néanmoins les passages de la bibliothèque les plus proches de votre question :\n\n${formatPassagesAsExcerpts(passages, 3)}`
         : base;
@@ -626,17 +725,17 @@ RÈGLES :
             const data = await executeGeminiCall('generateContent', {
                 contents: formattedHistory,
                 systemInstruction: { parts: [{ text: systemInstruction }] },
-                generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
-            }, apiKey, undefined, 'expert');
+                generationConfig: { temperature: 0.3, maxOutputTokens: 16384 },
+            }, apiKey, undefined, 'expert', { deepThinking: true });
             const resText = extractText(data);
             if (resText) return resText + buildReferencesSection(resText, passages);
         } catch (err) {
             console.warn('API Gemini failed for OrthoMind chat:', err);
+            return getFallbackChatResponse(passages, describeAiFailure(err));
         }
     }
 
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return getFallbackChatResponse(passages);
+    return getFallbackChatResponse(passages, apiKey ? undefined : 'aucune clé Gemini n\'est configurée.');
 };
 
 // Generate a photorealistic post-treatment smile simulation using Gemini API + AI Image Engine
@@ -760,6 +859,7 @@ export const synthesizeAudioConsultation = async (
 
     // Étape 1 — extraction des faits cliniques
     let facts: ConsultationFacts = {};
+    let failure: string | undefined = apiKey ? undefined : 'aucune clé Gemini n\'est configurée.';
     if (apiKey) {
         onStatusUpdate?.('Extraction des faits cliniques du dialogue...');
         try {
@@ -798,7 +898,7 @@ Réponds uniquement en JSON :
     ];
     const passages = await searchKnowledge(
         queries.length ? queries : [transcriptText.slice(0, 1500), ...expandQueriesWithGlossary([transcriptText])],
-        { topK: 14 }
+        { topK: 16 }
     );
     onStatusUpdate?.(`${passages.length} passages de référence retenus — rédaction du compte-rendu...`);
 
@@ -836,17 +936,19 @@ ${DIAGNOSTIC_TEMPLATE}
 ${TREATMENT_TEMPLATE}`;
 
         try {
+            onStatusUpdate?.('Raisonnement clinique approfondi en cours (jusqu\'à 1 à 2 minutes)...');
             const data = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.15, maxOutputTokens: 16384 },
-            }, apiKey, onStatusUpdate, 'expert');
+                generationConfig: { temperature: 0.15, maxOutputTokens: 32768 },
+            }, apiKey, onStatusUpdate, 'expert', { deepThinking: true });
             const report = parseReportSections(extractText(data));
             if (report) return attachReferences(report, passages);
+            failure = 'la réponse de Gemini était vide.';
         } catch (e) {
-            console.warn('Gemini Audio synthesis failed, falling back to local clinical engine:', e);
+            console.warn('Gemini Audio synthesis failed:', e);
+            failure = describeAiFailure(e);
         }
     }
 
-    await new Promise(r => setTimeout(r, 400));
-    return generateDeepClinicalAnalysis({ mode: 'audio', text: transcriptText, patientName, passages });
+    return generateDeepClinicalAnalysis({ mode: 'audio', text: transcriptText, patientName, passages, failure });
 };

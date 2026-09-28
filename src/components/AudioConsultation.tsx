@@ -14,6 +14,7 @@ import logoSeul from '../assets/logo-seul.png';
 import OrthoMindDepForm from './OrthoMindDepForm';
 import ClinicalReport from './ClinicalReport';
 import Icon from './Icon';
+import { AiReportMeta } from './AiStatus';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import { OrthoMindAvatar } from './OrthoMindAvatar';
@@ -948,14 +949,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                             Synthèse Certifiée de Consultation Audio — OrthoMind AI
                         </div>
 
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <span style={{ background: 'rgba(255,255,255,0.06)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                                Source : consultation + bibliothèque du cabinet
-                            </span>
-                            <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>
-                                À valider par le praticien
-                            </span>
-                        </div>
+                        <AiReportMeta meta={synthesisResult.meta} source="Source : consultation + bibliothèque du cabinet" />
                     </div>
 
                     {/* Collapsible Journal de Réflexion Badge */}
