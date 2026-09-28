@@ -24,9 +24,14 @@ export const PatientSelector: React.FC<PatientSelectorProps> = ({
     // Fetch patients list
     const fetchPatientsList = async () => {
         setLoading(true);
-        const data = await getPatients();
-        setPatients(data);
-        setLoading(false);
+        try {
+            setPatients(await getPatients());
+        } catch (err) {
+            console.error(err);
+            setPatients([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {

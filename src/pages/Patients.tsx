@@ -10,6 +10,7 @@ import Icon, { IconName } from '../components/Icon';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import OnyxCephTravauxTable from '../components/OnyxCephTravauxTable';
+import { listRecords, saveRecord, updateRecordDep, ClinicalRecord } from '../services/recordsService';
 import logoMonday from '../assets/logo-monday.png';
 import './Patients.css';
 
@@ -73,13 +74,6 @@ const convertToDisplayPatient = (patient: Patient): DisplayPatient => ({
     raw: patient,
 });
 
-const readHistory = (): any[] => {
-    try {
-        return JSON.parse(localStorage.getItem('casper_mock_history') || '[]');
-    } catch {
-        return [];
-    }
-};
 
 const APPOINTMENT_STATUS: Record<string, string> = {
     'terminé': 'om-badge--success',
@@ -118,15 +112,21 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [openSessionId, setOpenSessionId] = useState<string | null>(null);
     const [currentDepData, setCurrentDepData] = useState<OrthoMindDepData | null>(null);
     const [depSessionId, setDepSessionId] = useState<string | null>(null);
+    const [dataError, setDataError] = useState<string | null>(null);
 
     // Fetch patients
     useEffect(() => {
         const fetchPatients = async () => {
             setLoading(true);
-            const data = await getPatients();
-            const displayPatients = data.map(convertToDisplayPatient);
-            setPatients(displayPatients);
-            setLoading(false);
+            try {
+                const data = await getPatients();
+                setPatients(data.map(convertToDisplayPatient));
+                setDataError(null);
+            } catch (err: any) {
+                setDataError(err.message);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchPatients();
     }, []);
@@ -166,12 +166,14 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             }
         };
 
-        const loadPatientDiagnostics = () => {
-            const matched = readHistory().filter((item: any) => {
-                if (item.patient_id) return item.patient_id === selectedPatient.id;
-                const itemName = (item.patient_name || '').toLowerCase();
-                return itemName.includes(selectedPatient.nom.toLowerCase()) && itemName.includes(selectedPatient.prenom.toLowerCase());
-            });
+        const loadPatientDiagnostics = async () => {
+            let matched: ClinicalRecord[] = [];
+            try {
+                matched = await listRecords(selectedPatient.id);
+                setDataError(null);
+            } catch (err: any) {
+                setDataError(err.message);
+            }
             setPatientAnalyses(matched);
 
             if (matched.length > 0) {
@@ -225,31 +227,29 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
         setShowForm(false);
     };
 
-    const saveDep = (updatedData: OrthoMindDepData) => {
+    const saveDep = async (updatedData: OrthoMindDepData) => {
         if (!selectedPatient) return;
         setCurrentDepData(updatedData);
         try {
-            const history = readHistory();
-            const idx = depSessionId ? history.findIndex((h: any) => h.id === depSessionId) : -1;
-            if (idx !== -1) {
-                history[idx].dep_data = updatedData;
+            if (depSessionId) {
+                await updateRecordDep(depSessionId, updatedData);
             } else {
-                const newId = 'mock-analysis-dep-' + Date.now();
-                history.unshift({
-                    id: newId,
-                    patient_name: `${selectedPatient.nom} ${selectedPatient.prenom}`,
+                const saved = await saveRecord({
                     patient_id: selectedPatient.id,
-                    created_at: new Date().toISOString(),
+                    patient_name: `${selectedPatient.nom} ${selectedPatient.prenom}`,
+                    type: 'dep',
+                    images: [],
                     diagnostic_text: 'Fiche DEP saisie manuellement',
-                    traitement_text: updatedData.planDeTraitement,
-                    dep_data: updatedData
+                    traitement_text: updatedData.planDeTraitement || '',
+                    dep_data: updatedData,
                 });
-                setDepSessionId(newId);
+                setDepSessionId(saved.id);
             }
-            localStorage.setItem('casper_mock_history', JSON.stringify(history));
-            setPatientAnalyses(history.filter((h: any) => h.patient_id === selectedPatient.id));
-        } catch (err) {
-            console.error('Error saving DEP form:', err);
+            setPatientAnalyses(await listRecords(selectedPatient.id));
+            setDataError(null);
+        } catch (err: any) {
+            setDataError(err.message);
+            alert(err.message);
         }
     };
 
@@ -367,6 +367,11 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         aria-label="Rechercher un patient"
                     />
                 </div>
+                {dataError && (
+                    <div className="om-notice om-notice--danger" role="alert" style={{ margin: '0 16px 12px' }}>
+                        <p>{dataError}</p>
+                    </div>
+                )}
                 <div className="patients-list">
                     {!loading && filteredPatients.length > 0 && (
                         <div className="patients-list-head" aria-hidden="true">
@@ -518,6 +523,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 <div className="fiche-sessions">
                                     {patientAnalyses.map((ana, idx) => {
                                         const isAudio = ana.type === 'audio' || Boolean(ana.transcript);
+                                        const isDepOnly = ana.type === 'dep';
                                         const sessionKey = ana.id || `session-${idx}`;
                                         const isOpen = openSessionId === sessionKey;
                                         const date = new Date(ana.created_at);
@@ -533,7 +539,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                                         <Icon name={isAudio ? 'mic' : 'camera'} />
                                                     </span>
                                                     <span className="session-title">
-                                                        <span>{isAudio ? 'Consultation audio' : 'Analyse des clichés'}</span>
+                                                        <span>{isAudio ? 'Consultation audio' : isDepOnly ? 'Fiche DEP' : 'Analyse des clichés'}</span>
                                                         <span className="session-date">
                                                             {date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} à {date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                                         </span>

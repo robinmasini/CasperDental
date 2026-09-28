@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
-import { supabase, uploadDentalPhoto } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { listRecords, saveRecord, updateRecordDep, migrateLocalDataToCloud } from '../services/recordsService';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import { formatClinicalReport } from '../components/ClinicalReport';
 import CameraCapture from '../components/CameraCapture';
@@ -227,6 +228,7 @@ const Dashboard = () => {
     const [consoleLogs, setConsoleLogs] = useState<Array<{ time: string; msg: string }>>([]);
     const [scanStatusText, setScanStatusText] = useState('');
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+    const [lastSavedRecordId, setLastSavedRecordId] = useState<string | null>(null);
     const [activeResultTab, setActiveResultTab] = useState<'diag' | 'treat' | 'dep'>('diag');
 
     // PDF Knowledge Base States
@@ -307,48 +309,6 @@ const Dashboard = () => {
         loadHistory();
     }, []);
 
-    // Auto-save active analysis if it's not yet in the history (recovering unsaved analysis from state)
-    useEffect(() => {
-        if (analysisResult && imageFiles.length > 0) {
-            const exists = history.some(h => h.diagnostic_text === analysisResult.diagnostic);
-            if (!exists) {
-                const autoSave = async () => {
-                    try {
-                        const currentPatient = patientName.trim() || 'Patient Anonyme';
-                        const base64Images: string[] = [];
-                        for (const file of imageFiles) {
-                            try {
-                                const compressed = await compressImageToThumbnail(file);
-                                base64Images.push(compressed);
-                            } catch (e) {
-                                base64Images.push('');
-                            }
-                        }
-                        const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
-                        const localHistory = JSON.parse(localHistoryStr);
-                        const alreadySavedLocally = localHistory.some((h: any) => h.diagnostic_text === analysisResult.diagnostic);
-                        if (!alreadySavedLocally) {
-                            const newAnalysis = {
-                                id: 'mock-analysis-recovered-' + Date.now(),
-                                patient_name: currentPatient,
-                                created_at: new Date().toISOString(),
-                                images: base64Images,
-                                diagnostic_text: analysisResult.diagnostic,
-                                traitement_text: analysisResult.traitement
-                            };
-                            localHistory.unshift(newAnalysis);
-                            localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
-                            loadHistory();
-                        }
-                    } catch (e) {
-                        console.error('Failed to auto-save/recover active analysis:', e);
-                    }
-                };
-                autoSave();
-            }
-        }
-    }, [analysisResult, imageFiles, history]);
-
     // Load indexed orthodontic books
     const loadBooks = async () => {
         const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
@@ -399,36 +359,29 @@ const Dashboard = () => {
         }
     };
 
-    // Load past orthodontic analyses
+    // Historique des analyses : base du cabinet (mêmes données sur tous les appareils)
+    const [syncNotice, setSyncNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
     const loadHistory = async () => {
-        const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
-        if (isMockAuth) {
-            const localHistory = localStorage.getItem('casper_mock_history');
-            if (localHistory) {
-                setHistory(JSON.parse(localHistory));
-            }
-            return;
-        }
-
         try {
-            const { data, error } = await supabase
-                .from('dental_analyses')
-                .select('*')
-                .order('created_at', { ascending: false });
-            if (!error && data) {
-                setHistory(data);
-            } else {
-                const localHistory = localStorage.getItem('casper_mock_history');
-                if (localHistory) setHistory(JSON.parse(localHistory));
-            }
-        } catch (e) {
-            console.error('Failed to load analyses history from Supabase, loading local:', e);
-            const localHistory = localStorage.getItem('casper_mock_history');
-            if (localHistory) {
-                setHistory(JSON.parse(localHistory));
-            }
+            setHistory(await listRecords() as any);
+        } catch (e: any) {
+            console.error('Failed to load analyses history:', e);
+            setSyncNotice({ tone: 'danger', text: e.message });
         }
     };
+
+    // Transfert unique des données saisies auparavant sur cet appareil
+    useEffect(() => {
+        migrateLocalDataToCloud()
+            .then(result => {
+                if (result && (result.patients || result.records)) {
+                    setSyncNotice({ tone: 'success', text: `Données de cet appareil transférées dans la base du cabinet : ${result.patients} patient(s), ${result.records} compte(s)-rendu(s). Elles sont maintenant visibles sur tous vos appareils.` });
+                    loadHistory();
+                }
+            })
+            .catch(e => setSyncNotice({ tone: 'danger', text: e.message }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Handle logout
     const handleLogout = () => {
@@ -801,79 +754,34 @@ const Dashboard = () => {
                 setAnalysisAvatarState('idle');
             }, 6000);
 
-            // Save to History (Supabase or Local fallback)
+            // Enregistrement dans le dossier du patient (base du cabinet)
             try {
-                const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
-                let savedToSupabase = false;
-                let imageUrls: string[] = [];
-
-                if (supabaseUser && !isMockAuth) {
+                addLog('[SYSTEM] Enregistrement du rapport dans le dossier du patient...');
+                const thumbnails: string[] = [];
+                for (const file of imageFiles) {
                     try {
-                        addLog('[SYSTEM] Téléversement des clichés cliniques sur le stockage cloud Supabase...');
-                        imageUrls = await Promise.all(
-                            imageFiles.map(file => uploadDentalPhoto(supabaseUser.id, file))
-                        );
-                        
-                        addLog('[SYSTEM] Enregistrement du rapport dans la base de données Supabase...');
-                        const depData = extractDepDataFromAnalysis(result.diagnostic, result.traitement, currentPatient, selectedPatientObj?.id);
-                        const { error } = await supabase.from('dental_analyses').insert({
-                            user_id: supabaseUser.id,
-                            patient_name: currentPatient,
-                            images: imageUrls,
-                            diagnostic_text: result.diagnostic,
-                            traitement_text: result.traitement,
-                            dep_data: depData
-                        });
-                        
-                        if (!error) {
-                            savedToSupabase = true;
-                            addLog('[SYSTEM] Rapport, Fiche DEP et clichés enregistrés avec succès sur Supabase.');
-                        } else {
-                            console.warn('Failed to save to Supabase database, falling back to local history:', error.message);
-                            addLog('[WARNING] Échec de l\'écriture en base. Sauvegarde locale de secours.');
-                        }
-                    } catch (uploadErr: any) {
-                        console.error('Failed to upload to Supabase storage, falling back to local history:', uploadErr);
-                        addLog('[WARNING] Échec du téléversement en ligne. Sauvegarde locale de secours.');
+                        thumbnails.push(await compressImageToThumbnail(file));
+                    } catch {
+                        /* miniature impossible : cliché ignoré */
                     }
                 }
-
-                if (!savedToSupabase) {
-                    addLog('[SYSTEM] Génération de miniatures compressées pour la sauvegarde locale...');
-                    // Convert images to compressed base64 thumbnails
-                    const base64Images: string[] = [];
-                    for (const file of imageFiles) {
-                        try {
-                            const compressed = await compressImageToThumbnail(file);
-                            base64Images.push(compressed);
-                        } catch (compressErr) {
-                            console.error('Failed to compress image, using fallback empty string:', compressErr);
-                            base64Images.push('');
-                        }
-                    }
-
-                    const depData = extractDepDataFromAnalysis(result.diagnostic, result.traitement, currentPatient, selectedPatientObj?.id);
-                    const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
-                    const localHistory = JSON.parse(localHistoryStr);
-                    const newAnalysis = {
-                        id: 'mock-analysis-' + Date.now(),
-                        patient_name: currentPatient,
-                        patient_id: selectedPatientObj?.id || '',
-                        created_at: new Date().toISOString(),
-                        images: base64Images,
-                        diagnostic_text: result.diagnostic,
-                        traitement_text: result.traitement,
-                        dep_data: depData
-                    };
-                    localHistory.unshift(newAnalysis);
-                    localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
-                    console.log('Saved analysis locally with DEP form.');
-                }
-                
-                // Refresh history
+                const saved = await saveRecord({
+                    patient_id: selectedPatientObj?.id || null,
+                    patient_name: currentPatient,
+                    type: 'photos',
+                    images: thumbnails,
+                    diagnostic_text: result.diagnostic,
+                    traitement_text: result.traitement,
+                    dep_data: extractDepDataFromAnalysis(result.diagnostic, result.traitement, currentPatient, selectedPatientObj?.id),
+                    meta: result.meta ? { ...result.meta } : null,
+                });
+                setLastSavedRecordId(saved.id);
+                addLog('[SUCCESS] Rapport et fiche DEP enregistrés dans le dossier du patient.');
                 loadHistory();
-            } catch (saveErr) {
+            } catch (saveErr: any) {
                 console.error('Failed to save history:', saveErr);
+                addLog(`[ERROR] ${saveErr.message}`);
+                setSyncNotice({ tone: 'danger', text: saveErr.message });
             }
 
         } catch (err: any) {
@@ -1185,6 +1093,13 @@ const Dashboard = () => {
             <main className="dashboard-content-area">
                 
                 {/* TAB 1: CLINICAL ANALYSIS */}
+                {syncNotice && (
+                    <div className={`om-notice om-notice--${syncNotice.tone}`} role="status">
+                        <p>{syncNotice.text}</p>
+                        <button className="om-btn om-btn--ghost om-btn--sm" onClick={() => setSyncNotice(null)}>Fermer</button>
+                    </div>
+                )}
+
                 {(activeTab === 'analyse' || activeTab === 'audio') && (
                     <AiMissingBanner onConfigure={() => handleTabClick('config')} />
                 )}
@@ -1405,17 +1320,16 @@ const Dashboard = () => {
                                                 depData={extractDepDataFromAnalysis(analysisResult.diagnostic, analysisResult.traitement, patientName, selectedPatientObj?.id)}
                                                 patientName={patientName}
                                                 patientId={selectedPatientObj?.id}
-                                                onSave={(updatedData) => {
+                                                onSave={async (updatedData) => {
+                                                    if (!lastSavedRecordId) {
+                                                        alert("Le rapport n'a pas encore été enregistré dans le dossier du patient.");
+                                                        return;
+                                                    }
                                                     try {
-                                                        const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
-                                                        const localHistory = JSON.parse(localHistoryStr);
-                                                        if (localHistory.length > 0) {
-                                                            localHistory[0].dep_data = updatedData;
-                                                            localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
-                                                        }
-                                                        alert(`✓ Fiche Diagnostic DEP de ${patientName || 'Patient'} enregistrée avec succès dans sa Fiche Patient !`);
-                                                    } catch (e) {
-                                                        console.error(e);
+                                                        await updateRecordDep(lastSavedRecordId, updatedData);
+                                                        alert(`Fiche DEP de ${patientName || 'ce patient'} enregistrée dans son dossier.`);
+                                                    } catch (e: any) {
+                                                        alert(e.message);
                                                     }
                                                 }}
                                             />

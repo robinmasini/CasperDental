@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { isCloudMode } from './recordsService';
 
 export interface Patient {
     id?: string;
@@ -133,61 +134,37 @@ const sanitizePatient = <T extends Partial<Patient>>(patient: T): T => {
     return sanitized;
 };
 
-// Create patient with Supabase insert & automatic local storage fallback on RLS permission errors
+// Création d'un patient. Mode cabinet : enregistré dans Supabase (visible sur
+// tous les appareils) ; en cas d'échec, l'erreur est renvoyée à l'interface.
+// Mode démo : stockage local du navigateur.
 export const createPatient = async (patient: Patient): Promise<{ data: Patient | null; error: any }> => {
-    console.log('patientService: Starting createPatient with data:', patient);
-    const sanitized = sanitizePatient(patient);
-    try {
-        const { data, error } = await supabase
-            .from('patients')
-            .insert([sanitized])
-            .select()
-            .single();
-
-        if (error) {
-            console.warn('patientService: Supabase RLS/permission error, saving patient locally:', error.message);
-            const localSaved = saveLocalPatient(sanitized);
-            return { data: localSaved, error: null };
-        }
-        console.log('patientService: Patient created successfully in Supabase:', data);
-        return { data, error: null };
-    } catch (err) {
-        console.warn('patientService: Exception, saving patient locally:', err);
-        const localSaved = saveLocalPatient(sanitized);
-        return { data: localSaved, error: null };
+    const { id: _ignored, ...sanitized } = sanitizePatient(patient);
+    if (!isCloudMode()) {
+        return { data: saveLocalPatient(sanitized as Patient), error: null };
     }
+    const { data, error } = await supabase
+        .from('patients')
+        .insert([sanitized])
+        .select()
+        .single();
+    if (error) {
+        console.error('patientService: création refusée par Supabase :', error.message);
+        return { data: null, error: new Error(`Le patient n'a pas pu être enregistré dans la base du cabinet : ${error.message}`) };
+    }
+    return { data, error: null };
 };
 
-// Get all patients (Supabase + LocalStorage merged)
+// Liste des patients : base du cabinet en mode connecté, stockage local en mode démo
 export const getPatients = async (): Promise<Patient[]> => {
-    let supabasePatients: Patient[] = [];
-    try {
-        const { data, error } = await supabase
-            .from('patients')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (!error && data) {
-            supabasePatients = data;
-        } else {
-            console.warn('patientService: Could not fetch patients from Supabase, using local:', error?.message);
-        }
-    } catch (e) {
-        console.warn('patientService: Supabase fetch exception:', e);
+    if (!isCloudMode()) return getLocalPatients();
+    const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .order('created_at', { ascending: false });
+    if (error) {
+        throw new Error(`Impossible de charger les patients du cabinet : ${error.message}`);
     }
-
-    const localPatients = getLocalPatients();
-    
-    // Combine and deduplicate by id or nom+prenom
-    const combinedMap = new Map<string, Patient>();
-    for (const p of [...localPatients, ...supabasePatients]) {
-        const key = p.id || `${p.nom.toLowerCase()}_${p.prenom.toLowerCase()}`;
-        if (!combinedMap.has(key)) {
-            combinedMap.set(key, p);
-        }
-    }
-
-    return Array.from(combinedMap.values());
+    return data || [];
 };
 
 // Get patient by ID

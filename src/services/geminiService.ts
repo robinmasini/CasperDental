@@ -515,75 +515,6 @@ const TREATMENT_TEMPLATE = `<traitement>
 </traitement>`;
 
 // ============================================================================
-// Mode hors-ligne (sans clé Gemini) : analyse heuristique HONNÊTE
-// ----------------------------------------------------------------------------
-// Aucun chiffre ni référence n'est inventé : on ne rapporte que ce qui est
-// détecté dans le texte, et on joint les vrais passages de la bibliothèque.
-// ============================================================================
-export interface ClinicalAnalysisInput {
-    text?: string;
-    patientName?: string;
-    imageFiles?: File[];
-    passages?: RetrievedPassage[];
-    mode?: 'images' | 'audio';
-    failure?: string;
-}
-
-export const generateDeepClinicalAnalysis = (input: ClinicalAnalysisInput): AnalysisResult => {
-    const failure = input.failure || 'aucune clé Gemini n\'est configurée.';
-    const OFFLINE_BANNER = `⚠️ **ANALYSE NON RÉALISÉE PAR L'IA** — cause : ${failure} Le contenu ci-dessous est un simple relevé automatique, à ne pas utiliser comme diagnostic. Corrigez la cause (onglet Configuration) puis relancez l'analyse.`;
-    const passages = input.passages || [];
-    const meta = { engine: 'offline' as const, passages: passages.length, citedPassages: 0, failure };
-    const excerpts = passages.length
-        ? `\n\n---\n📚 **PASSAGES PERTINENTS DE LA BIBLIOTHÈQUE (lecture recommandée) :**\n${formatPassagesAsExcerpts(passages)}`
-        : '';
-
-    if (input.mode === 'images') {
-        return {
-            diagnostic: `${OFFLINE_BANNER}\n\n1. ANALYSE DES CLICHÉS :\n- L'analyse visuelle des photographies nécessite le moteur de vision Gemini : **aucun constat n'a pu être établi**.${excerpts}`,
-            traitement: `1. PLAN DE TRAITEMENT :\n- Non élaboré sans IA. Relancez l'analyse une fois la cause corrigée.`,
-            meta,
-        };
-    }
-
-    const rawText = input.text || '';
-    const t = rawText.toLowerCase();
-    const found = (patterns: RegExp[]) => patterns.some(p => p.test(t));
-
-    const teeth = [...new Set(rawText.match(/\b[1-4][1-8]\b/g) || [])];
-    const overjet = rawText.match(/(overjet|surplomb)[^\d]{0,30}(\d+([.,]\d+)?)\s*mm/i)?.[2];
-    const overbite = rawText.match(/(overbite|recouvrement)[^\d]{0,30}(\d+([.,]\d+)?)\s*mm/i)?.[2];
-
-    const detected: string[] = [];
-    if (found([/classe (3|iii)\b/, /promandibulie/])) detected.push('Évocation d\'une **Classe III**');
-    else if (found([/classe (2|ii)\b/, /r[ée]trognathie/])) detected.push('Évocation d\'une **Classe II**');
-    else if (found([/classe (1|i)\b/])) detected.push('Évocation d\'une **Classe I**');
-    if (found([/encombrement/, /chevauchement/, /manque de place/])) detected.push('**Encombrement** / manque de place évoqué');
-    if (found([/articul[ée] (crois|invers)/])) detected.push('**Articulé inversé** évoqué');
-    if (found([/endognathie/, /m[âa]choire .{0,20}[ée]troite/])) detected.push('**Endognathie** maxillaire évoquée');
-    if (found([/supraclusion/])) detected.push('**Supraclusion** évoquée');
-    if (found([/b[ée]ance/])) detected.push('**Béance** évoquée');
-    if (found([/diast[èe]me/])) detected.push('**Diastème** évoqué');
-    if (found([/inclus/, /incluse/])) detected.push('**Dent incluse** évoquée');
-    if (found([/respiration buccale/, /respire par la bouche/])) detected.push('**Ventilation buccale** évoquée');
-    if (found([/gencive/, /tartre/, /saign/, /parodont/])) detected.push('Problématique **parodontale / hygiène** évoquée');
-    if (found([/douleur/, /\batm\b/, /craquement/])) detected.push('**Douleurs / ATM** évoquées');
-
-    const diagnostic = `${OFFLINE_BANNER}
-
-1. ÉLÉMENTS RELEVÉS DANS LA RETRANSCRIPTION :
-${detected.length ? detected.map(d => `- ${d}`).join('\n') : '- Aucun terme clinique reconnu automatiquement.'}
-- **Surplomb** : ${overjet ? `${overjet} mm (valeur dictée)` : 'non mentionné'}
-- **Recouvrement** : ${overbite ? `${overbite} mm (valeur dictée)` : 'non mentionné'}
-${teeth.length ? `- **Dents citées (FDI)** : ${teeth.join(', ')}` : ''}${excerpts}`;
-
-    const traitement = `1. PLAN DE TRAITEMENT :
-- Non élaboré en mode hors-ligne : le plan doit être rédigé par le praticien ou généré une fois la clé API configurée.`;
-
-    return { diagnostic, traitement, meta };
-};
-
-// ============================================================================
 // ANALYSE DES CLICHÉS PHOTOGRAPHIQUES
 // ============================================================================
 interface VisionFindings {
@@ -692,8 +623,8 @@ ${TREATMENT_TEMPLATE}`;
         }
     }
 
-    onStatusUpdate?.('Analyse IA impossible : relevé documentaire uniquement...');
-    return generateDeepClinicalAnalysis({ mode: 'images', patientName, imageFiles, passages, failure });
+    // Pas de pseudo-rapport : l'échec est signalé tel quel à l'interface
+    throw new Error(`Analyse impossible : ${failure || 'réponse inexploitable.'}`);
 };
 
 // ============================================================================
@@ -979,5 +910,6 @@ ${TREATMENT_TEMPLATE}`;
         }
     }
 
-    return generateDeepClinicalAnalysis({ mode: 'audio', text: transcriptText, patientName, passages, failure });
+    // Pas de pseudo-rapport : l'échec est signalé tel quel, la retranscription est conservée
+    throw new Error(`Compte-rendu impossible : ${failure || 'réponse inexploitable.'}`);
 };

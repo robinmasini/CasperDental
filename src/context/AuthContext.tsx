@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { isSupabaseConfigured } from '../services/recordsService';
 
 interface Practitioner {
     id: string;
@@ -23,259 +24,168 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// ============================================================================
+// Connexion
+// ----------------------------------------------------------------------------
+// Supabase configuré (production) : connexion réelle obligatoire. Seuls les
+// comptes inscrits comme praticiens du cabinet accèdent aux données, et les
+// données sont partagées entre tous les appareils.
+// Supabase non configuré (développement) : mode démonstration local.
+// ============================================================================
+
+const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
+    Promise.race([
+        promise,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(label)), ms)),
+    ]);
+
+const demoPractitioner = (email: string): Practitioner => ({
+    id: 'mock-user-id',
+    name: 'Dr. Desouches',
+    email,
+    rpps: '10100459812',
+    profession: 'Chirurgien-Dentiste',
+    specialty: 'Orthodontiste YouSmile',
+});
+
+const demoUser = (email: string) => ({
+    id: 'mock-user-id',
+    email,
+    app_metadata: {},
+    user_metadata: {},
+    aud: 'authenticated',
+    created_at: new Date().toISOString(),
+} as User);
+
+// Profil praticien : sa présence prouve l'appartenance au cabinet (règles d'accès Supabase)
+const fetchPractitioner = async (userId: string): Promise<{ profile: Practitioner | null; error?: string }> => {
+    try {
+        const { data, error } = await withTimeout(
+            Promise.resolve(supabase.from('practitioners').select('*').eq('id', userId).maybeSingle()),
+            10000,
+            'délai dépassé'
+        ) as any;
+        if (error) return { profile: null, error: error.message };
+        return { profile: data || null };
+    } catch (err: any) {
+        return { profile: null, error: err.message };
+    }
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<Practitioner | null>(null);
     const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-
-    const fetchProfile = async (userId: string) => {
-        try {
-            const timeoutPromise = new Promise<null>((_, reject) => 
-                setTimeout(() => reject(new Error('Profile fetch timeout')), 1200)
-            );
-            
-            const fetchPromise = (async () => {
-                const { data, error } = await supabase
-                    .from('practitioners')
-                    .select('*')
-                    .eq('id', userId)
-                    .single();
-
-                if (error) {
-                    console.error('Error fetching profile:', error);
-                    return null;
-                }
-                return data;
-            })();
-
-            return await Promise.race([fetchPromise, timeoutPromise]);
-        } catch (err) {
-            console.error('Exception during fetchProfile:', err);
-            return null;
-        }
-    };
+    const cloud = isSupabaseConfigured();
 
     useEffect(() => {
-        // Check active sessions and sets the user
         const initializeAuth = async () => {
-            // Check if mock auth is active first
-            const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
-            if (isMockAuth) {
-                const storedEmail = localStorage.getItem('casper_mock_user_email') || 'dr.desouches@yousmile.fr';
-                const isPatientTest = storedEmail.toLowerCase().trim() === 'test@patient.com';
-
-                const mockUser = {
-                    id: isPatientTest ? 'mock-user-patient-test' : 'mock-user-id',
-                    email: storedEmail,
-                    app_metadata: {},
-                    user_metadata: {},
-                    aud: 'authenticated',
-                    created_at: new Date().toISOString()
-                } as User;
-                
-                const mockProfile = {
-                    id: isPatientTest ? 'mock-user-patient-test' : 'mock-user-id',
-                    name: isPatientTest ? 'Patient Test' : 'Dr. Desouches',
-                    email: storedEmail,
-                    rpps: isPatientTest ? 'PATIENT-001' : '10100459812',
-                    profession: isPatientTest ? 'Patient OrthoMind' : 'Chirurgien-Dentiste',
-                    specialty: isPatientTest ? 'Espace Patient' : 'Orthodontiste YouSmile'
-                };
-                
-                setSupabaseUser(mockUser);
-                setUser(mockProfile);
+            if (!cloud) {
+                // Mode démonstration (aucune base configurée)
+                if (localStorage.getItem('casper_mock_auth') === 'true') {
+                    const email = localStorage.getItem('casper_mock_user_email') || 'dr.desouches@yousmile.fr';
+                    setSupabaseUser(demoUser(email));
+                    setUser(demoPractitioner(email));
+                }
                 setLoading(false);
                 return;
             }
 
-            // Instant bypass if using local placeholders to avoid DNS timeouts
-            const isPlaceholder = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
-            if (isPlaceholder) {
-                setLoading(false);
-                return;
-            }
+            // Production : l'ancien mode démo local n'est plus accepté
+            localStorage.removeItem('casper_mock_auth');
+            localStorage.removeItem('casper_mock_user_email');
 
             try {
-                // Create a timeout race of 1.2 seconds
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1200));
-                const authPromise = (async () => {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session?.user) {
+                const { data: { session } } = await withTimeout<any>(supabase.auth.getSession(), 10000, 'délai dépassé');
+                if (session?.user) {
+                    const { profile } = await fetchPractitioner(session.user.id);
+                    if (profile) {
                         setSupabaseUser(session.user);
-                        let profile = await fetchProfile(session.user.id);
-                        if (!profile) {
-                            // Fallback if practitioners table does not exist
-                            profile = {
-                                id: session.user.id,
-                                name: 'Dr. Desouches',
-                                email: session.user.email || 'dr.desouches@yousmile.fr',
-                                rpps: '10100459812',
-                                profession: 'Chirurgien-Dentiste',
-                                specialty: 'Orthodontiste YouSmile'
-                            };
-                        }
                         setUser(profile);
+                    } else {
+                        // Session d'un compte non inscrit au cabinet : on la ferme
+                        await supabase.auth.signOut();
                     }
-                })();
-
-                await Promise.race([authPromise, timeoutPromise]);
-                setLoading(false);
+                }
             } catch (err) {
-                console.warn('Supabase is unreachable (project paused or offline). Switching to Local Mock Mode:', err);
-                // Enable mock auth so the app runs smoothly offline
-                localStorage.setItem('casper_mock_auth', 'true');
-                
-                const mockUser = {
-                    id: 'mock-user-id',
-                    email: 'dr.desouches@yousmile.fr',
-                    app_metadata: {},
-                    user_metadata: {},
-                    aud: 'authenticated',
-                    created_at: new Date().toISOString()
-                } as User;
-                
-                const mockProfile = {
-                    id: 'mock-user-id',
-                    name: 'Dr. Desouches',
-                    email: 'dr.desouches@yousmile.fr',
-                    rpps: '10100459812',
-                    profession: 'Chirurgien-Dentiste',
-                    specialty: 'Orthodontiste YouSmile'
-                };
-                
-                setSupabaseUser(mockUser);
-                setUser(mockProfile);
+                console.warn('Session Supabase indisponible :', err);
+            } finally {
                 setLoading(false);
             }
         };
 
         initializeAuth();
 
-        // Listen for changes on auth state (sign in, sign out, etc.)
-        let unsubscribe: (() => void) | undefined;
-        try {
-            const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-                try {
-                    // If there's a mock auth, we keep it and don't overwrite with null
-                    const isMockAuth = localStorage.getItem('casper_mock_auth') === 'true';
-                    if (isMockAuth) {
-                        return;
-                    }
-
-                    if (session?.user) {
-                        setSupabaseUser(session.user);
-                        let profile = await fetchProfile(session.user.id);
-                        if (!profile) {
-                            profile = {
-                                id: session.user.id,
-                                name: 'Dr. Desouches',
-                                email: session.user.email || 'dr.desouches@yousmile.fr',
-                                rpps: '10100459812',
-                                profession: 'Chirurgien-Dentiste',
-                                specialty: 'Orthodontiste YouSmile'
-                            };
-                        }
-                        setUser(profile);
-                    } else {
-                        setSupabaseUser(null);
-                        setUser(null);
-                    }
-                } catch (err) {
-                    console.error('Error on auth state change:', err);
-                } finally {
-                    setLoading(false);
-                }
-            });
-            unsubscribe = () => subscription.unsubscribe();
-        } catch (authError) {
-            console.warn('Failed to subscribe to Supabase auth changes (project paused/offline):', authError);
-        }
-
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
-    }, []);
+        if (!cloud) return;
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+            if (event === 'SIGNED_OUT' || !session?.user) {
+                setSupabaseUser(null);
+                setUser(null);
+            }
+        });
+        return () => subscription.unsubscribe();
+    }, [cloud]);
 
     const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-        try {
-            // Create a timeout race of 1 second for the login attempt
-            const timeoutPromise = new Promise<any>((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout')), 1000)
-            );
-
-            const loginPromise = supabase.auth.signInWithPassword({ email, password });
-
-            const { data, error } = await Promise.race([loginPromise, timeoutPromise]);
-            
-            if (error) {
-                throw error;
-            }
-
-            if (data?.user) {
-                // Real Supabase login succeeded
-                setSupabaseUser(data.user);
-                const profile = await fetchProfile(data.user.id);
-                setUser(profile || {
-                    id: data.user.id,
-                    name: 'Dr. Desouches',
-                    email: data.user.email || email,
-                    rpps: '10100459812',
-                    profession: 'Chirurgien-Dentiste',
-                    specialty: 'Orthodontiste YouSmile'
-                });
-                localStorage.removeItem('casper_mock_auth');
-                localStorage.removeItem('casper_mock_user_email');
-                return { success: true };
-            }
-
-            throw new Error('No user data returned');
-        } catch (err: any) {
-            console.warn('Supabase login failed or timed out, using bypass:', err.message || err);
-            
-            const isPatientTest = (email || '').toLowerCase().trim() === 'test@patient.com';
-
-            const mockUser = {
-                id: isPatientTest ? 'mock-user-patient-test' : 'mock-user-id',
-                email: email || 'dr.desouches@yousmile.fr',
-                app_metadata: {},
-                user_metadata: {},
-                aud: 'authenticated',
-                created_at: new Date().toISOString()
-            } as User;
-            
-            const mockProfile = {
-                id: isPatientTest ? 'mock-user-patient-test' : 'mock-user-id',
-                name: isPatientTest ? 'Patient Test' : 'Dr. Desouches',
-                email: email || 'dr.desouches@yousmile.fr',
-                rpps: isPatientTest ? 'PATIENT-001' : '10100459812',
-                profession: isPatientTest ? 'Patient OrthoMind' : 'Chirurgien-Dentiste',
-                specialty: isPatientTest ? 'Espace Patient' : 'Orthodontiste YouSmile'
-            };
-            
-            setSupabaseUser(mockUser);
-            setUser(mockProfile);
-            
+        if (!cloud) {
+            // Mode démonstration local
+            setSupabaseUser(demoUser(email));
+            setUser(demoPractitioner(email));
             localStorage.setItem('casper_mock_auth', 'true');
             localStorage.setItem('casper_mock_user_email', email);
-            
             return { success: true };
+        }
+
+        try {
+            const { data, error } = await withTimeout<any>(
+                supabase.auth.signInWithPassword({ email, password }),
+                15000,
+                'Le serveur ne répond pas'
+            );
+            if (error) {
+                return {
+                    success: false,
+                    error: /invalid login credentials/i.test(error.message)
+                        ? 'E-mail ou mot de passe incorrect.'
+                        : `Connexion impossible : ${error.message}`,
+                };
+            }
+            if (!data?.user) return { success: false, error: 'Connexion impossible.' };
+
+            const { profile, error: profileError } = await fetchPractitioner(data.user.id);
+            if (!profile) {
+                await supabase.auth.signOut();
+                return {
+                    success: false,
+                    error: profileError
+                        ? `Accès au cabinet impossible (${profileError}). Le script de synchronisation Supabase a-t-il été exécuté ?`
+                        : "Ce compte n'est pas inscrit comme praticien du cabinet. Ajoutez-le dans la table « practitioners » de Supabase.",
+                };
+            }
+
+            setSupabaseUser(data.user);
+            setUser(profile);
+            return { success: true };
+        } catch (err: any) {
+            return { success: false, error: `Connexion impossible : ${err.message}. Vérifiez votre connexion internet.` };
         }
     };
 
     const logout = async () => {
         localStorage.removeItem('casper_mock_auth');
         localStorage.removeItem('casper_mock_user_email');
-        try {
-            await supabase.auth.signOut();
-        } catch (e) {
-            console.error('Failed to sign out from Supabase:', e);
+        if (cloud) {
+            try {
+                await supabase.auth.signOut();
+            } catch (e) {
+                console.error('Failed to sign out from Supabase:', e);
+            }
         }
         setSupabaseUser(null);
         setUser(null);
     };
 
-    // isAuthenticated is based on Supabase session, not on practitioners profile
-    const isAuthenticated = !!supabaseUser;
+    const isAuthenticated = !!supabaseUser && !!user;
 
     return (
         <AuthContext.Provider value={{ isAuthenticated, user, supabaseUser, login, logout, loading }}>

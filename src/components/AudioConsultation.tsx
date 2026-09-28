@@ -15,6 +15,7 @@ import OrthoMindDepForm from './OrthoMindDepForm';
 import ClinicalReport from './ClinicalReport';
 import Icon from './Icon';
 import { AiReportMeta } from './AiStatus';
+import { saveRecord } from '../services/recordsService';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import { OrthoMindAvatar } from './OrthoMindAvatar';
@@ -168,37 +169,35 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
         }
     };
 
-    // Save synthesis directly to the patient's medical record for cabinet access
-    const saveSynthesisToPatientRecord = (result: AnalysisResult, pName: string, pId?: string, audioTranscript?: string) => {
+    // Enregistre le compte-rendu dans le dossier du patient (base du cabinet, visible sur tous les appareils)
+    const savedRecordRef = useRef<string | null>(null);
+    const saveSynthesisToPatientRecord = async (result: AnalysisResult, pName: string, pId?: string, audioTranscript?: string) => {
+        // Un rapport produit sans IA n'est jamais versé au dossier
+        if (result.meta?.engine === 'offline') return;
+        const targetName = pName.trim() || 'Patient';
+        if (savedRecordRef.current === result.diagnostic) {
+            setIsSavedToPatient(true);
+            return;
+        }
         try {
-            const localHistoryStr = localStorage.getItem('casper_mock_history') || '[]';
-            const localHistory = JSON.parse(localHistoryStr);
-            const targetName = pName.trim() || 'Patient Anonyme';
-            const depData = extractDepDataFromAnalysis(result.diagnostic, result.traitement, targetName, pId);
-            
-            const newEntry = {
-                id: 'mock-analysis-audio-' + Date.now(),
+            await saveRecord({
+                patient_id: pId || null,
                 patient_name: targetName,
-                patient_id: pId || '',
                 type: 'audio',
-                created_at: new Date().toISOString(),
                 images: [],
                 diagnostic_text: result.diagnostic,
                 traitement_text: result.traitement,
                 transcript: audioTranscript || transcript || '',
-                dep_data: depData
-            };
-            
-            // Prevent exact duplicates
-            const exists = localHistory.some((h: any) => h.diagnostic_text === result.diagnostic && h.patient_name === targetName);
-            if (!exists) {
-                localHistory.unshift(newEntry);
-                localStorage.setItem('casper_mock_history', JSON.stringify(localHistory));
-            }
+                dep_data: extractDepDataFromAnalysis(result.diagnostic, result.traitement, targetName, pId),
+                meta: result.meta ? { ...result.meta } : null,
+            });
+            savedRecordRef.current = result.diagnostic;
             setIsSavedToPatient(true);
-            setSavedMessage(`✓ Synthèse & Fiche DEP rattachées avec succès à la Fiche Patient de ${targetName}`);
-        } catch (e) {
+            setSavedMessage(`Compte-rendu et fiche DEP enregistrés dans le dossier de ${targetName}.`);
+        } catch (e: any) {
             console.error('Failed to save audio synthesis to patient record:', e);
+            setIsSavedToPatient(false);
+            setSavedMessage(e.message);
         }
     };
 
