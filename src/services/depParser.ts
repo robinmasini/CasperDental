@@ -106,7 +106,7 @@ export const extractDepDataFromAnalysis = (
 
     // --- 7. AGÉNÉSIE ---
     if (fullLower.includes('agénésie') || fullLower.includes('agenesie') || fullLower.includes('dent manquante')) {
-        dep.agenesie = 'Agénésie identifiée sur clichés radiographiques';
+        dep.agenesie = 'Agénésie évoquée dans le compte-rendu : à confirmer (radiographie panoramique)';
     } else {
         dep.agenesie = 'Aucune agénésie constatée';
     }
@@ -128,7 +128,7 @@ export const extractDepDataFromAnalysis = (
     }
 
     // --- 10. COMMENTAIRES ---
-    dep.commentaires = `Synthetisé automatiquement par OrthoMind AI le ${dep.dateSaisie}. RAG 54 ouvrages d'orthodontie consultés. Confiance: 98%.`;
+    dep.commentaires = `Pré-rempli automatiquement par OrthoMind le ${dep.dateSaisie} à partir du compte-rendu. À vérifier et compléter par le praticien avant envoi.`;
 
     return dep;
 };
