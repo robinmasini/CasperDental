@@ -419,6 +419,7 @@ export const executeGeminiCall = async (
         tried.add(model);
         const maxRetries = 1; // 2 essais maximum par modèle (erreurs serveur uniquement)
         let dropThinking = false;
+        let rateWaits = 0;
         const thinking: ThinkingDepth | undefined = options.thinking || (options.deepThinking ? 'deep' : undefined);
         const streaming = !!options.onStream && endpointPath === 'generateContent';
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -471,9 +472,11 @@ export const executeGeminiCall = async (
                     }
                     // Limite par minute avec délai court indiqué par Google : on patiente puis on relance
                     const retryIn = Number(message.match(/retry in ([\d.]+)\s*s/i)?.[1] || errorData.error?.details?.find((d: any) => d.retryDelay)?.retryDelay?.replace('s', '') || NaN);
-                    if (response.status === 429 && retryIn > 0 && retryIn <= 25 && attempt < maxRetries) {
+                    if (response.status === 429 && retryIn > 0 && retryIn <= 60 && rateWaits < 2) {
+                        rateWaits++;
                         onStatusUpdate?.(`Limite de débit Google atteinte, nouvelle tentative dans ${Math.ceil(retryIn)} s...`);
                         await new Promise(r => setTimeout(r, Math.ceil(retryIn) * 1000 + 500));
+                        attempt--; // l'attente imposée ne compte pas comme un essai
                         continue;
                     }
                     retryable = response.status >= 500;
@@ -717,7 +720,7 @@ Réponds uniquement en JSON :
     ];
     const passages = await searchKnowledge(
         queries.length ? queries : ['orthodontic diagnosis malocclusion', 'treatment planning'],
-        { topK: 16 }
+        { topK: getAnalysisMode() === 'approfondi' ? 16 : 10 }
     );
     onStatusUpdate?.(`${passages.length} passages de référence retenus — rédaction du rapport expert...`);
 
@@ -1003,7 +1006,7 @@ Réponds uniquement en JSON :
     ];
     const passages = await searchKnowledge(
         queries.length ? queries : [transcriptText.slice(0, 1500), ...expandQueriesWithGlossary([transcriptText])],
-        { topK: 16 }
+        { topK: getAnalysisMode() === 'approfondi' ? 16 : 10 }
     );
     onStatusUpdate?.(`${passages.length} passages de référence retenus — rédaction du compte-rendu...`);
 
