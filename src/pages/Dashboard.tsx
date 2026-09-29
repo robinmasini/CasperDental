@@ -1251,19 +1251,42 @@ const Dashboard = () => {
                                     </div>
                                 )}
 
-                                <button
-                                    className="glass-btn glass-btn-primary start-scan-btn"
-                                    onClick={handleStartAnalysis}
-                                    disabled={isScanning || isProcessingFiles || imageFiles.length === 0}
-                                >
-                                    <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-                                    Lancer l'analyse
-                                </button>
+                                {practitionerDictation.trim() ? (
+                                    <button
+                                        className="glass-btn glass-btn-primary start-scan-btn"
+                                        onClick={handleStartAnalysis}
+                                        disabled={isScanning || isProcessingFiles || imageFiles.length === 0}
+                                    >
+                                        <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                                        Lancer le compte-rendu (photos + dictée)
+                                    </button>
+                                ) : (
+                                    <div className="dictation-gate">
+                                        <p className="om-muted">
+                                            Le compte-rendu s'appuie sur votre <strong>dictée d'examen</strong> : enregistrez-la dans la consultation audio, puis lancez le compte-rendu.
+                                        </p>
+                                        <button
+                                            className="glass-btn glass-btn-primary start-scan-btn"
+                                            onClick={() => document.getElementById('dictation-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                            disabled={isScanning}
+                                        >
+                                            <Icon name="mic" size={18} /> Enregistrer ma dictée
+                                        </button>
+                                        <button
+                                            className="om-btn om-btn--ghost dictation-bypass"
+                                            onClick={handleStartAnalysis}
+                                            disabled={isScanning || isProcessingFiles || imageFiles.length === 0}
+                                        >
+                                            Demander le compte-rendu quand même (photos seules)
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Section Droite : Consultation Audio (Occupe la partie droite sur bureau, bas de page sur mobile) */}
-                            <div className="analyse-right-column">
-                                <AudioConsultation 
+                            <div className="analyse-right-column" id="dictation-section">
+                                <AudioConsultation
+                                    initialTranscript={practitionerDictation}
                                     patientName={patientName} 
                                     selectedPatientId={selectedPatientObj?.id}
                                     patient={selectedPatientObj}
@@ -1384,7 +1407,8 @@ const Dashboard = () => {
                 {/* TAB: CONSULTATION AUDIO (STANDALONE) */}
                 {activeTab === 'audio' && (
                     <div className="audio-tab-layout">
-                        <AudioConsultation 
+                        <AudioConsultation
+                            initialTranscript={practitionerDictation}
                             patientName={patientName} 
                             selectedPatientId={selectedPatientObj?.id}
                             patient={selectedPatientObj}

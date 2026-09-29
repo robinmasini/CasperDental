@@ -2363,3 +2363,22 @@
     border-color: var(--om-accent);
     background: var(--om-accent-soft);
 }
+
+/* Compte-rendu après la dictée d'examen */
+.dictation-gate {
+    display: flex;
+    flex-direction: column;
+    gap: var(--om-space-3);
+    align-items: stretch;
+}
+
+.dictation-gate > p {
+    margin: 0;
+    text-align: center;
+}
+
+.dictation-bypass {
+    align-self: center;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}

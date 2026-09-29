@@ -27,6 +27,8 @@ interface AudioConsultationProps {
     onSendToOrthoMind?: (transcriptText: string) => void;
     /** Transmet la dictée en cours au reste de l'écran (croisée avec l'analyse photo) */
     onTranscriptChange?: (transcript: string) => void;
+    /** Dictée déjà saisie (conservée quand on change d'onglet) */
+    initialTranscript?: string;
     onViewPatientFile?: (patientId?: string) => void;
 }
 
@@ -82,6 +84,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
     patient = null,
     onSendToOrthoMind,
     onTranscriptChange,
+    initialTranscript = '',
     onViewPatientFile
 }) => {
     // Recording & State
@@ -95,7 +98,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
     const [provider, setProvider] = useState<TranscriptionProvider>('webspeech');
     const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('orthomind_whisper_key') || '');
     const [showApiKeyInput, setShowApiKeyInput] = useState<boolean>(false);
-    const [transcript, setTranscript] = useState<string>('');
+    const [transcript, setTranscript] = useState<string>(initialTranscript);
     useEffect(() => { onTranscriptChange?.(transcript); }, [transcript, onTranscriptChange]);
     const [interimText, setInterimText] = useState<string>('');
     const [statusMessage, setStatusMessage] = useState<string>('');
