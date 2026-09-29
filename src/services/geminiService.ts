@@ -27,6 +27,26 @@ export interface AnalysisResult {
 
 export const isAiConfigured = () => Boolean(getGeminiApiKey());
 
+// Mode d'analyse : « rapide » (défaut, ~20-40 s) ou « approfondi » (cas complexes, plus lent)
+export type AnalysisMode = 'rapide' | 'approfondi';
+const MODE_KEY = 'orthomind_analysis_mode';
+export const getAnalysisMode = (): AnalysisMode =>
+    localStorage.getItem(MODE_KEY) === 'approfondi' ? 'approfondi' : 'rapide';
+export const setAnalysisMode = (mode: AnalysisMode) => localStorage.setItem(MODE_KEY, mode);
+
+const finalCallProfile = () => getAnalysisMode() === 'approfondi'
+    ? { tier: 'expert' as ModelTier, thinking: 'deep' as ThinkingDepth, maxOutputTokens: 32768, style: '' }
+    : {
+        tier: 'fast' as ModelTier,
+        thinking: 'balanced' as ThinkingDepth,
+        maxOutputTokens: 12288,
+        style: `\n10. Style : dense et synthétique, directement exploitable au fauteuil. Phrases courtes, aucune redite, 700 à 1 000 mots au total. Une section sans objet tient en une ligne.`,
+    };
+
+// Échec bloquant (clé refusée, quota) : inutile de poursuivre l'analyse
+const isBlockingFailure = (err: unknown) =>
+    /quota|RESOURCE_EXHAUSTED|429|API key not valid|invalid authentication|ACCESS_TOKEN_TYPE|PERMISSION_DENIED|401|403/i.test(String((err as any)?.message || err));
+
 // Informations patient utiles au raisonnement clinique (l'âge conditionne
 // fortement la stratégie : interception en croissance vs compensation adulte)
 export interface PatientClinicalContext {
@@ -83,10 +103,10 @@ export const getGeminiApiKey = (): string => {
 // résolution dépasseraient la limite de taille d'une requête Gemini (~20 Mo).
 const MAX_IMAGE_EDGE = 2048;
 
-const downscaleImage = async (file: File): Promise<Blob | null> => {
+const downscaleImage = async (file: File, maxEdge = MAX_IMAGE_EDGE): Promise<Blob | null> => {
     try {
         const bitmap = await createImageBitmap(file);
-        const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
+        const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
         if (scale === 1 && file.size < 2.5 * 1024 * 1024 && file.type === 'image/jpeg') {
             bitmap.close();
             return null; // déjà raisonnable
@@ -111,8 +131,8 @@ const blobToBase64 = (blob: Blob): Promise<string> =>
     });
 
 // Convert a File object to base64 inline data format for Gemini
-export const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
-    const resized = await downscaleImage(file);
+export const fileToGenerativePart = async (file: File, maxEdge = MAX_IMAGE_EDGE): Promise<{ inlineData: { data: string; mimeType: string } }> => {
+    const resized = await downscaleImage(file, maxEdge);
     if (resized) {
         return { inlineData: { data: await blobToBase64(resized), mimeType: 'image/jpeg' } };
     }
@@ -277,26 +297,80 @@ let lastRespondingModel: string | null = null;
 export const getLastRespondingModel = () => lastRespondingModel;
 
 // Réglages de réflexion par famille de modèles
-const withModelConfig = (apiBody: any, model: string, deepThinking: boolean, dropThinking: boolean) => {
+// Profondeur de réflexion : « minimal » pour les extractions rapides,
+// « balanced » pour un rapport de qualité en temps raisonnable, « deep » pour
+// les cas complexes (plus lent).
+export type ThinkingDepth = 'minimal' | 'balanced' | 'deep';
+
+const THINKING_BUDGETS: Record<ThinkingDepth, { pro: number; flash: number; level: string }> = {
+    minimal: { pro: 128, flash: 0, level: 'low' },
+    balanced: { pro: 4096, flash: 4096, level: 'low' },
+    deep: { pro: 24576, flash: 16384, level: 'high' },
+};
+
+const withModelConfig = (apiBody: any, model: string, thinking: ThinkingDepth | undefined, dropThinking: boolean) => {
     const body = JSON.parse(JSON.stringify(apiBody));
     const gen = (body.generationConfig = body.generationConfig || {});
     const legacy = /gemini-(1\.5|2\.0)/.test(model);
     // Les anciens modèles plafonnent à 8192 tokens de sortie
     if (legacy && gen.maxOutputTokens > 8192) gen.maxOutputTokens = 8192;
-    if (deepThinking && !dropThinking && !legacy) {
+    if (thinking && !dropThinking && !legacy) {
+        const budget = THINKING_BUDGETS[thinking];
         if (/gemini-2\.5/.test(model)) {
-            gen.thinkingConfig = { thinkingBudget: /pro/.test(model) ? 24576 : 16384 };
+            gen.thinkingConfig = { thinkingBudget: /pro/.test(model) ? budget.pro : budget.flash };
         } else {
-            gen.thinkingConfig = { thinkingLevel: 'high' };
+            gen.thinkingConfig = { thinkingLevel: budget.level };
         }
     }
     return body;
 };
 
 export interface GeminiCallOptions {
-    /** Laisse le modèle réfléchir en profondeur avant de répondre (analyses cliniques) */
+    /** Profondeur de réflexion du modèle avant de répondre */
+    thinking?: ThinkingDepth;
+    /** @deprecated équivaut à thinking: 'deep' */
     deepThinking?: boolean;
+    /** Reçoit le texte au fur et à mesure de sa rédaction (affichage en direct) */
+    onStream?: (textSoFar: string) => void;
 }
+
+// Lecture d'une réponse en flux (SSE) : renvoie le même format qu'un appel classique
+const readStreamedResponse = async (response: Response, onStream: (text: string) => void): Promise<any> => {
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let text = '';
+    let finishReason: string | undefined;
+    let promptFeedback: any;
+    for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let sep: number;
+        while ((sep = buffer.indexOf('\n\n')) !== -1) {
+            const event = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            for (const line of event.split('\n')) {
+                if (!line.startsWith('data:')) continue;
+                try {
+                    const chunk = JSON.parse(line.slice(5).trim());
+                    const candidate = chunk.candidates?.[0];
+                    const piece = (candidate?.content?.parts || [])
+                        .filter((p: any) => typeof p.text === 'string' && !p.thought)
+                        .map((p: any) => p.text)
+                        .join('');
+                    if (piece) {
+                        text += piece;
+                        onStream(text);
+                    }
+                    if (candidate?.finishReason) finishReason = candidate.finishReason;
+                    if (chunk.promptFeedback) promptFeedback = chunk.promptFeedback;
+                } catch { /* fragment incomplet */ }
+            }
+        }
+    }
+    return { candidates: [{ content: { parts: [{ text }] }, finishReason }], promptFeedback };
+};
 
 // Helper to call Gemini with retries and model fallbacks
 export const executeGeminiCall = async (
@@ -315,8 +389,10 @@ export const executeGeminiCall = async (
         const model = models[m];
         if (tried.has(model)) continue;
         tried.add(model);
-        const maxRetries = 2; // 3 attempts total per model
+        const maxRetries = 1; // 2 essais maximum par modèle (erreurs serveur uniquement)
         let dropThinking = false;
+        const thinking: ThinkingDepth | undefined = options.thinking || (options.deepThinking ? 'deep' : undefined);
+        const streaming = !!options.onStream && endpointPath === 'generateContent';
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
             let retryable = true;
             try {
@@ -324,15 +400,20 @@ export const executeGeminiCall = async (
                     onStatusUpdate(`Tentative avec ${model} (essai ${attempt + 1}/${maxRetries + 1})...`);
                 }
 
-                const body = withModelConfig(apiBody, model, !!options.deepThinking, dropThinking);
+                const body = withModelConfig(apiBody, model, thinking, dropThinking);
+                const url = streaming
+                    ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
+                    : `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpointPath}`;
                 const response = await geminiFetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpointPath}`,
+                    url,
                     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
                     apiKey
                 );
 
                 if (response.ok) {
-                    const data = await response.json();
+                    const data = streaming && response.body
+                        ? await readStreamedResponse(response, options.onStream!)
+                        : await response.json();
                     if (extractText(data)) {
                         console.log(`[Gemini] Réponse obtenue avec ${model}`);
                         lastRespondingModel = model;
@@ -359,9 +440,8 @@ export const executeGeminiCall = async (
                         dropThinking = true;
                         continue;
                     }
-                    // Quota épuisé (pas une simple saturation) : on passe au modèle suivant
-                    const quotaExhausted = response.status === 429 && /quota|limit: 0|billing/i.test(message);
-                    retryable = !quotaExhausted && (response.status === 429 || response.status >= 500);
+                    // Quota / limite de débit : réessayer le même modèle ne ferait que faire attendre
+                    retryable = response.status >= 500;
                 }
                 console.warn(`Gemini call failed on ${model} (attempt ${attempt + 1}): ${lastError.message}`);
             } catch (err: any) {
@@ -385,7 +465,11 @@ export const describeAiFailure = (err: unknown): string => {
     const msg = String((err as any)?.message || err || '');
     if (/OAuth 2 access token|ACCESS_TOKEN_TYPE_UNSUPPORTED/i.test(msg)) return 'Google refuse la clé au format « AQ. » (problème connu des nouvelles clés AI Studio) : créez une clé dans Google Cloud Console, restreinte à « Generative Language API ».';
     if (/API key not valid|invalid authentication|API_KEY_INVALID|401|403|PERMISSION_DENIED/i.test(msg)) return 'la clé Gemini est refusée par Google (vérifiez-la dans Configuration).';
-    if (/quota|limit: 0|billing|RESOURCE_EXHAUSTED|429/i.test(msg)) return 'le quota Gemini est épuisé (activez la facturation du projet Google ou réessayez plus tard).';
+    if (/quota|limit: 0|billing|RESOURCE_EXHAUSTED|429/i.test(msg)) {
+        const wait = msg.match(/retry in ([\d.]+)\s*s/i)?.[1];
+        if (/per.?day|PerDay/i.test(msg)) return 'le quota gratuit journalier de Gemini est épuisé. Activez la facturation du projet Google (quelques centimes par analyse) pour lever la limite.';
+        return `la limite gratuite de Gemini est atteinte${wait ? ` : réessayez dans ${Math.ceil(Number(wait))} s` : ''}. Pour ne plus être bloqué, activez la facturation du projet Google (quelques centimes par analyse).`;
+    }
     if (/Failed to fetch|NetworkError|network/i.test(msg)) return 'le réseau est indisponible.';
     if (/SAFETY|blockReason|PROHIBITED/i.test(msg)) return 'la réponse a été bloquée par les filtres de Google.';
     return msg ? `erreur Gemini : ${msg.slice(0, 160)}` : 'erreur inconnue.';
@@ -536,7 +620,8 @@ export const analyzeDentition = async (
     imageFiles: File[],
     onStatusUpdate?: (status: string) => void,
     patientName?: string,
-    patientContext?: PatientClinicalContext
+    patientContext?: PatientClinicalContext,
+    onReportStream?: (textSoFar: string) => void
 ): Promise<AnalysisResult> => {
     const apiKey = getGeminiApiKey();
 
@@ -545,7 +630,12 @@ export const analyzeDentition = async (
     }
 
     onStatusUpdate?.('Préparation des clichés optiques...');
-    const imageParts = await Promise.all(imageFiles.map(file => fileToGenerativePart(file)));
+    const profile = finalCallProfile();
+    // Rapport : 1600 px (au-delà, pas de gain de lecture) ; relevé préliminaire : 1024 px
+    const [imageParts, previewParts] = await Promise.all([
+        Promise.all(imageFiles.map(file => fileToGenerativePart(file, 1600))),
+        Promise.all(imageFiles.map(file => fileToGenerativePart(file, 1024))),
+    ]);
     const patientLine = describePatient(patientName, patientContext);
 
     // Étape 1 — lecture clinique des clichés et formulation des requêtes documentaires
@@ -566,13 +656,15 @@ Réponds uniquement en JSON :
   "requetes_bibliotheque": ["6 à 8 requêtes de recherche en ANGLAIS technique orthodontique pour retrouver dans des manuels la prise en charge des anomalies observées (ex: 'class II division 2 deep bite correction', 'maxillary canine impaction management')"]
 }`;
             const data = await executeGeminiCall('generateContent', {
-                contents: [{ parts: [{ text: prompt }, ...imageParts] }],
-                generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 4096 },
-            }, apiKey, undefined, 'fast');
+                contents: [{ parts: [{ text: prompt }, ...previewParts] }],
+                generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 3072 },
+            }, apiKey, undefined, 'fast', { thinking: 'minimal' });
             findings = parseJsonResponse<VisionFindings>(extractText(data)) || {};
             console.log('[OrthoMind] Constats visuels :', findings);
         } catch (e) {
             console.warn('Lecture préliminaire des clichés impossible :', e);
+            // Clé refusée ou quota atteint : on s'arrête tout de suite plutôt que de faire attendre
+            if (isBlockingFailure(e)) throw new Error(`Analyse impossible : ${describeAiFailure(e)}`);
         }
     }
 
@@ -608,7 +700,7 @@ ${findingsBlock}
 ${buildLibraryBlock(passages)}
 
 ${EXPERT_RULES}
-9. Sur photographies seules, précise pour chaque conclusion importante sur quel cliché elle repose. Si une vue manque pour conclure (ex. Classe d'Angle d'un côté non visible), dis-le.
+9. Sur photographies seules, précise pour chaque conclusion importante sur quel cliché elle repose. Si une vue manque pour conclure (ex. Classe d'Angle d'un côté non visible), dis-le.${profile.style}
 
 Rédige ton rapport en français en respectant STRICTEMENT ce format, sans aucun texte hors des balises :
 
@@ -617,11 +709,13 @@ ${DIAGNOSTIC_TEMPLATE}
 ${TREATMENT_TEMPLATE}`;
 
         try {
-            onStatusUpdate?.('Raisonnement clinique approfondi en cours (jusqu\'à 1 à 2 minutes)...');
+            onStatusUpdate?.(getAnalysisMode() === 'approfondi'
+                ? 'Raisonnement clinique approfondi en cours (1 à 2 minutes)...'
+                : 'Rédaction du rapport clinique...');
             const resultData = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: finalPrompt }, ...imageParts] }],
-                generationConfig: { temperature: 0.2, maxOutputTokens: 32768 },
-            }, apiKey, onStatusUpdate, 'expert', { deepThinking: true });
+                generationConfig: { temperature: 0.2, maxOutputTokens: profile.maxOutputTokens },
+            }, apiKey, onStatusUpdate, profile.tier, { thinking: profile.thinking, onStream: onReportStream });
             const report = parseReportSections(extractText(resultData));
             if (report) return attachReferences(report, passages);
             failure = 'la réponse de Gemini était vide.';
@@ -694,7 +788,7 @@ RÈGLES :
                 contents: formattedHistory,
                 systemInstruction: { parts: [{ text: systemInstruction }] },
                 generationConfig: { temperature: 0.3, maxOutputTokens: 16384 },
-            }, apiKey, undefined, 'expert', { deepThinking: true });
+            }, apiKey, undefined, 'fast', { thinking: 'balanced' });
             const resText = extractText(data);
             if (resText) return resText + buildReferencesSection(resText, passages);
         } catch (err) {
@@ -815,9 +909,11 @@ export const synthesizeAudioConsultation = async (
     transcriptText: string,
     patientName?: string,
     onStatusUpdate?: (status: string) => void,
-    patientContext?: PatientClinicalContext
+    patientContext?: PatientClinicalContext,
+    onReportStream?: (textSoFar: string) => void
 ): Promise<AnalysisResult> => {
     const apiKey = getGeminiApiKey();
+    const profile = finalCallProfile();
 
     if (!transcriptText || transcriptText.trim().length < 5) {
         throw new Error('Le texte de retranscription est trop court pour effectuer une synthèse clinique.');
@@ -849,11 +945,12 @@ Réponds uniquement en JSON :
             const data = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 4096 },
-            }, apiKey, undefined, 'fast');
+            }, apiKey, undefined, 'fast', { thinking: 'minimal' });
             facts = parseJsonResponse<ConsultationFacts>(extractText(data)) || {};
             console.log('[OrthoMind] Faits extraits de la consultation :', facts);
         } catch (e) {
             console.warn('Extraction des faits cliniques impossible :', e);
+            if (isBlockingFailure(e)) throw new Error(`Compte-rendu impossible : ${describeAiFailure(e)}`);
         }
     }
 
@@ -895,7 +992,7 @@ ${buildLibraryBlock(passages)}
 ${EXPERT_RULES}
 9. Le praticien a examiné le patient : ses constats et décisions PRIMENT. Ne les contredis pas ; si la littérature suggère un point de vigilance ou une alternative, présente-le comme tel.
 10. Ce qui n'a pas été abordé pendant la consultation doit être indiqué « non évalué lors de la consultation », jamais inventé.
-11. Le compte-rendu doit être approfondi et directement exploitable par l'équipe : pas de résumé lapidaire.
+11. Le compte-rendu doit être directement exploitable par l'équipe : précis et complet sur ce qui a été dit.${profile.style}
 
 Rédige en français médical rigoureux en respectant STRICTEMENT ce format, sans aucun texte hors des balises. Dans le diagnostic, commence par une section "0. MOTIF DE CONSULTATION & ANAMNÈSE" avant la classification d'Angle.
 
@@ -904,11 +1001,13 @@ ${DIAGNOSTIC_TEMPLATE}
 ${TREATMENT_TEMPLATE}`;
 
         try {
-            onStatusUpdate?.('Raisonnement clinique approfondi en cours (jusqu\'à 1 à 2 minutes)...');
+            onStatusUpdate?.(getAnalysisMode() === 'approfondi'
+                ? 'Raisonnement clinique approfondi en cours (1 à 2 minutes)...'
+                : 'Rédaction du compte-rendu...');
             const data = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.15, maxOutputTokens: 32768 },
-            }, apiKey, onStatusUpdate, 'expert', { deepThinking: true });
+                generationConfig: { temperature: 0.15, maxOutputTokens: profile.maxOutputTokens },
+            }, apiKey, onStatusUpdate, profile.tier, { thinking: profile.thinking, onStream: onReportStream });
             const report = parseReportSections(extractText(data));
             if (report) return attachReferences(report, passages);
             failure = 'la réponse de Gemini était vide.';

@@ -7,13 +7,14 @@ import { listRecords, saveRecord, updateRecordDep, migrateLocalDataToCloud, isCl
 import { saveCabinetGeminiKey, clearCabinetGeminiKey } from '../services/cabinetSettings';
 import { uploadPatientPhotos } from '../services/photosService';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
-import { formatClinicalReport } from '../components/ClinicalReport';
+import ClinicalReport, { formatClinicalReport } from '../components/ClinicalReport';
+import { warmUpKnowledge } from '../services/knowledgeBase';
 import CameraCapture from '../components/CameraCapture';
 import { AiMissingBanner, AiReportMeta } from '../components/AiStatus';
 import Icon from '../components/Icon';
 
 const MAX_ANALYSIS_PHOTOS = 10;
-import { analyzeDentition, getGeminiApiKey, testGeminiKey, describeAiFailure, AnalysisResult, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
+import { analyzeDentition, getGeminiApiKey, testGeminiKey, describeAiFailure, AnalysisResult, getAnalysisMode, setAnalysisMode, AnalysisMode, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import { AudioConsultation } from '../components/AudioConsultation';
 import defaultBookData from '../assets/cgs_volume_61.json';
@@ -231,6 +232,8 @@ const Dashboard = () => {
     const [scanStatusText, setScanStatusText] = useState('');
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
     const [lastSavedRecordId, setLastSavedRecordId] = useState<string | null>(null);
+    const [streamingReport, setStreamingReport] = useState('');
+    const [analysisMode, setAnalysisModeState] = useState<AnalysisMode>(getAnalysisMode());
     const [activeResultTab, setActiveResultTab] = useState<'diag' | 'treat' | 'dep'>('diag');
 
     // PDF Knowledge Base States
@@ -306,6 +309,7 @@ const Dashboard = () => {
         };
         
         pingDb();
+        warmUpKnowledge();
         setGeminiKey(getGeminiApiKey());
         loadBooks();
         loadHistory();
@@ -717,40 +721,18 @@ const Dashboard = () => {
         setConsoleLogs([]);
         setAnalysisResult(null);
         
-        addLog('[SYSTEM] Initialisation du scanner optique HD & calibrage tridimensionnel...');
-        addLog(`[SYSTEM] Chargement des clichés cliniques (${imageFiles.length} images)...`);
-        
-        let logStep = 0;
-        const fakeLogs = [
-            '[SYSTEM] Alignement tridimensionnel & segmentation des couronnes dentaires...',
-            '[RAG] Interrogation de la bibliothèque du cabinet (54 ouvrages)...',
-            '[RAG] Classement BM25 bilingue des fragments scientifiques...',
-            '[RAG] Extraction des corrélations cliniques & calculs biomécaniques...',
-            '[IA OrthoMind] Évaluation céphalométrique et classification d\'Angle (Classe I, II, III)...',
-            '[IA OrthoMind] Évaluation du surplomb (overjet), du recouvrement (overbite) & symétrie...',
-            '[IA OrthoMind] Analyse des encombrements maxillo-mandibulaires...',
-            '[IA OrthoMind] Calcul prédictif du séquençage d\'aligneurs invisibles...',
-            '[IA OrthoMind] Génération du protocole de dépouillement (stripping/IPR) & taquets...',
-            '[SUCCESS] Consolidation des données RAG & rédaction du rapport de diagnostic approfondi...'
-        ];
+        addLog(`[SYSTEM] ${imageFiles.length} cliché(s) — mode ${getAnalysisMode() === 'approfondi' ? 'approfondi' : 'rapide'}.`);
 
-        logIntervalRef.current = setInterval(() => {
-            if (logStep < fakeLogs.length) {
-                addLog(fakeLogs[logStep]);
-                logStep++;
-            }
-        }, 1100);
-
-        const minProcessPromise = new Promise(resolve => setTimeout(resolve, 12000));
-
+        setStreamingReport('');
         try {
-            const [result] = await Promise.all([
-                analyzeDentition(imageFiles, (status) => {
-                    setScanStatusText(status);
-                    addLog(`[INFO] ${status}`);
-                }, currentPatient, buildPatientContext(selectedPatientObj)),
-                minProcessPromise
-            ]);
+            const result = await analyzeDentition(imageFiles, (status) => {
+                setScanStatusText(status);
+                addLog(`[INFO] ${status}`);
+            }, currentPatient, buildPatientContext(selectedPatientObj), (text) => {
+                // Le rapport s'affiche au fur et à mesure de sa rédaction
+                setStreamingReport(text.replace(/<\/?(diagnostic|traitement)>/gi, ''));
+            });
+            setStreamingReport('');
 
             clearInterval(logIntervalRef.current);
             addLog('[SUCCESS] Rapport de diagnostic clinique approfondi finalisé avec succès.');
@@ -800,6 +782,7 @@ const Dashboard = () => {
 
         } catch (err: any) {
             clearInterval(logIntervalRef.current);
+            setStreamingReport('');
             addLog(`[ERROR] Échec de l'analyse : ${err.message || err}`);
             alert(`Erreur d'analyse : ${err.message || 'Une erreur est survenue.'}`);
             setIsScanning(false);
@@ -1139,6 +1122,12 @@ const Dashboard = () => {
                                                 </div>
                                             ))}
                                             <p className="console-status-text" style={{ marginTop: '10px' }}>{scanStatusText}</p>
+                                            {streamingReport && (
+                                                <div className="live-report">
+                                                    <span className="om-label">Rapport en cours de rédaction</span>
+                                                    <ClinicalReport text={streamingReport} />
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="merged-avatar-status">
@@ -1605,6 +1594,32 @@ const Dashboard = () => {
                             >
                                 Vérifier et enregistrer la clé
                             </button>
+                        </div>
+
+                        <div className="glass-panel settings-card">
+                            <h2>Mode d'analyse</h2>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '15px' }}>
+                                S'applique aux analyses de clichés et aux comptes-rendus de consultation sur cet appareil.
+                            </p>
+                            <div className="analysis-mode-options" role="radiogroup" aria-label="Mode d'analyse">
+                                {([
+                                    ['rapide', 'Rapide', 'Environ 20 à 40 secondes. Modèle rapide de dernière génération, raisonnement modéré, rapport dense et synthétique. Recommandé au quotidien.'],
+                                    ['approfondi', 'Approfondi', 'Environ 1 à 2 minutes. Modèle le plus puissant, raisonnement maximal, rapport détaillé. Pour les cas complexes.'],
+                                ] as [AnalysisMode, string, string][]).map(([mode, label, description]) => (
+                                    <label key={mode} className={`analysis-mode-option ${analysisMode === mode ? 'is-selected' : ''}`}>
+                                        <input
+                                            type="radio"
+                                            name="analysis-mode"
+                                            checked={analysisMode === mode}
+                                            onChange={() => { setAnalysisMode(mode); setAnalysisModeState(mode); }}
+                                        />
+                                        <span>
+                                            <strong>{label}</strong>
+                                            <span className="om-muted">{description}</span>
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="glass-panel settings-card">

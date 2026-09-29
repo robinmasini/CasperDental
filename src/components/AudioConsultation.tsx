@@ -171,6 +171,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
     // Enregistre le compte-rendu dans le dossier du patient (base du cabinet, visible sur tous les appareils)
     const savedRecordRef = useRef<string | null>(null);
+    const [liveReport, setLiveReport] = useState('');
     const saveSynthesisToPatientRecord = async (result: AnalysisResult, pName: string, pId?: string, audioTranscript?: string) => {
         // Un rapport produit sans IA n'est jamais versé au dossier
         if (result.meta?.engine === 'offline') return;
@@ -459,10 +460,14 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
         // Launch API query asynchronously in parallel
         let apiSettled = false;
+        setLiveReport('');
         const apiPromise = synthesizeAudioConsultation(textToAnalyze, patientName, (status) => {
             setSynthesisStatus(status);
             setReflectionLogs(prev => [...prev, { time: new Date().toLocaleTimeString('fr-FR'), text: `• ${status}` }]);
-        }, buildPatientContext(patient));
+        }, buildPatientContext(patient), (text) => {
+            // Le compte-rendu s'affiche au fur et à mesure de sa rédaction
+            setLiveReport(text.replace(/<\/?(diagnostic|traitement)>/gi, ''));
+        });
         apiPromise.finally(() => { apiSettled = true; }).catch(() => {});
 
         // Progression affichée pendant le raisonnement (s'arrête dès que la synthèse est prête)
@@ -932,6 +937,13 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                             </div>
                         </div>
                     </div>
+
+                    {liveReport && (
+                        <div className="live-report">
+                            <span className="om-label">Compte-rendu en cours de rédaction</span>
+                            <ClinicalReport text={liveReport} />
+                        </div>
+                    )}
                 </div>
             )}
 

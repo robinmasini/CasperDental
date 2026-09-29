@@ -396,7 +396,7 @@ export const transcribeAudioWithGemini = async (
     const data = await executeGeminiCall('generateContent', {
         contents: [{ parts: [{ text: TRANSCRIPTION_PROMPT }, audioPart] }],
         generationConfig: { temperature: 0, maxOutputTokens: 32768 },
-    }, apiKey, undefined, 'expert');
+    }, apiKey, undefined, 'fast', { thinking: 'minimal' });
 
     const text = extractText(data);
     if (!text) throw new Error('Retranscription vide.');

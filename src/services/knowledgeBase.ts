@@ -270,6 +270,9 @@ const getStaticIndex = (): Promise<Bm25Index> => {
     return staticIndexPromise;
 };
 
+/** Précharge la bibliothèque et son index (appelé à l'ouverture de l'application) */
+export const warmUpKnowledge = () => getStaticIndex().then(() => undefined).catch(() => undefined);
+
 // Fragments importés depuis l'interface (mode local) — lus à chaque requête
 const getLocalUploadedChunks = (): KnowledgeChunk[] => {
     try {
