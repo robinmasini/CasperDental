@@ -233,6 +233,8 @@ const Dashboard = () => {
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
     const [lastSavedRecordId, setLastSavedRecordId] = useState<string | null>(null);
     const [streamingReport, setStreamingReport] = useState('');
+    // Dictée du praticien pendant l'examen (consultation audio), croisée avec les clichés
+    const [practitionerDictation, setPractitionerDictation] = useState('');
     const [analysisMode, setAnalysisModeState] = useState<AnalysisMode>(getAnalysisMode());
     const [activeResultTab, setActiveResultTab] = useState<'diag' | 'treat' | 'dep'>('diag');
 
@@ -725,6 +727,7 @@ const Dashboard = () => {
         setConsoleLogs([]);
         setAnalysisResult(null);
         
+        if (practitionerDictation.trim()) addLog('[SYSTEM] Dictée du praticien prise en compte dans le compte-rendu.');
         addLog(`[SYSTEM] ${imageFiles.length} cliché(s) — mode ${getAnalysisMode() === 'approfondi' ? 'approfondi' : 'rapide'}.`);
 
         setStreamingReport('');
@@ -735,7 +738,7 @@ const Dashboard = () => {
             }, currentPatient, buildPatientContext(selectedPatientObj), (text) => {
                 // Le rapport s'affiche au fur et à mesure de sa rédaction
                 setStreamingReport(text.replace(/<\/?(diagnostic|traitement)>/gi, ''));
-            });
+            }, practitionerDictation.trim() || undefined);
             setStreamingReport('');
 
             clearInterval(logIntervalRef.current);
@@ -1264,6 +1267,7 @@ const Dashboard = () => {
                                     patientName={patientName} 
                                     selectedPatientId={selectedPatientObj?.id}
                                     patient={selectedPatientObj}
+                                    onTranscriptChange={setPractitionerDictation}
                                     onSendToOrthoMind={handleAudioTranscriptToOrthoMind} 
                                     onViewPatientFile={() => handleTabClick('patients')}
                                 />
@@ -1384,6 +1388,7 @@ const Dashboard = () => {
                             patientName={patientName} 
                             selectedPatientId={selectedPatientObj?.id}
                             patient={selectedPatientObj}
+                                    onTranscriptChange={setPractitionerDictation}
                             onSendToOrthoMind={handleAudioTranscriptToOrthoMind} 
                             onViewPatientFile={() => handleTabClick('patients')}
                         />

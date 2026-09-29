@@ -704,9 +704,13 @@ export const analyzeDentition = async (
     onStatusUpdate?: (status: string) => void,
     patientName?: string,
     patientContext?: PatientClinicalContext,
-    onReportStream?: (textSoFar: string) => void
+    onReportStream?: (textSoFar: string) => void,
+    practitionerDictation?: string
 ): Promise<AnalysisResult> => {
     const apiKey = getGeminiApiKey();
+    const dictationBlock = practitionerDictation
+        ? `### DICTÉE DU PRATICIEN PENDANT L'EXAMEN (retranscription orale, prioritaire sur la lecture des photos) :\n\"\"\"${practitionerDictation.slice(0, 12000)}\"\"\"\n`
+        : '';
 
     if (imageFiles.length === 0) {
         throw new Error('Veuillez fournir au moins une photo de dentition.');
@@ -730,7 +734,8 @@ export const analyzeDentition = async (
             const prompt = `${EXPERT_PERSONA}
 ${patientLine}
 
-Examine ces ${imageFiles.length} photographie(s) intra/extra-orales et produis un relevé clinique FACTUEL, sans plan de traitement.
+${dictationBlock}
+Examine ces ${imageFiles.length} photographie(s) intra/extra-orales et produis un relevé clinique FACTUEL, sans plan de traitement. Intègre les constats dictés par le praticien s'il y en a.
 Réponds uniquement en JSON :
 {
   "observations": ["constats visuels précis, un par élément (préciser le cliché et le côté, notation FDI)"],
@@ -780,10 +785,11 @@ ${patientLine}
 
 ${findingsBlock}
 
+${dictationBlock}
 ${buildLibraryBlock(passages)}
 
 ${EXPERT_RULES}
-9. Sur photographies seules, précise pour chaque conclusion importante sur quel cliché elle repose. Si une vue manque pour conclure (ex. Classe d'Angle d'un côté non visible), dis-le.${profile.style}
+${practitionerDictation ? `11. Le praticien a examiné le patient et a dicté ses constats ci-dessus : ses constats et décisions PRIMENT sur ta lecture des photos. Intègre-les explicitement (« constaté par le praticien ») et signale toute divergence avec les images comme point à vérifier.\n` : ''}9. Sur photographies seules, précise pour chaque conclusion importante sur quel cliché elle repose. Si une vue manque pour conclure (ex. Classe d'Angle d'un côté non visible), dis-le.${profile.style}
 
 Rédige ton rapport en français en respectant STRICTEMENT ce format, sans aucun texte hors des balises :
 

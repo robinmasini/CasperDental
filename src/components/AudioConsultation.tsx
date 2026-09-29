@@ -25,6 +25,8 @@ interface AudioConsultationProps {
     selectedPatientId?: string;
     patient?: Patient | null;
     onSendToOrthoMind?: (transcriptText: string) => void;
+    /** Transmet la dictée en cours au reste de l'écran (croisée avec l'analyse photo) */
+    onTranscriptChange?: (transcript: string) => void;
     onViewPatientFile?: (patientId?: string) => void;
 }
 
@@ -79,6 +81,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
     selectedPatientId = '',
     patient = null,
     onSendToOrthoMind,
+    onTranscriptChange,
     onViewPatientFile
 }) => {
     // Recording & State
@@ -93,6 +96,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
     const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('orthomind_whisper_key') || '');
     const [showApiKeyInput, setShowApiKeyInput] = useState<boolean>(false);
     const [transcript, setTranscript] = useState<string>('');
+    useEffect(() => { onTranscriptChange?.(transcript); }, [transcript, onTranscriptChange]);
     const [interimText, setInterimText] = useState<string>('');
     const [statusMessage, setStatusMessage] = useState<string>('');
     const [isCopied, setIsCopied] = useState<boolean>(false);
