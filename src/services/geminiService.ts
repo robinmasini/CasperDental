@@ -344,6 +344,8 @@ export interface GeminiCallOptions {
     onStream?: (textSoFar: string) => void;
     /** Délai maximal par tentative (ms) */
     timeoutMs?: number;
+    /** Résolution de lecture des images : moins de tokens envoyés en basse résolution */
+    mediaResolution?: 'low' | 'medium' | 'high';
 }
 
 // Quand tous les modèles échouent, on affiche la cause la plus parlante
@@ -419,6 +421,7 @@ export const executeGeminiCall = async (
         tried.add(model);
         const maxRetries = 1; // 2 essais maximum par modèle (erreurs serveur uniquement)
         let dropThinking = false;
+        let dropMediaResolution = false;
         let rateWaits = 0;
         const thinking: ThinkingDepth | undefined = options.thinking || (options.deepThinking ? 'deep' : undefined);
         const streaming = !!options.onStream && endpointPath === 'generateContent';
@@ -430,6 +433,9 @@ export const executeGeminiCall = async (
                 }
 
                 const body = withModelConfig(apiBody, model, thinking, dropThinking);
+                if (options.mediaResolution && !dropMediaResolution) {
+                    body.generationConfig.mediaResolution = `MEDIA_RESOLUTION_${options.mediaResolution.toUpperCase()}`;
+                }
                 const url = streaming
                     ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
                     : `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpointPath}`;
@@ -464,6 +470,10 @@ export const executeGeminiCall = async (
                         if (suggested && !tried.has(suggested) && !models.includes(suggested)) models.splice(m + 1, 0, suggested);
                         console.warn(`[Gemini] ${model} retiré par Google${suggested ? `, essai de ${suggested}` : ''}`);
                         break;
+                    }
+                    if (response.status === 400 && body.generationConfig?.mediaResolution && /media_?resolution/i.test(message)) {
+                        dropMediaResolution = true; // paramètre non reconnu par ce modèle
+                        continue;
                     }
                     if (response.status === 400 && body.generationConfig?.thinkingConfig && !dropThinking) {
                         // Paramètre de réflexion non reconnu par ce modèle : on réessaie sans
@@ -701,7 +711,7 @@ Réponds uniquement en JSON :
             const data = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: prompt }, ...previewParts] }],
                 generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 3072 },
-            }, apiKey, undefined, 'fast', { thinking: 'minimal', timeoutMs: 30000 });
+            }, apiKey, undefined, 'fast', { thinking: 'minimal', timeoutMs: 30000, mediaResolution: 'low' });
             findings = parseJsonResponse<VisionFindings>(extractText(data)) || {};
             console.log('[OrthoMind] Constats visuels :', findings);
         } catch (e) {
@@ -758,7 +768,7 @@ ${TREATMENT_TEMPLATE}`;
             const resultData = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: finalPrompt }, ...imageParts] }],
                 generationConfig: { temperature: 0.2, maxOutputTokens: profile.maxOutputTokens },
-            }, apiKey, onStatusUpdate, profile.tier, { thinking: profile.thinking, onStream: onReportStream, timeoutMs: profile.timeoutMs });
+            }, apiKey, onStatusUpdate, profile.tier, { thinking: profile.thinking, onStream: onReportStream, timeoutMs: profile.timeoutMs, mediaResolution: getAnalysisMode() === 'approfondi' ? 'high' : 'medium' });
             const report = parseReportSections(extractText(resultData));
             if (report) return attachReferences(report, passages);
             failure = 'la réponse de Gemini était vide.';
