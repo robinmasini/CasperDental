@@ -469,7 +469,13 @@ export const executeGeminiCall = async (
                         dropThinking = true;
                         continue;
                     }
-                    // Quota / limite de débit : réessayer le même modèle ne ferait que faire attendre
+                    // Limite par minute avec délai court indiqué par Google : on patiente puis on relance
+                    const retryIn = Number(message.match(/retry in ([\d.]+)\s*s/i)?.[1] || errorData.error?.details?.find((d: any) => d.retryDelay)?.retryDelay?.replace('s', '') || NaN);
+                    if (response.status === 429 && retryIn > 0 && retryIn <= 25 && attempt < maxRetries) {
+                        onStatusUpdate?.(`Limite de débit Google atteinte, nouvelle tentative dans ${Math.ceil(retryIn)} s...`);
+                        await new Promise(r => setTimeout(r, Math.ceil(retryIn) * 1000 + 500));
+                        continue;
+                    }
                     retryable = response.status >= 500;
                 }
                 console.warn(`Gemini call failed on ${model} (attempt ${attempt + 1}): ${lastError.message}`);
@@ -496,10 +502,12 @@ export const describeAiFailure = (err: unknown): string => {
     const msg = String((err as any)?.message || err || '');
     if (/OAuth 2 access token|ACCESS_TOKEN_TYPE_UNSUPPORTED/i.test(msg)) return 'Google refuse la clé au format « AQ. » (problème connu des nouvelles clés AI Studio) : créez une clé dans Google Cloud Console, restreinte à « Generative Language API ».';
     if (/API key not valid|invalid authentication|API_KEY_INVALID|401|403|PERMISSION_DENIED/i.test(msg)) return 'la clé Gemini est refusée par Google (vérifiez-la dans Configuration).';
-    if (/quota|limit: 0|billing|RESOURCE_EXHAUSTED|429/i.test(msg)) {
+    if (/quota|limit: 0|billing|RESOURCE_EXHAUSTED|429|credits/i.test(msg)) {
         const wait = msg.match(/retry in ([\d.]+)\s*s/i)?.[1];
-        if (/per.?day|PerDay/i.test(msg)) return 'le quota gratuit journalier de Gemini est épuisé. Activez la facturation du projet Google (quelques centimes par analyse) pour lever la limite.';
-        return `la limite gratuite de Gemini est atteinte${wait ? ` : réessayez dans ${Math.ceil(Number(wait))} s` : ''}. Pour ne plus être bloqué, activez la facturation du projet Google (quelques centimes par analyse).`;
+        const metric = msg.match(/metric: ([\w./-]+)/i)?.[1];
+        if (/credit|prepay|prepaid/i.test(msg) && /deplet|exhaust|insufficient|balance/i.test(msg)) return 'le solde de crédits prépayés Gemini est épuisé : rechargez-le sur aistudio.google.com/billing.';
+        if (/free_tier/i.test(msg)) return `la limite de l'offre gratuite Gemini est atteinte${wait ? ` (réessayez dans ${Math.ceil(Number(wait))} s)` : ''}. Vérifiez que le projet de la clé est bien passé en niveau payant.`;
+        return `la limite de débit de votre offre Gemini est atteinte${wait ? ` : réessayez dans ${Math.ceil(Number(wait))} s` : ''}${metric ? ` (limite : ${metric})` : ''}.`;
     }
     if (/délai dépassé/i.test(msg)) return 'Google ne répond pas assez vite (serveurs saturés ou réseau lent). Réessayez dans un instant.';
     if (/Failed to fetch|NetworkError|network|Load failed/i.test(msg)) return 'le réseau est indisponible.';
