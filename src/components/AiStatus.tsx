@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { AnalysisMeta } from '../services/geminiService';
-import { getGeminiApiKey, testGeminiKey } from '../services/geminiService';
+import { getGeminiApiKey, testGeminiKey, describeAiFailure } from '../services/geminiService';
+import { saveCabinetGeminiKey } from '../services/cabinetSettings';
+import { isCloudMode } from '../services/recordsService';
 
 // État de l'intelligence branchée, vérifié une fois par session auprès de Google
 type AiHealth =
@@ -31,34 +33,78 @@ export const checkAiHealth = (): Promise<AiHealth> => {
     return healthPromise;
 };
 
-export const useAiHealth = (): AiHealth => {
+export const useAiHealth = (): [AiHealth, () => void] => {
     const [health, setHealth] = useState<AiHealth>({ state: 'checking' });
+    const [version, setVersion] = useState(0);
     useEffect(() => {
         let alive = true;
         checkAiHealth().then(h => { if (alive) setHealth(h); });
         return () => { alive = false; };
-    }, []);
-    return health;
+    }, [version]);
+    return [health, () => { healthPromise = null; setVersion(v => v + 1); }];
 };
 
-// Signale clairement quand aucune intelligence n'est branchée ou qu'elle est refusée
+// Signale clairement quand aucune intelligence n'est branchée ou qu'elle est refusée,
+// et permet d'enregistrer la clé sur place, une fois pour tout le cabinet.
 export const AiMissingBanner = ({ onConfigure }: { onConfigure?: () => void }) => {
-    const health = useAiHealth();
+    const [health, recheck] = useAiHealth();
+    const [key, setKey] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [message, setMessage] = useState<string | null>(null);
+
     if (health.state === 'checking' || health.state === 'ok') return null;
+
+    const save = async () => {
+        const value = key.trim();
+        if (!value) return;
+        setSaving(true);
+        setMessage('Vérification de la clé auprès de Google…');
+        const result = await testGeminiKey(value);
+        if (!result.ok) {
+            setMessage(`Clé refusée : ${describeAiFailure(result.error)}`);
+            setSaving(false);
+            return;
+        }
+        localStorage.setItem('casper_gemini_api_key', value);
+        if (isCloudMode()) {
+            try {
+                await saveCabinetGeminiKey(value);
+            } catch (e: any) {
+                setMessage(`Clé active sur cet appareil, mais pas encore partagée avec le cabinet : ${e.message}`);
+            }
+        }
+        setSaving(false);
+        setKey('');
+        recheck();
+    };
+
     return (
-        <div className="om-notice om-notice--danger" role="alert">
+        <div className="om-notice om-notice--danger ai-banner" role="alert">
             <p>
                 {health.state === 'missing' ? (
-                    <><strong>Aucune intelligence branchée.</strong> Sans clé Gemini, OrthoMind ne peut ni lire les clichés, ni retranscrire, ni rédiger de compte-rendu. Ajoutez votre clé dans Configuration.</>
+                    <><strong>Aucune intelligence branchée.</strong> Collez la clé Gemini ci-dessous : elle sera enregistrée <strong>une seule fois pour tout le cabinet</strong>, et plus personne n'aura à la saisir.</>
                 ) : (
                     <><strong>L'intelligence ne répond pas : clé Gemini refusée.</strong> {health.reason}</>
                 )}
             </p>
-            {onConfigure && (
-                <button className="om-btn om-btn--secondary om-btn--sm" onClick={onConfigure}>
-                    Configurer la clé
+            <div className="ai-banner-form">
+                <input
+                    type="password"
+                    className="om-input"
+                    placeholder="Coller la clé Gemini"
+                    value={key}
+                    onChange={(e) => setKey(e.target.value)}
+                    autoComplete="off"
+                    aria-label="Clé Gemini"
+                />
+                <button className="om-btn om-btn--primary" onClick={save} disabled={saving || !key.trim()}>
+                    {saving ? 'Vérification…' : 'Enregistrer pour le cabinet'}
                 </button>
-            )}
+                {onConfigure && (
+                    <button className="om-btn om-btn--ghost om-btn--sm" onClick={onConfigure}>Configuration</button>
+                )}
+            </div>
+            {message && <p className="ai-banner-message">{message}</p>}
         </div>
     );
 };
