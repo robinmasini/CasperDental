@@ -410,16 +410,20 @@ const Dashboard = () => {
         setKeyStatus({ tone: 'pending', text: 'Vérification de la clé auprès de Google…' });
         const result = await testGeminiKey(key);
         if (result.ok) {
-            try {
-                if (isCloudMode()) {
+            // Dans tous les cas, la clé fonctionne immédiatement sur cet appareil
+            localStorage.setItem('casper_gemini_api_key', key);
+            if (!isCloudMode()) {
+                setKeyStatus({ tone: 'ok', text: `Clé valide et enregistrée sur cet appareil. Modèle : ${result.model}.` });
+            } else {
+                try {
                     await saveCabinetGeminiKey(key);
                     setKeyStatus({ tone: 'ok', text: `Clé valide, enregistrée pour tout le cabinet : chaque praticien connecté en profite sur tous ses appareils, sans la saisir. Modèle : ${result.model}.` });
-                } else {
-                    localStorage.setItem('casper_gemini_api_key', key);
-                    setKeyStatus({ tone: 'ok', text: `Clé valide et enregistrée sur cet appareil. Modèle : ${result.model}.` });
+                } catch (e: any) {
+                    // Table des réglages absente (script SQL non exécuté) : la clé marche ici,
+                    // et sera partagée automatiquement dès que la table existera
+                    setKeyStatus({ tone: 'ok', text: `Clé valide et active sur cet appareil (modèle : ${result.model}). Elle n'a pas pu être partagée avec le cabinet : exécutez le script « photos et clé cabinet » dans Supabase, elle sera alors partagée automatiquement à la prochaine connexion.` });
+                    console.warn(e);
                 }
-            } catch (e: any) {
-                setKeyStatus({ tone: 'error', text: e.message });
             }
         } else {
             setKeyStatus({ tone: 'error', text: `Clé refusée : ${describeAiFailure(result.error)}` });

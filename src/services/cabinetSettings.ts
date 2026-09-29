@@ -45,8 +45,6 @@ export const saveCabinetGeminiKey = async (key: string): Promise<void> => {
         .upsert({ key: GEMINI_KEY, value: key.trim(), updated_at: new Date().toISOString() });
     if (error) throw new Error(`Enregistrement de la clé pour le cabinet impossible : ${error.message}`);
     setCabinetGeminiKey(key);
-    // La clé locale devient inutile
-    LOCAL_KEY_NAMES.forEach(k => localStorage.removeItem(k));
 };
 
 export const clearCabinetGeminiKey = async (): Promise<void> => {
