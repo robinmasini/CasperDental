@@ -775,7 +775,7 @@ const Dashboard = () => {
                     images: thumbnails,
                     diagnostic_text: result.diagnostic,
                     traitement_text: result.traitement,
-                    dep_data: extractDepDataFromAnalysis(result.diagnostic, result.traitement, currentPatient, selectedPatientObj?.id),
+                    dep_data: extractDepDataFromAnalysis(result.diagnostic, result.traitement, currentPatient, selectedPatientObj?.id, result.dep),
                     meta: result.meta ? { ...result.meta } : null,
                 });
                 setLastSavedRecordId(saved.id);
@@ -1352,7 +1352,7 @@ const Dashboard = () => {
                                     {activeResultTab === 'dep' ? (
                                         <div style={{ gridColumn: '1 / -1' }}>
                                             <OrthoMindDepForm
-                                                depData={extractDepDataFromAnalysis(analysisResult.diagnostic, analysisResult.traitement, patientName, selectedPatientObj?.id)}
+                                                depData={extractDepDataFromAnalysis(analysisResult.diagnostic, analysisResult.traitement, patientName, selectedPatientObj?.id, analysisResult.dep)}
                                                 patientName={patientName}
                                                 patientId={selectedPatientObj?.id}
                                                 onSave={async (updatedData) => {

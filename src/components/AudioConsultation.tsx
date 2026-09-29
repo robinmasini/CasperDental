@@ -199,7 +199,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 diagnostic_text: result.diagnostic,
                 traitement_text: result.traitement,
                 transcript: audioTranscript || transcript || '',
-                dep_data: extractDepDataFromAnalysis(result.diagnostic, result.traitement, targetName, pId),
+                dep_data: extractDepDataFromAnalysis(result.diagnostic, result.traitement, targetName, pId, result.dep),
                 meta: result.meta ? { ...result.meta } : null,
             });
             savedRecordRef.current = result.diagnostic;
@@ -1086,7 +1086,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                     <div className="synthesis-content-box">
                         {activeSynthesisTab === 'dep' ? (
                             <OrthoMindDepForm
-                                depData={extractDepDataFromAnalysis(synthesisResult.diagnostic, synthesisResult.traitement, patientName, selectedPatientId)}
+                                depData={extractDepDataFromAnalysis(synthesisResult.diagnostic, synthesisResult.traitement, patientName, selectedPatientId, synthesisResult.dep)}
                                 patientName={patientName}
                                 patientId={selectedPatientId}
                                 onSave={(updatedData) => {

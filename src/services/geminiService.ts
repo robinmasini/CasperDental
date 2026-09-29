@@ -23,7 +23,50 @@ export interface AnalysisResult {
     diagnostic: string;
     traitement: string;
     meta?: AnalysisMeta;
+    /** Champs texte de la fiche DEP rédigés par l'IA à partir de ce compte-rendu */
+    dep?: import('./depParser').DepAiFields;
 }
+
+// Remplit les champs texte de la DEP à partir du compte-rendu (texte seul, peu coûteux).
+// Rien n'est inventé : « Non évalué » quand le compte-rendu n'en parle pas.
+const extractDepFields = async (report: AnalysisResult, apiKey: string): Promise<AnalysisResult> => {
+    try {
+        const data = await executeGeminiCall('generateContent', {
+            contents: [{ parts: [{ text: `Voici un compte-rendu d'orthodontie. Remplis les champs texte de la fiche DEP (demande d'entente préalable, Assurance maladie) UNIQUEMENT à partir de ce compte-rendu.
+Règles : français médical concis ; n'invente rien ; si le compte-rendu n'aborde pas un point, écris exactement "Non évalué" ; conserve le niveau de certitude (« probable, à confirmer ») ; notation dentaire FDI.
+
+### DIAGNOSTIC
+${report.diagnostic.slice(0, 9000)}
+
+### PLAN DE TRAITEMENT
+${report.traitement.slice(0, 6000)}
+
+Réponds uniquement en JSON :
+{
+  "agenesie": "agénésie(s) constatée(s) avec dents concernées, ou « Aucune agénésie constatée », ou « Non évalué »",
+  "facteurFonctionnel": "facteurs fonctionnels (déglutition, ventilation, parafonctions, ATM) tels que décrits, ou « Non évalué »",
+  "dentsIncluesOuSurnumeraires": "dents incluses/surnuméraires (FDI) ou « Non évalué »",
+  "malpositions": "malpositions principales (FDI) ou « Non évalué »",
+  "planDeTraitement": "plan de traitement résumé pour la DEP (2 à 4 lignes) : appareillage, phases, durée estimée, contention — fidèle au compte-rendu"
+}` }] }],
+            generationConfig: { temperature: 0, responseMimeType: 'application/json', maxOutputTokens: 4096 },
+        }, apiKey, undefined, 'fast', { thinking: 'minimal', timeoutMs: 30000 });
+        const fields = parseJsonResponse<Record<string, string>>(extractText(data));
+        if (fields) {
+            const clean = (v?: string) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+            report.dep = {
+                agenesie: clean(fields.agenesie),
+                facteurFonctionnel: clean(fields.facteurFonctionnel),
+                dentsIncluesOuSurnumeraires: clean(fields.dentsIncluesOuSurnumeraires),
+                malpositions: clean(fields.malpositions),
+                planDeTraitement: clean(fields.planDeTraitement),
+            };
+        }
+    } catch (e) {
+        console.warn('Pré-remplissage DEP par l\'IA impossible (déduction par mots-clés utilisée) :', e);
+    }
+    return report;
+};
 
 export const isAiConfigured = () => Boolean(getGeminiApiKey());
 
@@ -806,7 +849,7 @@ ${TREATMENT_TEMPLATE}`;
                 generationConfig: { temperature: 0.2, maxOutputTokens: profile.maxOutputTokens },
             }, apiKey, onStatusUpdate, profile.tier, { thinking: profile.thinking, onStream: onReportStream, timeoutMs: profile.timeoutMs, mediaResolution: getAnalysisMode() === 'approfondi' ? 'high' : 'medium' });
             const report = parseReportSections(extractText(resultData));
-            if (report) return attachReferences(report, passages);
+            if (report) return extractDepFields(attachReferences(report, passages), apiKey);
             failure = 'la réponse de Gemini était vide.';
         } catch (err) {
             console.warn('API Gemini final analysis failed completely:', err);
@@ -829,6 +872,7 @@ ${TREATMENT_TEMPLATE}`;
                     const report = parseReportSections(extractText(lightData));
                     if (report) {
                         const result = attachReferences(report, light);
+                        await extractDepFields(result, apiKey);
                         result.diagnostic = `⚠️ Version allégée : rédigée à partir de la lecture préliminaire des clichés (plafond de débit Google atteint). À vérifier sur les images.\n\n${result.diagnostic}`;
                         return result;
                     }
@@ -1123,7 +1167,7 @@ ${TREATMENT_TEMPLATE}`;
                 generationConfig: { temperature: 0.15, maxOutputTokens: profile.maxOutputTokens },
             }, apiKey, onStatusUpdate, profile.tier, { thinking: profile.thinking, onStream: onReportStream, timeoutMs: profile.timeoutMs });
             const report = parseReportSections(extractText(data));
-            if (report) return attachReferences(report, passages);
+            if (report) return extractDepFields(attachReferences(report, passages), apiKey);
             failure = 'la réponse de Gemini était vide.';
         } catch (e) {
             console.warn('Gemini Audio synthesis failed:', e);

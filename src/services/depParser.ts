@@ -4,11 +4,21 @@ import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
  * Intelligent parser that converts raw diagnostic text & treatment plan from OrthoMind analysis
  * into structured Sécurité Sociale DEP Form data.
  */
+// Champs texte de la DEP rédigés par l'IA à partir de son propre compte-rendu
+export interface DepAiFields {
+    agenesie?: string;
+    facteurFonctionnel?: string;
+    dentsIncluesOuSurnumeraires?: string;
+    malpositions?: string;
+    planDeTraitement?: string;
+}
+
 export const extractDepDataFromAnalysis = (
     diagnosticText: string,
     traitementText: string,
     patientFullName = '',
-    patientId = ''
+    patientId = '',
+    aiFields?: DepAiFields
 ): OrthoMindDepData => {
     // Separate first and last name if provided
     let patientNom = 'PATIENT';
@@ -98,33 +108,42 @@ export const extractDepDataFromAnalysis = (
 
     // --- 6. MALPOSITIONS & DENTS INCLUES ---
     if (fullLower.includes('impacté') || fullLower.includes('incluse') || fullLower.includes('surnuméraire') || fullLower.includes('mesiodens')) {
-        dep.anomaliesAlveolaires.dentsIncluesOuSurnumeraires = 'Dents inclues / Mesiodens identifié';
+        dep.anomaliesAlveolaires.dentsIncluesOuSurnumeraires = 'Dent incluse ou surnuméraire évoquée : à préciser';
     }
     if (fullLower.includes('rotation') || fullLower.includes('lingualisation') || fullLower.includes('vestibulo-version')) {
-        dep.anomaliesAlveolaires.malpositions = 'Rotations & lingualisation incisives mandibulaires';
+        dep.anomaliesAlveolaires.malpositions = 'Malpositions évoquées : à préciser';
     }
 
     // --- 7. AGÉNÉSIE ---
     if (fullLower.includes('agénésie') || fullLower.includes('agenesie') || fullLower.includes('dent manquante')) {
         dep.agenesie = 'Agénésie évoquée dans le compte-rendu : à confirmer (radiographie panoramique)';
     } else {
-        dep.agenesie = 'Aucune agénésie constatée';
+        dep.agenesie = 'Non évalué';
     }
 
     // --- 8. FACTEUR FONCTIONNEL ---
     if (fullLower.includes('déglutition') || fullLower.includes('deglutition') || fullLower.includes('respiration') || fullLower.includes('interposition') || fullLower.includes('pulsion linguale')) {
-        dep.facteurFonctionnel = 'Déglutition atypique avec interposition linguale antérieure et respiration buccale';
+        dep.facteurFonctionnel = 'Trouble fonctionnel évoqué (déglutition / ventilation) : à préciser';
     } else if (fullLower.includes('mentonnier') || fullLower.includes('incompétence labiale')) {
         dep.facteurFonctionnel = 'Incompétence labiale au repos et contraction compensatoire du muscle mentonnier';
     } else {
-        dep.facteurFonctionnel = 'Déglutition atypique et pulsion linguale antérieure lors de l\'élocution';
+        dep.facteurFonctionnel = 'Non évalué';
     }
 
     // --- 9. PLAN DE TRAITEMENT (Formaté pour DEP) ---
     if (traitementText && traitementText.trim()) {
         dep.planDeTraitement = treatmentToDepString(traitementText);
     } else {
-        dep.planDeTraitement = 'A: Correction de la déglutition et de la respiration nasale 1°. Aligneurs sup et inf avec taquets fixes 5°. Traction intermaxillaire de Classe II 6°. Finition 7°. Contention';
+        dep.planDeTraitement = '';
+    }
+
+    // --- Champs rédigés par l'IA : prioritaires sur les déductions par mots-clés ---
+    if (aiFields) {
+        if (aiFields.agenesie) dep.agenesie = aiFields.agenesie;
+        if (aiFields.facteurFonctionnel) dep.facteurFonctionnel = aiFields.facteurFonctionnel;
+        if (aiFields.dentsIncluesOuSurnumeraires) dep.anomaliesAlveolaires.dentsIncluesOuSurnumeraires = aiFields.dentsIncluesOuSurnumeraires;
+        if (aiFields.malpositions) dep.anomaliesAlveolaires.malpositions = aiFields.malpositions;
+        if (aiFields.planDeTraitement) dep.planDeTraitement = aiFields.planDeTraitement;
     }
 
     // --- 10. COMMENTAIRES ---
