@@ -29,6 +29,8 @@ interface AudioConsultationProps {
     onTranscriptChange?: (transcript: string) => void;
     /** Dictée déjà saisie (conservée quand on change d'onglet) */
     initialTranscript?: string;
+    /** Masque le bouton de compte-rendu audio (le compte-rendu principal de l'écran Analyse s'en charge) */
+    hideSynthesisCta?: boolean;
     onViewPatientFile?: (patientId?: string) => void;
 }
 
@@ -85,6 +87,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
     onSendToOrthoMind,
     onTranscriptChange,
     initialTranscript = '',
+    hideSynthesisCta = false,
     onViewPatientFile
 }) => {
     // Recording & State
@@ -845,6 +848,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 />
 
                 {/* PROMINENT CALL TO ACTION BANNER FOR SYNTHESIZING THE CONSULTATION */}
+                {!hideSynthesisCta && (
                 <div className="synthesis-cta-banner">
                     <div className="synthesis-cta-info">
                         <div className="synthesis-cta-icon-box">
@@ -890,6 +894,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                         )}
                     </div>
                 </div>
+                )}
             </div>
 
             {/* SYNTHESIS REFLECTION CONSOLE WITH ROBOT LIGHT BEAM SCANNER */}

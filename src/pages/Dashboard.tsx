@@ -1287,6 +1287,7 @@ const Dashboard = () => {
                             <div className="analyse-right-column" id="dictation-section">
                                 <AudioConsultation
                                     initialTranscript={practitionerDictation}
+                                    hideSynthesisCta
                                     patientName={patientName} 
                                     selectedPatientId={selectedPatientObj?.id}
                                     patient={selectedPatientObj}
