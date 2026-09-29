@@ -92,7 +92,7 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
     };
 
     return (
-        <div className="patient-onyxceph-container">
+        <div className="patient-onyxceph-container" onClick={(e) => e.stopPropagation()}>
             <div className="patient-onyxceph-header">
                 <div className="onyxceph-badge-logo">
                     <img src={logoOnyxceph} alt="OnyxCeph Logo" className="onyxceph-header-logo-img" />
@@ -116,7 +116,15 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
             )}
 
             {isEditing ? (
-                <form className="onyxceph-form-card" onSubmit={handleSave}>
+                <form
+                    className="onyxceph-form-card"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSave(e);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <div className="onyxceph-form-header">
                         <h3 className="onyxceph-form-title">
                             <Icon name="edit" size={16} />
@@ -150,7 +158,8 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                             <button
                                 type="button"
                                 className="om-btn om-btn--ghost"
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     setUrlInput(savedUrl);
                                     setIsEditing(false);
                                 }}
@@ -170,7 +179,7 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                     </div>
                 </form>
             ) : (
-                <div className="onyxceph-link-card">
+                <div className="onyxceph-link-card" onClick={(e) => e.stopPropagation()}>
                     <div className="onyxceph-card-main">
                         <div className="onyxceph-status-icon">
                             <Icon name="check" size={20} />
@@ -183,6 +192,7 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                                 rel="noopener noreferrer"
                                 className="onyxceph-display-url"
                                 title={savedUrl}
+                                onClick={(e) => e.stopPropagation()}
                             >
                                 {savedUrl}
                             </a>
@@ -195,6 +205,7 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                             target="_blank"
                             rel="noopener noreferrer"
                             className="om-btn om-btn--primary onyxceph-btn-main"
+                            onClick={(e) => e.stopPropagation()}
                         >
                             <Icon name="externalLink" size={16} />
                             Ouvrir OnyxCeph
@@ -203,7 +214,10 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                         <button
                             type="button"
                             className="om-btn om-btn--secondary"
-                            onClick={handleCopy}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopy();
+                            }}
                         >
                             <Icon name="copy" size={16} />
                             {copied ? 'Copié !' : 'Copier le lien'}
@@ -212,7 +226,10 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                         <button
                             type="button"
                             className="om-btn om-btn--ghost"
-                            onClick={() => setIsEditing(true)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsEditing(true);
+                            }}
                         >
                             <Icon name="edit" size={16} />
                             Modifier
@@ -221,7 +238,10 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                         <button
                             type="button"
                             className="om-btn om-btn--ghost om-btn--danger-text"
-                            onClick={handleDelete}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete();
+                            }}
                             title="Supprimer le lien"
                         >
                             <Icon name="trash" size={16} />
@@ -229,7 +249,7 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                     </div>
 
                     {/* Aperçu / Intégration interactive */}
-                    <div className="onyxceph-frame-container">
+                    <div className="onyxceph-frame-container" onClick={(e) => e.stopPropagation()}>
                         <div className="onyxceph-frame-header">
                             <span className="onyxceph-frame-title">
                                 <Icon name="eye" size={14} /> Aperçu direct du dossier OnyxCeph
@@ -239,6 +259,7 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="om-btn om-btn--ghost om-btn--sm"
+                                onClick={(e) => e.stopPropagation()}
                             >
                                 Grand écran <Icon name="externalLink" size={12} />
                             </a>

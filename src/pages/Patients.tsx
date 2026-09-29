@@ -208,7 +208,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
         setActiveTab('dep');
         fetchPatientAppointments();
         loadPatientDiagnostics();
-    }, [selectedPatient]);
+    }, [selectedPatient?.id]);
 
     // La fiche est une fenêtre : Échap la ferme (sauf si une sous-fenêtre est ouverte)
     useEffect(() => {
