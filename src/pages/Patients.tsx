@@ -503,11 +503,11 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             ['dep', 'Fiche DEP', null, 'clipboard'],
                             ['dossier', 'Diagnostics', patientAnalyses.length, 'stethoscope'],
                             ['photos', 'Photos', null, 'camera'],
+                            ['travaux', 'Planning Monday', null, null],
                             ['onyxceph', 'OnyxCeph', null, 'link'],
                             ['synthese', 'Synthèse', null, 'chart'],
                             ['rdv', 'RDV / suivi', patientAppointments.length, 'calendar'],
                             ['admin', 'Administratif', null, 'folder'],
-                            ['travaux', 'Planning Monday', null, null],
                         ] as [FicheTab, string, number | null, IconName | null][]).map(([key, label, count, icon]) => (
                             <button
                                 key={key}
