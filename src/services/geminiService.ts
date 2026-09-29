@@ -775,6 +775,31 @@ ${TREATMENT_TEMPLATE}`;
         } catch (err) {
             console.warn('API Gemini final analysis failed completely:', err);
             failure = describeAiFailure(err);
+
+            // Plafond de tokens par minute trop bas pour une requête complète :
+            // version allégée (sans renvoyer les photos, moins d'extraits) pour que l'analyse aboutisse
+            if (/token_count|limite de débit|quota/i.test(String((err as any)?.message) + failure) && findings.observations?.length) {
+                try {
+                    const light = passages.slice(0, 5).map(p => ({ ...p, content: p.content.slice(0, 900) }));
+                    onStatusUpdate?.('Plafond Google atteint : rédaction en version allégée à partir des constats...');
+                    await new Promise(r => setTimeout(r, 15000));
+                    const lightPrompt = finalPrompt
+                        .replace(buildLibraryBlock(passages), buildLibraryBlock(light))
+                        .replace('des photographies ci-jointes', 'des photographies (à partir du relevé préliminaire ci-dessous, les images ne sont pas rejointes)');
+                    const lightData = await executeGeminiCall('generateContent', {
+                        contents: [{ parts: [{ text: lightPrompt }] }],
+                        generationConfig: { temperature: 0.2, maxOutputTokens: profile.maxOutputTokens },
+                    }, apiKey, onStatusUpdate, 'fast', { thinking: 'balanced', onStream: onReportStream, timeoutMs: 90000 });
+                    const report = parseReportSections(extractText(lightData));
+                    if (report) {
+                        const result = attachReferences(report, light);
+                        result.diagnostic = `⚠️ Version allégée : rédigée à partir de la lecture préliminaire des clichés (plafond de débit Google atteint). À vérifier sur les images.\n\n${result.diagnostic}`;
+                        return result;
+                    }
+                } catch (lightErr) {
+                    failure = describeAiFailure(lightErr);
+                }
+            }
         }
     }
 
