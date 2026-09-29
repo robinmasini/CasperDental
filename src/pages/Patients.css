@@ -303,6 +303,10 @@
     top: 0;
     z-index: 2;
     background: var(--om-surface-solid);
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
 }
 
 .fiche-tab-content {
@@ -606,6 +610,10 @@
         top: 57px;
         z-index: 1;
         background: var(--om-bg);
+        overflow-x: auto;
+        overflow-y: hidden;
+        touch-action: pan-x;
+        overscroll-behavior-x: contain;
     }
 
     .fiche-tab-content {
