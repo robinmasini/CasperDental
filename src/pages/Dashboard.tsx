@@ -235,6 +235,14 @@ const Dashboard = () => {
     const [streamingReport, setStreamingReport] = useState('');
     // Dictée du praticien pendant l'examen (consultation audio), croisée avec les clichés
     const [practitionerDictation, setPractitionerDictation] = useState('');
+
+    // Avertit avant de quitter la page pendant une analyse en cours
+    useEffect(() => {
+        if (!isScanning) return;
+        const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+        window.addEventListener('beforeunload', onBeforeUnload);
+        return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    }, [isScanning]);
     const [analysisMode, setAnalysisModeState] = useState<AnalysisMode>(getAnalysisMode());
     const [activeResultTab, setActiveResultTab] = useState<'diag' | 'treat' | 'dep'>('diag');
 
@@ -776,9 +784,21 @@ const Dashboard = () => {
                     diagnostic_text: result.diagnostic,
                     traitement_text: result.traitement,
                     dep_data: extractDepDataFromAnalysis(result.diagnostic, result.traitement, currentPatient, selectedPatientObj?.id, result.dep),
+                    transcript: practitionerDictation.trim() || null,
                     meta: result.meta ? { ...result.meta } : null,
                 });
                 setLastSavedRecordId(saved.id);
+                // Archivage des clichés dans l'onglet Photos de la fiche patient
+                if (selectedPatientObj?.id) {
+                    addLog('[SYSTEM] Archivage des clichés dans l\'onglet Photos du patient...');
+                    try {
+                        const count = await uploadPatientPhotos(selectedPatientObj.id, imageFiles, saved.id);
+                        addLog(count ? `[SUCCESS] ${count} cliché(s) archivé(s) dans la fiche patient.` : '[WARNING] Aucun cliché archivé (patient non enregistré dans la base du cabinet).');
+                    } catch (photoErr: any) {
+                        addLog(`[ERROR] ${photoErr.message}`);
+                        alert(`Le compte-rendu est enregistré, mais les photos n'ont pas pu être archivées : ${photoErr.message}`);
+                    }
+                }
                 addLog('[SUCCESS] Rapport et fiche DEP enregistrés dans le dossier du patient.');
                 loadHistory();
             } catch (saveErr: any) {
