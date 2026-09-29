@@ -177,10 +177,11 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             } catch (err: any) {
                 setDataError(err.message);
             }
-            setPatientAnalyses(matched);
+            const cleanMatched = matched.filter(ana => !ana.diagnostic_text?.startsWith('ONYXCEPH_LINK::') && ana.type !== ('onyxceph' as any));
+            setPatientAnalyses(cleanMatched);
 
             try {
-                const cloudOnyxUrl = await getOnyxCephUrlRecord(selectedPatient.id);
+                const cloudOnyxUrl = await getOnyxCephUrlRecord(selectedPatient.id, `${selectedPatient.nom} ${selectedPatient.prenom}`);
                 if (cloudOnyxUrl) {
                     setSelectedPatient(prev => prev ? {
                         ...prev,

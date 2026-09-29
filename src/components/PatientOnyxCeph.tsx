@@ -30,7 +30,7 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
         setUrlInput(initialUrl || '');
         setIsEditing(!initialUrl);
 
-        getOnyxCephUrlRecord(patientId).then((remoteUrl) => {
+        getOnyxCephUrlRecord(patientId, patientName).then((remoteUrl) => {
             if (isMounted && remoteUrl) {
                 setSavedUrl(remoteUrl);
                 setUrlInput(remoteUrl);
@@ -41,7 +41,7 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
         return () => {
             isMounted = false;
         };
-    }, [patientId, initialUrl]);
+    }, [patientId, patientName, initialUrl]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
