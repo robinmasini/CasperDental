@@ -1025,7 +1025,7 @@ Réponds uniquement en JSON :
 }`;
             const data = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 4096 },
+                generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 8192 },
             }, apiKey, undefined, 'fast', { thinking: 'minimal', timeoutMs: 30000 });
             facts = parseJsonResponse<ConsultationFacts>(extractText(data)) || {};
             console.log('[OrthoMind] Faits extraits de la consultation :', facts);
