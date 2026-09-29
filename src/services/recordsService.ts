@@ -10,7 +10,7 @@ import type { OrthoMindDepData } from '../types/dep';
 // Mode démo (Supabase non configuré) : stockage local du navigateur.
 // ============================================================================
 
-export type RecordType = 'photos' | 'audio' | 'dep';
+export type RecordType = 'photos' | 'audio' | 'dep' | 'onyxceph';
 
 export interface ClinicalRecord {
     id: string;
@@ -91,6 +91,106 @@ export const updateRecordDep = async (recordId: string, depData: OrthoMindDepDat
     }
     const { error } = await supabase.from('clinical_records').update({ dep_data: depData }).eq('id', recordId);
     if (error) throw cloudError('Enregistrement de la fiche DEP', error);
+};
+
+// ----------------------------------------------------------------------------
+// Synchro OnyxCeph inter-appareils (desktop/mobile) via clinical_records
+// ----------------------------------------------------------------------------
+export const getOnyxCephUrlRecord = async (patientId: string): Promise<string | null> => {
+    if (!patientId) return null;
+    const localKey = `casper_onyxceph_link_${patientId}`;
+
+    if (isCloudMode()) {
+        try {
+            const uuid = asUuid(patientId);
+            if (uuid) {
+                const { data } = await supabase
+                    .from('clinical_records')
+                    .select('diagnostic_text')
+                    .eq('patient_id', uuid)
+                    .eq('type', 'onyxceph')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (data?.diagnostic_text) {
+                    localStorage.setItem(localKey, data.diagnostic_text);
+                    return data.diagnostic_text;
+                }
+            }
+        } catch (e) {
+            console.error('Erreur lecture OnyxCeph cloud:', e);
+        }
+    }
+
+    const localRecord = readLocal().find(r => r.patient_id === patientId && r.type === 'onyxceph');
+    if (localRecord?.diagnostic_text) {
+        return localRecord.diagnostic_text;
+    }
+
+    return localStorage.getItem(localKey);
+};
+
+export const saveOnyxCephUrlRecord = async (patientId: string, patientName: string, url: string): Promise<void> => {
+    if (!patientId) return;
+    const localKey = `casper_onyxceph_link_${patientId}`;
+
+    if (url) {
+        localStorage.setItem(localKey, url);
+    } else {
+        localStorage.removeItem(localKey);
+    }
+
+    if (isCloudMode()) {
+        const uuid = asUuid(patientId);
+        if (uuid) {
+            const { data: existing } = await supabase
+                .from('clinical_records')
+                .select('id')
+                .eq('patient_id', uuid)
+                .eq('type', 'onyxceph')
+                .maybeSingle();
+
+            if (existing?.id) {
+                const { error } = await supabase
+                    .from('clinical_records')
+                    .update({ diagnostic_text: url })
+                    .eq('id', existing.id);
+                if (error) console.error('Erreur MAJ OnyxCeph cloud:', error.message);
+            } else if (url) {
+                const { error } = await supabase
+                    .from('clinical_records')
+                    .insert({
+                        patient_id: uuid,
+                        patient_name: patientName || 'Patient',
+                        type: 'onyxceph',
+                        images: [],
+                        diagnostic_text: url,
+                        traitement_text: 'Lien OnyxCeph',
+                    });
+                if (error) console.error('Erreur insertion OnyxCeph cloud:', error.message);
+            }
+        }
+    } else {
+        const records = readLocal();
+        const existingIdx = records.findIndex(r => r.patient_id === patientId && r.type === 'onyxceph');
+        if (existingIdx !== -1) {
+            records[existingIdx].diagnostic_text = url;
+            writeLocal(records);
+        } else if (url) {
+            const saved: ClinicalRecord = {
+                id: `local-onyxceph-${Date.now()}`,
+                created_at: new Date().toISOString(),
+                patient_id: patientId,
+                patient_name: patientName || 'Patient',
+                type: 'onyxceph',
+                images: [],
+                diagnostic_text: url,
+                traitement_text: 'Lien OnyxCeph',
+            };
+            writeLocal([saved, ...records]);
+        }
+    }
 };
 
 // ----------------------------------------------------------------------------

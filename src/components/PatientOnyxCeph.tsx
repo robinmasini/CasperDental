@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Icon from './Icon';
 import logoOnyxceph from '../assets/logo-onyxceph.png';
+import { getOnyxCephUrlRecord } from '../services/recordsService';
 import './PatientOnyxCeph.css';
 
 interface PatientOnyxCephProps {
@@ -11,6 +12,7 @@ interface PatientOnyxCephProps {
 }
 
 const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
+    patientId,
     patientName,
     initialUrl = '',
     onSaveUrl
@@ -23,10 +25,23 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     useEffect(() => {
+        let isMounted = true;
         setSavedUrl(initialUrl || '');
         setUrlInput(initialUrl || '');
         setIsEditing(!initialUrl);
-    }, [initialUrl]);
+
+        getOnyxCephUrlRecord(patientId).then((remoteUrl) => {
+            if (isMounted && remoteUrl) {
+                setSavedUrl(remoteUrl);
+                setUrlInput(remoteUrl);
+                setIsEditing(false);
+            }
+        });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [patientId, initialUrl]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -10,7 +10,7 @@ import Icon, { IconName } from '../components/Icon';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import OnyxCephTravauxTable from '../components/OnyxCephTravauxTable';
-import { listRecords, saveRecord, updateRecordDep, ClinicalRecord } from '../services/recordsService';
+import { listRecords, saveRecord, updateRecordDep, ClinicalRecord, getOnyxCephUrlRecord, saveOnyxCephUrlRecord } from '../services/recordsService';
 import PatientPhotos from '../components/PatientPhotos';
 import PatientOnyxCeph from '../components/PatientOnyxCeph';
 import logoMonday from '../assets/logo-monday.png';
@@ -179,6 +179,16 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             }
             setPatientAnalyses(matched);
 
+            try {
+                const cloudOnyxUrl = await getOnyxCephUrlRecord(selectedPatient.id);
+                if (cloudOnyxUrl) {
+                    setSelectedPatient(prev => prev ? {
+                        ...prev,
+                        raw: { ...prev.raw, onyxceph_url: cloudOnyxUrl }
+                    } : null);
+                }
+            } catch (e) {}
+
             if (matched.length > 0) {
                 setCurrentDepData(depFromSession(matched[0], selectedPatient));
                 setDepSessionId(matched[0].id || null);
@@ -283,13 +293,12 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
     const handleSaveOnyxCephUrl = async (newUrl: string) => {
         if (!selectedPatient) return;
-        const updated = await updatePatient(selectedPatient.id, { onyxceph_url: newUrl });
-        if (updated) {
-            setSelectedPatient(prev => prev ? {
-                ...prev,
-                raw: { ...prev.raw, onyxceph_url: newUrl }
-            } : null);
-        }
+        await saveOnyxCephUrlRecord(selectedPatient.id, `${selectedPatient.nom} ${selectedPatient.prenom}`, newUrl);
+        await updatePatient(selectedPatient.id, { onyxceph_url: newUrl });
+        setSelectedPatient(prev => prev ? {
+            ...prev,
+            raw: { ...prev.raw, onyxceph_url: newUrl }
+        } : null);
     };
 
     const depSession = patientAnalyses.find(a => a.id === depSessionId);
