@@ -35,17 +35,14 @@ export const getAnalysisMode = (): AnalysisMode =>
 export const setAnalysisMode = (mode: AnalysisMode) => localStorage.setItem(MODE_KEY, mode);
 
 const finalCallProfile = () => getAnalysisMode() === 'approfondi'
-    ? { tier: 'expert' as ModelTier, thinking: 'deep' as ThinkingDepth, maxOutputTokens: 32768, style: '' }
+    ? { tier: 'expert' as ModelTier, thinking: 'deep' as ThinkingDepth, maxOutputTokens: 32768, timeoutMs: 240000, style: '' }
     : {
         tier: 'fast' as ModelTier,
         thinking: 'balanced' as ThinkingDepth,
         maxOutputTokens: 12288,
+        timeoutMs: 90000,
         style: `\n10. Style : dense et synthétique, directement exploitable au fauteuil. Phrases courtes, aucune redite, 700 à 1 000 mots au total. Une section sans objet tient en une ligne.`,
     };
-
-// Échec bloquant (clé refusée, quota) : inutile de poursuivre l'analyse
-const isBlockingFailure = (err: unknown) =>
-    /quota|RESOURCE_EXHAUSTED|429|API key not valid|invalid authentication|ACCESS_TOKEN_TYPE|PERMISSION_DENIED|401|403/i.test(String((err as any)?.message || err));
 
 // Informations patient utiles au raisonnement clinique (l'âge conditionne
 // fortement la stratégie : interception en croissance vs compensation adulte)
@@ -210,14 +207,27 @@ const authModesFor = (apiKey: string): GeminiAuthMode[] => {
     return ['api-key'];
 };
 
-export const geminiFetch = async (url: string, init: RequestInit, apiKey: string): Promise<Response> => {
+// Aucune requête ne peut plus bloquer l'application : délai maximal par appel
+const DEFAULT_TIMEOUT_MS = 30000;
+
+export const geminiFetch = async (url: string, init: RequestInit, apiKey: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<Response> => {
     const modes = authModesFor(apiKey);
     let response: Response | null = null;
     for (const mode of modes) {
         const headers = new Headers(init.headers);
         if (mode === 'bearer') headers.set('Authorization', `Bearer ${apiKey}`);
         else headers.set('x-goog-api-key', apiKey);
-        response = await fetch(url, { ...init, headers });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            response = await fetch(url, { ...init, headers, signal: init.signal || controller.signal });
+        } catch (err: any) {
+            if (controller.signal.aborted) throw new Error(`délai dépassé (${Math.round(timeoutMs / 1000)} s sans réponse de Google)`);
+            throw err;
+        } finally {
+            // En flux, le délai reste actif pendant la lecture (voir readStreamedResponse)
+            if (!/alt=sse/.test(url)) clearTimeout(timer);
+        }
         if (response.status !== 401 && response.status !== 403) {
             if (modes.length > 1) preferredAuthMode = mode;
             return response;
@@ -230,7 +240,7 @@ const listAvailableModels = (apiKey: string): Promise<string[] | null> => {
     if (availableModelsPromise) return availableModelsPromise;
     availableModelsPromise = (async () => {
         try {
-            const response = await geminiFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', {}, apiKey);
+            const response = await geminiFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', {}, apiKey, 10000);
             if (!response.ok) return null;
             const data = await response.json();
             return (data.models || [])
@@ -332,7 +342,20 @@ export interface GeminiCallOptions {
     deepThinking?: boolean;
     /** Reçoit le texte au fur et à mesure de sa rédaction (affichage en direct) */
     onStream?: (textSoFar: string) => void;
+    /** Délai maximal par tentative (ms) */
+    timeoutMs?: number;
 }
+
+// Quand tous les modèles échouent, on affiche la cause la plus parlante
+// (clé ou quota plutôt qu'un modèle retiré essayé en dernier recours)
+const errorPriority = (err: any): number => {
+    const msg = String(err?.message || err);
+    if (/API key not valid|invalid authentication|ACCESS_TOKEN_TYPE|PERMISSION_DENIED/i.test(msg)) return 5;
+    if (/quota|RESOURCE_EXHAUSTED|429|limit: \d/i.test(msg)) return 4;
+    if (/délai dépassé/i.test(msg)) return 3;
+    if (/no longer available|not found|deprecated/i.test(msg)) return 1;
+    return 2;
+};
 
 // Lecture d'une réponse en flux (SSE) : renvoie le même format qu'un appel classique
 const readStreamedResponse = async (response: Response, onStream: (text: string) => void): Promise<any> => {
@@ -384,6 +407,11 @@ export const executeGeminiCall = async (
     const models = await resolveModelChain(apiKey, tier);
     const tried = new Set<string>();
     let lastError: any = null;
+    let bestError: any = null;
+    const recordError = (err: any) => {
+        lastError = err;
+        if (!bestError || errorPriority(err) >= errorPriority(bestError)) bestError = err;
+    };
 
     for (let m = 0; m < models.length; m++) {
         const model = models[m];
@@ -407,7 +435,8 @@ export const executeGeminiCall = async (
                 const response = await geminiFetch(
                     url,
                     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
-                    apiKey
+                    apiKey,
+                    options.timeoutMs || 90000
                 );
 
                 if (response.ok) {
@@ -420,13 +449,13 @@ export const executeGeminiCall = async (
                         return data;
                     }
                     const reason = data.candidates?.[0]?.finishReason || data.promptFeedback?.blockReason || 'raison inconnue';
-                    lastError = new Error(`[${model}] Réponse vide (${reason})`);
+                    recordError(new Error(`[${model}] Réponse vide (${reason})`));
                     // Réponse vide pour cause de limite ou de filtre : un nouvel essai identique n'y changera rien
                     retryable = false;
                 } else {
                     const errorData = await response.json().catch(() => ({}));
                     const message: string = errorData.error?.message || `Status: ${response.status}`;
-                    lastError = new Error(`[${model}] ${message}`);
+                    recordError(new Error(`[${model}] ${message}`));
                     if (isRetirementError(response.status, message)) {
                         // Modèle retiré : on le mémorise et on essaie celui que Google recommande
                         markModelRetired(model);
@@ -445,7 +474,9 @@ export const executeGeminiCall = async (
                 }
                 console.warn(`Gemini call failed on ${model} (attempt ${attempt + 1}): ${lastError.message}`);
             } catch (err: any) {
-                lastError = err;
+                recordError(new Error(`[${model}] ${err?.message || err}`));
+                // Délai dépassé : un nouvel essai identique ferait attendre autant
+                if (/délai dépassé/.test(String(err?.message))) retryable = false;
                 console.warn(`Network/Fetch error for ${model} (attempt ${attempt + 1}):`, err);
             }
 
@@ -457,7 +488,7 @@ export const executeGeminiCall = async (
         }
     }
 
-    throw lastError || new Error("Échec de toutes les tentatives d'appel Gemini.");
+    throw bestError || lastError || new Error("Échec de toutes les tentatives d'appel Gemini.");
 };
 
 // Traduit une erreur technique en cause compréhensible pour le praticien
@@ -470,7 +501,8 @@ export const describeAiFailure = (err: unknown): string => {
         if (/per.?day|PerDay/i.test(msg)) return 'le quota gratuit journalier de Gemini est épuisé. Activez la facturation du projet Google (quelques centimes par analyse) pour lever la limite.';
         return `la limite gratuite de Gemini est atteinte${wait ? ` : réessayez dans ${Math.ceil(Number(wait))} s` : ''}. Pour ne plus être bloqué, activez la facturation du projet Google (quelques centimes par analyse).`;
     }
-    if (/Failed to fetch|NetworkError|network/i.test(msg)) return 'le réseau est indisponible.';
+    if (/délai dépassé/i.test(msg)) return 'Google ne répond pas assez vite (serveurs saturés ou réseau lent). Réessayez dans un instant.';
+    if (/Failed to fetch|NetworkError|network|Load failed/i.test(msg)) return 'le réseau est indisponible.';
     if (/SAFETY|blockReason|PROHIBITED/i.test(msg)) return 'la réponse a été bloquée par les filtres de Google.';
     return msg ? `erreur Gemini : ${msg.slice(0, 160)}` : 'erreur inconnue.';
 };
@@ -658,13 +690,13 @@ Réponds uniquement en JSON :
             const data = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: prompt }, ...previewParts] }],
                 generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 3072 },
-            }, apiKey, undefined, 'fast', { thinking: 'minimal' });
+            }, apiKey, undefined, 'fast', { thinking: 'minimal', timeoutMs: 30000 });
             findings = parseJsonResponse<VisionFindings>(extractText(data)) || {};
             console.log('[OrthoMind] Constats visuels :', findings);
         } catch (e) {
             console.warn('Lecture préliminaire des clichés impossible :', e);
-            // Clé refusée ou quota atteint : on s'arrête tout de suite plutôt que de faire attendre
-            if (isBlockingFailure(e)) throw new Error(`Analyse impossible : ${describeAiFailure(e)}`);
+            // Tous les modèles ont échoué : inutile de poursuivre, on prévient tout de suite
+            throw new Error(`Analyse impossible : ${describeAiFailure(e)}`);
         }
     }
 
@@ -715,7 +747,7 @@ ${TREATMENT_TEMPLATE}`;
             const resultData = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: finalPrompt }, ...imageParts] }],
                 generationConfig: { temperature: 0.2, maxOutputTokens: profile.maxOutputTokens },
-            }, apiKey, onStatusUpdate, profile.tier, { thinking: profile.thinking, onStream: onReportStream });
+            }, apiKey, onStatusUpdate, profile.tier, { thinking: profile.thinking, onStream: onReportStream, timeoutMs: profile.timeoutMs });
             const report = parseReportSections(extractText(resultData));
             if (report) return attachReferences(report, passages);
             failure = 'la réponse de Gemini était vide.';
@@ -945,12 +977,12 @@ Réponds uniquement en JSON :
             const data = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 4096 },
-            }, apiKey, undefined, 'fast', { thinking: 'minimal' });
+            }, apiKey, undefined, 'fast', { thinking: 'minimal', timeoutMs: 30000 });
             facts = parseJsonResponse<ConsultationFacts>(extractText(data)) || {};
             console.log('[OrthoMind] Faits extraits de la consultation :', facts);
         } catch (e) {
             console.warn('Extraction des faits cliniques impossible :', e);
-            if (isBlockingFailure(e)) throw new Error(`Compte-rendu impossible : ${describeAiFailure(e)}`);
+            throw new Error(`Compte-rendu impossible : ${describeAiFailure(e)}`);
         }
     }
 
@@ -1007,7 +1039,7 @@ ${TREATMENT_TEMPLATE}`;
             const data = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { temperature: 0.15, maxOutputTokens: profile.maxOutputTokens },
-            }, apiKey, onStatusUpdate, profile.tier, { thinking: profile.thinking, onStream: onReportStream });
+            }, apiKey, onStatusUpdate, profile.tier, { thinking: profile.thinking, onStream: onReportStream, timeoutMs: profile.timeoutMs });
             const report = parseReportSections(extractText(data));
             if (report) return attachReferences(report, passages);
             failure = 'la réponse de Gemini était vide.';
