@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Patient, getPatients } from '../services/patientService';
+import { Patient, getPatients, updatePatient } from '../services/patientService';
 import { getAppointmentsByPatientId } from '../services/appointmentService';
 import PatientForm from '../components/PatientForm';
 import PatientPortal from './PatientPortal';
@@ -12,6 +12,7 @@ import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import OnyxCephTravauxTable from '../components/OnyxCephTravauxTable';
 import { listRecords, saveRecord, updateRecordDep, ClinicalRecord } from '../services/recordsService';
 import PatientPhotos from '../components/PatientPhotos';
+import PatientOnyxCeph from '../components/PatientOnyxCeph';
 import logoMonday from '../assets/logo-monday.png';
 import './Patients.css';
 
@@ -38,7 +39,7 @@ interface Appointment {
     praticien: string;
 }
 
-type FicheTab = 'dep' | 'dossier' | 'photos' | 'synthese' | 'rdv' | 'admin' | 'travaux';
+type FicheTab = 'dep' | 'dossier' | 'photos' | 'onyxceph' | 'synthese' | 'rdv' | 'admin' | 'travaux';
 
 // Calculate age from date of birth
 const calculateAge = (dateNaissance: string): string => {
@@ -279,6 +280,17 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
         }
     };
 
+    const handleSaveOnyxCephUrl = async (newUrl: string) => {
+        if (!selectedPatient) return;
+        const updated = await updatePatient(selectedPatient.id, { onyxceph_url: newUrl });
+        if (updated) {
+            setSelectedPatient(prev => prev ? {
+                ...prev,
+                raw: { ...prev.raw, onyxceph_url: newUrl }
+            } : null);
+        }
+    };
+
     const depSession = patientAnalyses.find(a => a.id === depSessionId);
     const raw = selectedPatient?.raw;
 
@@ -490,6 +502,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             ['dep', 'Fiche DEP', null, 'clipboard'],
                             ['dossier', 'Diagnostics', patientAnalyses.length, 'stethoscope'],
                             ['photos', 'Photos', null, 'camera'],
+                            ['onyxceph', 'OnyxCeph', null, 'link'],
                             ['synthese', 'Synthèse', null, 'chart'],
                             ['rdv', 'RDV / suivi', patientAppointments.length, 'calendar'],
                             ['admin', 'Administratif', null, 'folder'],
@@ -601,6 +614,15 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
                         {activeTab === 'photos' && (
                             <PatientPhotos patientId={selectedPatient.id} patientName={`${selectedPatient.prenom} ${selectedPatient.nom}`} />
+                        )}
+
+                        {activeTab === 'onyxceph' && (
+                            <PatientOnyxCeph
+                                patientId={selectedPatient.id}
+                                patientName={`${selectedPatient.prenom} ${selectedPatient.nom}`}
+                                initialUrl={raw.onyxceph_url || ''}
+                                onSaveUrl={handleSaveOnyxCephUrl}
+                            />
                         )}
 
                         {activeTab === 'synthese' && (

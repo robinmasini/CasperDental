@@ -17,6 +17,7 @@ export interface Patient {
     portable?: string;
     email?: string;
     suivi_exclusif: boolean;
+    onyxceph_url?: string;
     // Responsable civil
     responsable_civilite?: string;
     responsable_nom?: string;
