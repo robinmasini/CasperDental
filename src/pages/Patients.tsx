@@ -503,7 +503,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             ['dep', 'Fiche DEP', null, 'clipboard'],
                             ['dossier', 'Diagnostics', patientAnalyses.length, 'stethoscope'],
                             ['photos', 'Photos', null, 'camera'],
-                            ['travaux', 'Planning Monday', null, null],
+                            ['travaux', 'Monday', null, null],
                             ['onyxceph', 'OnyxCeph', null, 'link'],
                             ['synthese', 'Synthèse', null, 'chart'],
                             ['rdv', 'RDV / suivi', patientAppointments.length, 'calendar'],

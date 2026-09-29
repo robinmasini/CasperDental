@@ -181,7 +181,7 @@ const OnyxCephTravauxTable: React.FC<OnyxCephTravauxTableProps> = ({
                 <div className="onyxceph-header-title">
                     <h3>
                         <img src={logoMonday} alt="Monday" className="onyxceph-logo" />
-                        Planning Monday cabinet
+                        Monday cabinet
                     </h3>
                 </div>
 
