@@ -60,8 +60,16 @@ const describePatient = (patientName?: string, ctx?: PatientClinicalContext): st
     return parts.length ? parts.join(' · ') : 'Informations patient non renseignées (âge inconnu : raisonner en conséquence et le signaler).';
 };
 
-// Retrieve the Gemini API key from localStorage or env variables
+// Clé partagée par le cabinet (chargée depuis la base après connexion) :
+// aucun praticien n'a à la saisir sur ses appareils.
+let cabinetGeminiKey: string | null = null;
+export const setCabinetGeminiKey = (key: string | null) => {
+    cabinetGeminiKey = key && key.trim().length > 5 ? key.trim() : null;
+};
+
+// Ordre : clé du cabinet › clé saisie sur cet appareil › variable d'environnement
 export const getGeminiApiKey = (): string => {
+    if (cabinetGeminiKey) return cabinetGeminiKey;
     const localKey = localStorage.getItem('casper_gemini_api_key') || localStorage.getItem('orthomind_gemini_api_key');
     if (localKey && localKey.trim().length > 5) return localKey.trim();
 

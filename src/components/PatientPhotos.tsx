@@ -1,0 +1,185 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import Icon from './Icon';
+import CameraCapture from './CameraCapture';
+import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable } from '../services/photosService';
+import './PatientPhotos.css';
+
+// Onglet Photos de la fiche patient : tous les clichés archivés, horodatés,
+// regroupés par jour, avec visionneuse plein écran.
+
+interface PatientPhotosProps {
+    patientId: string;
+    patientName: string;
+}
+
+const dayLabel = (iso: string) =>
+    new Date(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const timeLabel = (iso: string) =>
+    new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
+    const [photos, setPhotos] = useState<PatientPhoto[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+    const [showCamera, setShowCamera] = useState(false);
+    const galleryRef = useRef<HTMLInputElement>(null);
+    const canUseCamera = !!navigator.mediaDevices?.getUserMedia && window.matchMedia('(pointer: coarse)').matches;
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        try {
+            setPhotos(await listPatientPhotos(patientId));
+            setError(null);
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [patientId]);
+
+    useEffect(() => { load(); }, [load]);
+
+    const addPhotos = async (files: File[]) => {
+        if (files.length === 0) return;
+        setUploading(true);
+        try {
+            await uploadPatientPhotos(patientId, files);
+            await load();
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setUploading(false);
+            if (galleryRef.current) galleryRef.current.value = '';
+        }
+    };
+
+    // Navigation clavier dans la visionneuse
+    useEffect(() => {
+        if (viewerIndex === null) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') { e.stopImmediatePropagation(); setViewerIndex(null); }
+            if (e.key === 'ArrowRight') setViewerIndex(i => (i === null ? i : Math.min(photos.length - 1, i + 1)));
+            if (e.key === 'ArrowLeft') setViewerIndex(i => (i === null ? i : Math.max(0, i - 1)));
+        };
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
+    }, [viewerIndex, photos.length]);
+
+    if (!photosAvailable()) {
+        return <div className="om-empty"><p>Les photos sont archivées dans la base du cabinet : connectez-vous avec votre compte praticien pour les consulter.</p></div>;
+    }
+
+    // Regroupement par jour de prise
+    const groups: { day: string; items: { photo: PatientPhoto; index: number }[] }[] = [];
+    photos.forEach((photo, index) => {
+        const day = dayLabel(photo.taken_at);
+        const group = groups.find(g => g.day === day);
+        if (group) group.items.push({ photo, index });
+        else groups.push({ day, items: [{ photo, index }] });
+    });
+
+    const current = viewerIndex !== null ? photos[viewerIndex] : null;
+
+    const removeCurrent = async () => {
+        if (!current || !window.confirm('Supprimer définitivement cette photo du dossier ?')) return;
+        try {
+            await deletePatientPhoto(current);
+            setViewerIndex(null);
+            await load();
+        } catch (e: any) {
+            setError(e.message);
+        }
+    };
+
+    return (
+        <div className="patient-photos">
+            <div className="fiche-section-bar">
+                <h3 className="om-title">Photos de {patientName}</h3>
+                <div className="fiche-section-actions">
+                    <input
+                        ref={galleryRef}
+                        type="file"
+                        accept="image/*,.heic,.HEIC,.heif,.HEIF"
+                        multiple
+                        hidden
+                        onChange={(e) => addPhotos(Array.from(e.target.files || []))}
+                    />
+                    {canUseCamera && (
+                        <button className="om-btn om-btn--primary om-btn--sm" onClick={() => setShowCamera(true)} disabled={uploading}>
+                            <Icon name="camera" /> Prendre des photos
+                        </button>
+                    )}
+                    <button className="om-btn om-btn--secondary om-btn--sm" onClick={() => galleryRef.current?.click()} disabled={uploading}>
+                        <Icon name="image" /> {uploading ? 'Envoi…' : 'Ajouter depuis la galerie'}
+                    </button>
+                </div>
+            </div>
+
+            {error && <div className="om-notice om-notice--danger" role="alert"><p>{error}</p></div>}
+
+            {loading ? (
+                <p className="om-muted">Chargement des photos…</p>
+            ) : photos.length === 0 ? (
+                <div className="om-empty">
+                    <p>Aucune photo pour ce patient. Les clichés de chaque analyse sont archivés ici automatiquement.</p>
+                </div>
+            ) : (
+                groups.map(group => (
+                    <section key={group.day} className="photos-day">
+                        <h4 className="om-label photos-day-title">
+                            <Icon name="calendar" size={14} /> {group.day} · {group.items.length} photo{group.items.length > 1 ? 's' : ''}
+                        </h4>
+                        <div className="photos-grid">
+                            {group.items.map(({ photo, index }) => (
+                                <button key={photo.id} className="photo-tile" onClick={() => setViewerIndex(index)}>
+                                    {photo.url ? <img src={photo.url} alt={photo.label || `Photo du ${group.day}`} loading="lazy" /> : <span className="photo-missing">Indisponible</span>}
+                                    <span className="photo-caption">
+                                        <span>{timeLabel(photo.taken_at)}</span>
+                                        {photo.label && <span className="photo-label">{photo.label}</span>}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+                ))
+            )}
+
+            {showCamera && (
+                <CameraCapture
+                    maxShots={10}
+                    onClose={() => setShowCamera(false)}
+                    onDone={(files) => { setShowCamera(false); addPhotos(files); }}
+                />
+            )}
+
+            {current && viewerIndex !== null && createPortal(
+                <div className="photo-viewer" role="dialog" aria-modal="true" onClick={() => setViewerIndex(null)}>
+                    <div className="photo-viewer-top" onClick={e => e.stopPropagation()}>
+                        <div>
+                            <strong>{dayLabel(current.taken_at)} à {timeLabel(current.taken_at)}</strong>
+                            {current.label && <span className="photo-viewer-label">{current.label}</span>}
+                        </div>
+                        <div className="photo-viewer-actions">
+                            <button className="om-btn om-btn--danger om-btn--sm" onClick={removeCurrent}>Supprimer</button>
+                            <button className="om-btn om-btn--secondary om-btn--sm" onClick={() => setViewerIndex(null)}><Icon name="x" /> Fermer</button>
+                        </div>
+                    </div>
+                    <img className="photo-viewer-img" src={current.url} alt={current.label || 'Photo patient'} onClick={e => e.stopPropagation()} />
+                    {viewerIndex > 0 && (
+                        <button className="photo-viewer-nav photo-viewer-nav--prev" aria-label="Photo précédente" onClick={e => { e.stopPropagation(); setViewerIndex(viewerIndex - 1); }}>‹</button>
+                    )}
+                    {viewerIndex < photos.length - 1 && (
+                        <button className="photo-viewer-nav photo-viewer-nav--next" aria-label="Photo suivante" onClick={e => { e.stopPropagation(); setViewerIndex(viewerIndex + 1); }}>›</button>
+                    )}
+                    <span className="photo-viewer-count">{viewerIndex + 1} / {photos.length}</span>
+                </div>,
+                document.body
+            )}
+        </div>
+    );
+};
+
+export default PatientPhotos;

@@ -11,6 +11,7 @@ import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import OnyxCephTravauxTable from '../components/OnyxCephTravauxTable';
 import { listRecords, saveRecord, updateRecordDep, ClinicalRecord } from '../services/recordsService';
+import PatientPhotos from '../components/PatientPhotos';
 import logoMonday from '../assets/logo-monday.png';
 import './Patients.css';
 
@@ -37,7 +38,7 @@ interface Appointment {
     praticien: string;
 }
 
-type FicheTab = 'dep' | 'dossier' | 'synthese' | 'rdv' | 'admin' | 'travaux';
+type FicheTab = 'dep' | 'dossier' | 'photos' | 'synthese' | 'rdv' | 'admin' | 'travaux';
 
 // Calculate age from date of birth
 const calculateAge = (dateNaissance: string): string => {
@@ -488,6 +489,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         {([
                             ['dep', 'Fiche DEP', null, 'clipboard'],
                             ['dossier', 'Diagnostics', patientAnalyses.length, 'stethoscope'],
+                            ['photos', 'Photos', null, 'camera'],
                             ['synthese', 'Synthèse', null, 'chart'],
                             ['rdv', 'RDV / suivi', patientAppointments.length, 'calendar'],
                             ['admin', 'Administratif', null, 'folder'],
@@ -595,6 +597,10 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                     onSave={saveDep}
                                 />
                             </div>
+                        )}
+
+                        {activeTab === 'photos' && (
+                            <PatientPhotos patientId={selectedPatient.id} patientName={`${selectedPatient.prenom} ${selectedPatient.nom}`} />
                         )}
 
                         {activeTab === 'synthese' && (

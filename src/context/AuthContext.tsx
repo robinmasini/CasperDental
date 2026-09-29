@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { isSupabaseConfigured } from '../services/recordsService';
+import { loadCabinetSettings } from '../services/cabinetSettings';
 
 interface Practitioner {
     id: string;
@@ -100,6 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 if (session?.user) {
                     const { profile } = await fetchPractitioner(session.user.id);
                     if (profile) {
+                        await loadCabinetSettings();
                         setSupabaseUser(session.user);
                         setUser(profile);
                     } else {
@@ -163,6 +165,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 };
             }
 
+            await loadCabinetSettings();
             setSupabaseUser(data.user);
             setUser(profile);
             return { success: true };

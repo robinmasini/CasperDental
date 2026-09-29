@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 import { supabase } from '../lib/supabase';
-import { listRecords, saveRecord, updateRecordDep, migrateLocalDataToCloud } from '../services/recordsService';
+import { listRecords, saveRecord, updateRecordDep, migrateLocalDataToCloud, isCloudMode } from '../services/recordsService';
+import { saveCabinetGeminiKey, clearCabinetGeminiKey } from '../services/cabinetSettings';
+import { uploadPatientPhotos } from '../services/photosService';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import { formatClinicalReport } from '../components/ClinicalReport';
 import CameraCapture from '../components/CameraCapture';
@@ -395,14 +397,26 @@ const Dashboard = () => {
         const key = geminiKey.trim();
         if (!key) {
             localStorage.removeItem('casper_gemini_api_key');
+            if (isCloudMode()) {
+                try { await clearCabinetGeminiKey(); } catch (e: any) { setKeyStatus({ tone: 'error', text: e.message }); return; }
+            }
             setKeyStatus({ tone: 'error', text: 'Clé effacée : les analyses IA sont désactivées.' });
             return;
         }
         setKeyStatus({ tone: 'pending', text: 'Vérification de la clé auprès de Google…' });
         const result = await testGeminiKey(key);
         if (result.ok) {
-            localStorage.setItem('casper_gemini_api_key', key);
-            setKeyStatus({ tone: 'ok', text: `Clé valide et enregistrée. Modèle utilisé pour les analyses : ${result.model}.` });
+            try {
+                if (isCloudMode()) {
+                    await saveCabinetGeminiKey(key);
+                    setKeyStatus({ tone: 'ok', text: `Clé valide, enregistrée pour tout le cabinet : chaque praticien connecté en profite sur tous ses appareils, sans la saisir. Modèle : ${result.model}.` });
+                } else {
+                    localStorage.setItem('casper_gemini_api_key', key);
+                    setKeyStatus({ tone: 'ok', text: `Clé valide et enregistrée sur cet appareil. Modèle : ${result.model}.` });
+                }
+            } catch (e: any) {
+                setKeyStatus({ tone: 'error', text: e.message });
+            }
         } else {
             setKeyStatus({ tone: 'error', text: `Clé refusée : ${describeAiFailure(result.error)}` });
         }
@@ -1552,7 +1566,7 @@ const Dashboard = () => {
                         <div className="glass-panel settings-card">
                             <h2>Intelligence artificielle (Google Gemini) <span className={`om-badge ${getGeminiApiKey() ? 'om-badge--success' : 'om-badge--warning'}`} style={{ marginLeft: '8px', verticalAlign: 'middle' }}>{getGeminiApiKey() ? 'Clé configurée' : 'Non configurée'}</span></h2>
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '15px' }}>
-                                La clé Gemini est nécessaire pour l'analyse des clichés, la retranscription et la synthèse des consultations audio, et l'assistant OrthoMind. Sans clé, l'application reste en mode hors-ligne et ne produit aucun diagnostic.
+                                La clé Gemini est nécessaire pour l'analyse des clichés, la retranscription et la synthèse des consultations audio, et l'assistant OrthoMind. Elle est enregistrée une seule fois pour tout le cabinet : chaque praticien connecté en profite automatiquement, sur tous ses appareils.
                             </p>
                             
                             <div className="settings-row">
