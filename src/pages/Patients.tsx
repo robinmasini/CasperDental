@@ -14,6 +14,7 @@ import { listRecords, saveRecord, updateRecordDep, ClinicalRecord } from '../ser
 import PatientPhotos from '../components/PatientPhotos';
 import PatientOnyxCeph from '../components/PatientOnyxCeph';
 import logoMonday from '../assets/logo-monday.png';
+import logoOnyxceph from '../assets/logo-onyxceph.png';
 import './Patients.css';
 
 interface DisplayPatient {
@@ -515,8 +516,9 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 className={`om-tab ${activeTab === key ? 'is-active' : ''}`}
                                 onClick={() => setActiveTab(key)}
                             >
-                                {icon && <Icon name={icon} size={16} />}
+                                {key === 'onyxceph' && <img src={logoOnyxceph} alt="" className="om-tab-logo" />}
                                 {key === 'travaux' && <img src={logoMonday} alt="" className="om-tab-logo" />}
+                                {key !== 'onyxceph' && key !== 'travaux' && icon && <Icon name={icon} size={16} />}
                                 {label}
                                 {count !== null && count > 0 && <span className="om-tab-count">{count}</span>}
                             </button>

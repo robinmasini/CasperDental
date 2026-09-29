@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Icon from './Icon';
+import logoOnyxceph from '../assets/logo-onyxceph.png';
 import './PatientOnyxCeph.css';
 
 interface PatientOnyxCephProps {
@@ -78,8 +79,8 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
     return (
         <div className="patient-onyxceph-container">
             <div className="patient-onyxceph-header">
-                <div className="onyxceph-badge-icon">
-                    <Icon name="link" size={24} />
+                <div className="onyxceph-badge-logo">
+                    <img src={logoOnyxceph} alt="OnyxCeph Logo" className="onyxceph-header-logo-img" />
                 </div>
                 <div>
                     <div className="onyxceph-title-row">

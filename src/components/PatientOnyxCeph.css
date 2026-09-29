@@ -21,17 +21,24 @@
     border-bottom: 1px solid var(--om-border, #e2e8f0);
 }
 
-.onyxceph-badge-icon {
+.onyxceph-badge-logo {
     width: 48px;
     height: 48px;
     border-radius: 12px;
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    color: #ffffff;
+    background: #ffffff;
+    padding: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
     flex-shrink: 0;
+}
+
+.onyxceph-header-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .onyxceph-title-row {
