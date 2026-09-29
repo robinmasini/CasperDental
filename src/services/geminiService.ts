@@ -39,7 +39,7 @@ const finalCallProfile = () => getAnalysisMode() === 'approfondi'
     : {
         tier: 'fast' as ModelTier,
         thinking: 'balanced' as ThinkingDepth,
-        maxOutputTokens: 12288,
+        maxOutputTokens: 20000,
         timeoutMs: 90000,
         style: `\n10. Style : dense et synthétique, directement exploitable au fauteuil. Phrases courtes, aucune redite, 700 à 1 000 mots au total. Une section sans objet tient en une ligne.`,
     };
@@ -254,9 +254,10 @@ const listAvailableModels = (apiKey: string): Promise<string[] | null> => {
 };
 
 const rankModels = (models: string[], tier: ModelTier): string[] => {
+    // Uniquement les modèles de texte généralistes (« gemini-3.8-flash », « gemini-3.8-pro-preview »…) :
+    // exclut transcription, TTS, image, live, agents, etc.
     const candidates = models.filter(name =>
-        /^gemini-\d/.test(name) &&
-        !/(tts|image|live|audio|embedding|lite|nano|8b|robotics|computer-use|learnlm|thinking-exp|-exp-)/.test(name)
+        /^gemini-\d+(\.\d+)?-(pro|flash)(-preview[\w-]*|-latest|-\d{3})?$/.test(name)
     );
     const version = (name: string) => parseFloat(name.match(/^gemini-(\d+(?:\.\d+)?)/)?.[1] || '0');
     const isPro = (name: string) => /-pro/.test(name);
@@ -410,9 +411,11 @@ export const executeGeminiCall = async (
     const tried = new Set<string>();
     let lastError: any = null;
     let bestError: any = null;
+    // Erreur affichée : celle du premier modèle (le principal), sauf s'il est simplement retiré ;
+    // les erreurs des modèles de secours ne doivent pas masquer la vraie cause
     const recordError = (err: any) => {
         lastError = err;
-        if (!bestError || errorPriority(err) >= errorPriority(bestError)) bestError = err;
+        if (!bestError || (errorPriority(bestError) <= 1 && errorPriority(err) > 1)) bestError = err;
     };
 
     for (let m = 0; m < models.length; m++) {
@@ -710,7 +713,7 @@ Réponds uniquement en JSON :
 }`;
             const data = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: prompt }, ...previewParts] }],
-                generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 3072 },
+                generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 8192 },
             }, apiKey, undefined, 'fast', { thinking: 'minimal', timeoutMs: 30000, mediaResolution: 'low' });
             findings = parseJsonResponse<VisionFindings>(extractText(data)) || {};
             console.log('[OrthoMind] Constats visuels :', findings);
