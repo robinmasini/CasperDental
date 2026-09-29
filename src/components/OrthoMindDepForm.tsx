@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import logoSeul from '../assets/logo-seul.png';
-import logoOnyxceph from '../assets/logo-onyxceph.png';
 import './OrthoMindDepForm.css';
 
 interface OrthoMindDepFormProps {
@@ -150,8 +149,8 @@ export const OrthoMindDepForm: React.FC<OrthoMindDepFormProps> = ({
             <div className="dep-section-box">
                 <div className="dep-section-header">
                     <h4 className="dep-section-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <img src={logoOnyxceph} alt="OnyxCeph logo" style={{ width: '56px', height: '56px', objectFit: 'contain' }} />
-                        OnyxCeph - Anomalies basales & alvéolaires
+                        <img src={logoSeul} alt="OrthoLeader logo" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
+                        OrthoLeader - Anomalies basales & alvéolaires
                     </h4>
                     {isLiveFilling && (
                         <span style={{ fontSize: '0.78rem', color: 'var(--primary-cyan)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
