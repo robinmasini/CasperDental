@@ -35,7 +35,7 @@ export const getAnalysisMode = (): AnalysisMode =>
 export const setAnalysisMode = (mode: AnalysisMode) => localStorage.setItem(MODE_KEY, mode);
 
 const finalCallProfile = () => getAnalysisMode() === 'approfondi'
-    ? { tier: 'expert' as ModelTier, thinking: 'deep' as ThinkingDepth, maxOutputTokens: 32768, timeoutMs: 240000, style: '' }
+    ? { tier: 'expert' as ModelTier, thinking: 'deep' as ThinkingDepth, maxOutputTokens: 20000, timeoutMs: 120000, style: `\n10. Style : complet mais sans redite, 1 200 à 1 800 mots au total.` }
     : {
         tier: 'fast' as ModelTier,
         thinking: 'balanced' as ThinkingDepth,
@@ -315,7 +315,7 @@ export type ThinkingDepth = 'minimal' | 'balanced' | 'deep';
 const THINKING_BUDGETS: Record<ThinkingDepth, { pro: number; flash: number; level: string }> = {
     minimal: { pro: 128, flash: 0, level: 'low' },
     balanced: { pro: 4096, flash: 4096, level: 'low' },
-    deep: { pro: 24576, flash: 16384, level: 'high' },
+    deep: { pro: 8192, flash: 8192, level: 'high' },
 };
 
 const withModelConfig = (apiBody: any, model: string, thinking: ThinkingDepth | undefined, dropThinking: boolean) => {
@@ -742,7 +742,7 @@ ${TREATMENT_TEMPLATE}`;
 
         try {
             onStatusUpdate?.(getAnalysisMode() === 'approfondi'
-                ? 'Raisonnement clinique approfondi en cours (1 à 2 minutes)...'
+                ? 'Raisonnement clinique approfondi en cours (2 minutes maximum)...'
                 : 'Rédaction du rapport clinique...');
             const resultData = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: finalPrompt }, ...imageParts] }],
@@ -1034,7 +1034,7 @@ ${TREATMENT_TEMPLATE}`;
 
         try {
             onStatusUpdate?.(getAnalysisMode() === 'approfondi'
-                ? 'Raisonnement clinique approfondi en cours (1 à 2 minutes)...'
+                ? 'Raisonnement clinique approfondi en cours (2 minutes maximum)...'
                 : 'Rédaction du compte-rendu...');
             const data = await executeGeminiCall('generateContent', {
                 contents: [{ parts: [{ text: prompt }] }],

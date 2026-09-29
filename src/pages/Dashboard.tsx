@@ -1608,7 +1608,7 @@ const Dashboard = () => {
                             <div className="analysis-mode-options" role="radiogroup" aria-label="Mode d'analyse">
                                 {([
                                     ['rapide', 'Rapide', 'Environ 20 à 40 secondes. Modèle rapide de dernière génération, raisonnement modéré, rapport dense et synthétique. Recommandé au quotidien.'],
-                                    ['approfondi', 'Approfondi', 'Environ 1 à 2 minutes. Modèle le plus puissant, raisonnement maximal, rapport détaillé. Pour les cas complexes.'],
+                                    ['approfondi', 'Approfondi', '2 minutes maximum. Modèle le plus puissant, raisonnement approfondi, rapport détaillé. Pour les cas complexes.'],
                                 ] as [AnalysisMode, string, string][]).map(([mode, label, description]) => (
                                     <label key={mode} className={`analysis-mode-option ${analysisMode === mode ? 'is-selected' : ''}`}>
                                         <input
