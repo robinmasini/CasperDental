@@ -425,6 +425,7 @@ export const executeGeminiCall = async (
         const maxRetries = 1; // 2 essais maximum par modèle (erreurs serveur uniquement)
         let dropThinking = false;
         let dropMediaResolution = false;
+        let plainRetry = false; // relance « sans réglages » après une réponse vide
         let rateWaits = 0;
         const thinking: ThinkingDepth | undefined = options.thinking || (options.deepThinking ? 'deep' : undefined);
         const streaming = !!options.onStream && endpointPath === 'generateContent';
@@ -436,6 +437,7 @@ export const executeGeminiCall = async (
                 }
 
                 const body = withModelConfig(apiBody, model, thinking, dropThinking);
+                if (plainRetry && body.generationConfig) delete body.generationConfig.responseMimeType;
                 if (options.mediaResolution && !dropMediaResolution) {
                     body.generationConfig.mediaResolution = `MEDIA_RESOLUTION_${options.mediaResolution.toUpperCase()}`;
                 }
@@ -459,8 +461,17 @@ export const executeGeminiCall = async (
                         return data;
                     }
                     const reason = data.candidates?.[0]?.finishReason || data.promptFeedback?.blockReason || 'raison inconnue';
-                    recordError(new Error(`[${model}] Réponse vide (${reason})`));
-                    // Réponse vide pour cause de limite ou de filtre : un nouvel essai identique n'y changera rien
+                    if (!plainRetry && !/SAFETY|PROHIBITED|BLOCK/i.test(reason)) {
+                        // Réglage non supporté par ce modèle : même modèle, sans réflexion forcée,
+                        // sans mode JSON ni résolution réduite
+                        plainRetry = true;
+                        dropThinking = true;
+                        dropMediaResolution = true;
+                        console.warn(`[Gemini] Réponse vide de ${model} (${reason}), relance sans réglages`);
+                        attempt--;
+                        continue;
+                    }
+                    recordError(new Error(`[${model}] Réponse vide (${reason}) — réponse brute : ${JSON.stringify(data).slice(0, 220)}`));
                     retryable = false;
                 } else {
                     const errorData = await response.json().catch(() => ({}));
