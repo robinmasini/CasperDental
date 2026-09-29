@@ -371,7 +371,8 @@ const readStreamedResponse = async (response: Response, onStream: (text: string)
     for (;;) {
         const { value, done } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        // Google sépare les événements par « \r\n\r\n » : on normalise les fins de ligne
+        buffer += decoder.decode(value, { stream: true }).replace(/\r\n?/g, '\n');
         let sep: number;
         while ((sep = buffer.indexOf('\n\n')) !== -1) {
             const event = buffer.slice(0, sep);
@@ -394,6 +395,20 @@ const readStreamedResponse = async (response: Response, onStream: (text: string)
                 } catch { /* fragment incomplet */ }
             }
         }
+    }
+    // Dernier événement éventuellement non terminé par une ligne vide
+    for (const line of buffer.split('\n')) {
+        if (!line.startsWith('data:')) continue;
+        try {
+            const chunk = JSON.parse(line.slice(5).trim());
+            const candidate = chunk.candidates?.[0];
+            const piece = (candidate?.content?.parts || [])
+                .filter((p: any) => typeof p.text === 'string' && !p.thought)
+                .map((p: any) => p.text)
+                .join('');
+            if (piece) { text += piece; onStream(text); }
+            if (candidate?.finishReason) finishReason = candidate.finishReason;
+        } catch { /* ignoré */ }
     }
     return { candidates: [{ content: { parts: [{ text }] }, finishReason }], promptFeedback };
 };
@@ -428,7 +443,7 @@ export const executeGeminiCall = async (
         let plainRetry = false; // relance « sans réglages » après une réponse vide
         let rateWaits = 0;
         const thinking: ThinkingDepth | undefined = options.thinking || (options.deepThinking ? 'deep' : undefined);
-        const streaming = !!options.onStream && endpointPath === 'generateContent';
+        let streaming = !!options.onStream && endpointPath === 'generateContent';
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
             let retryable = true;
             try {
@@ -465,6 +480,7 @@ export const executeGeminiCall = async (
                         // Réglage non supporté par ce modèle : même modèle, sans réflexion forcée,
                         // sans mode JSON ni résolution réduite
                         plainRetry = true;
+                        streaming = false; // relance en mode classique (sans flux)
                         dropThinking = true;
                         dropMediaResolution = true;
                         console.warn(`[Gemini] Réponse vide de ${model} (${reason}), relance sans réglages`);
