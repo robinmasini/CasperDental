@@ -107,27 +107,52 @@ export const extractDepDataFromAnalysis = (
     }
 
     // --- 6. MALPOSITIONS & DENTS INCLUES ---
-    if (fullLower.includes('impacté') || fullLower.includes('incluse') || fullLower.includes('surnuméraire') || fullLower.includes('mesiodens')) {
-        dep.anomaliesAlveolaires.dentsIncluesOuSurnumeraires = 'Dent incluse ou surnuméraire évoquée : à préciser';
+    const inclueMatch = fullLower.match(/(impacté|incluse|surnuméraire|mesiodens)[^.\n]*[.!?\n]/i);
+    if (inclueMatch) {
+        dep.anomaliesAlveolaires.dentsIncluesOuSurnumeraires = inclueMatch[0].replace(/^[0-9.#*-]+\s*/, '').replace(/\*\*/g, '').slice(0, 150).trim();
+    } else {
+        dep.anomaliesAlveolaires.dentsIncluesOuSurnumeraires = 'Aucune dent incluse ou surnuméraire constatée';
     }
-    if (fullLower.includes('rotation') || fullLower.includes('lingualisation') || fullLower.includes('vestibulo-version')) {
-        dep.anomaliesAlveolaires.malpositions = 'Malpositions évoquées : à préciser';
+
+    const malposMatch = diagnosticText.match(/rotations?|lingualisation|vestibulo-version|ectopie/i);
+    if (malposMatch) {
+        dep.anomaliesAlveolaires.malpositions = 'Rotations et malpositions dentaires (FDI) à corriger';
+    } else {
+        dep.anomaliesAlveolaires.malpositions = 'Malpositions légères';
     }
 
     // --- 7. AGÉNÉSIE ---
-    if (fullLower.includes('agénésie') || fullLower.includes('agenesie') || fullLower.includes('dent manquante')) {
-        dep.agenesie = 'Agénésie évoquée dans le compte-rendu : à confirmer (radiographie panoramique)';
+    const agenesieSection = diagnosticText.match(/3\.\s*ANOMALIES DENTO-ALVÉOLAIRES[\s\S]*?(?=4\.)/i)?.[0] || diagnosticText;
+    const agenesieSentenceMatch = agenesieSection.match(/[^.\n]*(agénésie|agenesie|dent[s]? manquante[s]?)[^.\n]*[.!?\n]?/i);
+    if (agenesieSentenceMatch) {
+        const rawAg = agenesieSentenceMatch[0].replace(/^[0-9.#*-]+\s*/, '').replace(/\*\*/g, '').trim();
+        if (/aucune|pas d'|sans agénésie|non constatée|absence d'agénésie/i.test(rawAg)) {
+            dep.agenesie = 'Aucune agénésie constatée';
+        } else {
+            dep.agenesie = rawAg.slice(0, 180);
+        }
     } else {
-        dep.agenesie = 'Non évalué';
+        dep.agenesie = 'Aucune agénésie constatée';
     }
 
     // --- 8. FACTEUR FONCTIONNEL ---
-    if (fullLower.includes('déglutition') || fullLower.includes('deglutition') || fullLower.includes('respiration') || fullLower.includes('interposition') || fullLower.includes('pulsion linguale')) {
-        dep.facteurFonctionnel = 'Trouble fonctionnel évoqué (déglutition / ventilation) : à préciser';
-    } else if (fullLower.includes('mentonnier') || fullLower.includes('incompétence labiale')) {
-        dep.facteurFonctionnel = 'Incompétence labiale au repos et contraction compensatoire du muscle mentonnier';
+    const foncSectionMatch = diagnosticText.match(/5\.\s*FONCTIONS[\s\S]*?(?=6\.)/i);
+    let foncText = '';
+    if (foncSectionMatch) {
+        foncText = foncSectionMatch[0].replace(/^5\.\s*FONCTIONS & ESTHÉTIQUE\s*:\s*/i, '').replace(/[\r\n]+/g, ' ').replace(/\*\*/g, '').trim();
     } else {
-        dep.facteurFonctionnel = 'Non évalué';
+        const foncSentenceMatch = diagnosticText.match(/[^.\n]*(déglutition|deglutition|ventilation|respiration|interposition|pulsion linguale|atm)[^.\n]*[.!?\n]?/i);
+        if (foncSentenceMatch) foncText = foncSentenceMatch[0].replace(/^[0-9.#*-]+\s*/, '').replace(/\*\*/g, '').trim();
+    }
+
+    if (foncText) {
+        if (/sans anomalie|normale?|physiologique|normales/i.test(foncText) && !/atypique|buccale|interposition|trouble|souffrance/i.test(foncText)) {
+            dep.facteurFonctionnel = 'Fonctions orofaciales (ventilation, déglutition, ATM) évaluées sans anomalie majeure';
+        } else {
+            dep.facteurFonctionnel = foncText.slice(0, 250);
+        }
+    } else {
+        dep.facteurFonctionnel = 'Fonctions orofaciales à préciser lors de l\'examen clinique';
     }
 
     // --- 9. PLAN DE TRAITEMENT (Formaté pour DEP) ---
@@ -160,12 +185,13 @@ const treatmentToDepString = (traitementText: string): string => {
     const cleaned: string[] = [];
 
     for (const l of lines) {
+        if (l.startsWith('#') || l.startsWith('<')) continue;
         const cleanLine = l.replace(/^[0-9.#*-]+\s*/, '').replace(/\*\*/g, '');
-        if (cleanLine.length > 5) {
+        if (cleanLine.length > 5 && !cleanLine.toLowerCase().startsWith('durée') && !cleanLine.toLowerCase().startsWith('consignes')) {
             cleaned.push(cleanLine);
         }
     }
 
-    if (cleaned.length === 0) return traitementText.slice(0, 300);
-    return `A: ${cleaned.slice(0, 4).join(' • ')}`;
+    if (cleaned.length === 0) return traitementText.slice(0, 250);
+    return cleaned.slice(0, 3).join(' • ').slice(0, 280);
 };

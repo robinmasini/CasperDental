@@ -27,9 +27,12 @@ export interface AnalysisResult {
     dep?: import('./depParser').DepAiFields;
 }
 
-// Remplit les champs texte de la DEP à partir du compte-rendu (texte seul, peu coûteux).
+// Remplit les champs texte de la DEP à partir du compte-rendu (texte seul, secours si la balise <dep> manquait).
 // Rien n'est inventé : « Non évalué » quand le compte-rendu n'en parle pas.
 const extractDepFields = async (report: AnalysisResult, apiKey: string): Promise<AnalysisResult> => {
+    if (report.dep && (report.dep.agenesie || report.dep.facteurFonctionnel || report.dep.planDeTraitement)) {
+        return report;
+    }
     try {
         const data = await executeGeminiCall('generateContent', {
             contents: [{ parts: [{ text: `Voici un compte-rendu d'orthodontie. Remplis les champs texte de la fiche DEP (demande d'entente préalable, Assurance maladie) UNIQUEMENT à partir de ce compte-rendu.
@@ -622,16 +625,32 @@ const parseJsonResponse = <T>(text: string): T | null => {
     }
 };
 
-// Extraction robuste des sections <diagnostic> / <traitement>.
+// Extraction robuste des sections <diagnostic> / <traitement> / <dep>.
 // Une réponse de l'IA n'est jamais jetée : si les balises manquent, on découpe
 // sur le titre du plan de traitement, sinon tout va dans le diagnostic.
 const parseReportSections = (rawText: string): AnalysisResult | null => {
     const resultText = rawText.replace(/```(?:xml|markdown)?/gi, '');
     const diagMatch = resultText.match(/<diagnostic>([\s\S]*?)<\/diagnostic>/i);
     const traitMatch = resultText.match(/<traitement>([\s\S]*?)<\/traitement>/i);
+    const depMatch = resultText.match(/<dep>([\s\S]*?)<\/dep>/i);
 
     let diagnostic = diagMatch ? diagMatch[1].trim() : '';
     let traitement = traitMatch ? traitMatch[1].trim() : '';
+    let depFields: import('./depParser').DepAiFields | undefined;
+
+    if (depMatch) {
+        const fields = parseJsonResponse<Record<string, string>>(depMatch[1]);
+        if (fields) {
+            const clean = (v?: string) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+            depFields = {
+                agenesie: clean(fields.agenesie),
+                facteurFonctionnel: clean(fields.facteurFonctionnel),
+                dentsIncluesOuSurnumeraires: clean(fields.dentsIncluesOuSurnumeraires),
+                malpositions: clean(fields.malpositions),
+                planDeTraitement: clean(fields.planDeTraitement),
+            };
+        }
+    }
 
     // Balises non fermées (réponse tronquée)
     if (!diagnostic && /<diagnostic>/i.test(resultText)) {
@@ -642,12 +661,14 @@ const parseReportSections = (rawText: string): AnalysisResult | null => {
     }
     if (!traitement && /<traitement>/i.test(resultText)) {
         const start = resultText.search(/<traitement>/i) + '<traitement>'.length;
-        traitement = resultText.substring(start).replace(/<\/traitement>/gi, '').trim();
+        const depStart = resultText.search(/<dep>/i);
+        traitement = resultText.substring(start, depStart !== -1 ? depStart : resultText.length)
+            .replace(/<\/traitement>/gi, '').trim();
     }
 
     // Aucune balise : découpage sur le premier titre de traitement
     if (!diagnostic && !traitement) {
-        const plain = resultText.replace(/<\/?(diagnostic|traitement)>/gi, '').trim();
+        const plain = resultText.replace(/<\/?(diagnostic|traitement|dep)>/gi, '').trim();
         if (!plain) return null;
         const split = plain.search(/^\s*(#+\s*)?(\*\*)?\s*(\d+\.\s*)?(PLAN DE TRAITEMENT|PLAN THÉRAPEUTIQUE|TRAITEMENT|OBJECTIFS THÉRAPEUTIQUES)/im);
         if (split > 0) {
@@ -660,7 +681,7 @@ const parseReportSections = (rawText: string): AnalysisResult | null => {
 
     if (!diagnostic && traitement) diagnostic = traitement;
     if (!traitement) traitement = '(Plan de traitement non généré : relancez l\'analyse pour l\'obtenir.)';
-    return diagnostic ? { diagnostic, traitement } : null;
+    return diagnostic ? { diagnostic, traitement, dep: depFields } : null;
 };
 
 // Ajoute les références réellement citées à la fin du diagnostic
@@ -670,6 +691,7 @@ const attachReferences = (report: AnalysisResult, passages: RetrievedPassage[]):
     return {
         diagnostic: report.diagnostic + buildReferencesSection(fullText, passages),
         traitement: report.traitement,
+        dep: report.dep,
         meta: {
             engine: 'gemini',
             model: getLastRespondingModel() || undefined,
@@ -687,7 +709,7 @@ const EXPERT_PERSONA = `Tu es OrthoMind, l'assistant d'aide au diagnostic du cab
 const EXPERT_RULES = `RÈGLES D'EXPERTISE (impératives) :
 1. Terminologie orthodontique française standard : Classe d'Angle (I, II division 1, II division 2, III), surplomb, recouvrement, supraclusion, béance, articulé inversé / occlusion inversée, endognathie, dysharmonie dento-maxillaire (DDM), proalvéolie, rétroalvéolie, rétrognathie, promandibulie, canine incluse, agénésie, notation dentaire FDI.
 2. Analyse dans les trois sens de l'espace : sagittal, vertical, transversal — puis dentaire, fonctionnel (ventilation, déglutition, ATM), parodontal et esthétique.
-3. Honnêteté clinique : distingue explicitement ce qui est CONSTATÉ, ce qui est PROBABLE (à confirmer) et ce qui n'est PAS ÉVALUABLE avec les données fournies. N'invente jamais une mesure chiffrée : donne une estimation qualitative, ou une valeur en mm uniquement si elle est dite par le praticien ou mesurable, en la marquant « estimé ».
+3. Honnêteté clinique : distingue explicitement ce qui est CONSTATÉ, ce qui est PROBABLE (à confirmer) et ce qui n'est PAS ÉVALUABLE avec les données fournies. N'invente jamais une mesure chiffrée : donne une estimation qualitative, ou une valeur en mm uniquement si elle est dite par le praticien ou mesurable, en la marquant « estimé ». Ne répète jamais de formules génériques ou passe-partout.
 4. Le diagnostic squelettique définitif requiert téléradiographie de profil et analyse céphalométrique ; la situation des germes et des racines requiert une radiographie panoramique (voire un CBCT). Indique les examens complémentaires réellement utiles.
 5. Plan de traitement individualisé : tiens compte de l'âge et du potentiel de croissance (interception, orthopédie, compensation, orthodontie-chirurgie), de la sévérité et des priorités du patient. Propose l'option recommandée ET les alternatives crédibles, avec leurs indications. N'impose jamais les aligneurs par défaut : choisis l'appareillage le plus adapté au cas (aligneurs, multi-attaches, disjoncteur, appareil fonctionnel, ancrage osseux…).
 6. Bibliothèque du cabinet : appuie tes points clés sur les passages fournis en citant leur identifiant entre crochets, par exemple [S3], directement dans la phrase concernée. Ne cite un passage que s'il soutient réellement l'affirmation. N'invente jamais d'ouvrage, d'auteur ni de page. Les passages sont souvent en anglais : reformule-les en français. Quand un point ne repose sur aucun passage, appuie-toi sur tes connaissances cliniques sans citation.
@@ -707,11 +729,11 @@ const DIAGNOSTIC_TEMPLATE = `<diagnostic>
 - Sens vertical (recouvrement, supraclusion / béance, courbe de Spee)
 - Sens transversal (articulé inversé, endognathie, lignes médianes)
 
-3. ANOMALIES DENTO-ALVÉOLAIRES : (encombrement / DDM, rotations, diastèmes, dents absentes ou incluses, en notation FDI)
+3. ANOMALIES DENTO-ALVÉOLAIRES : (encombrement / DDM, rotations, diastèmes, agénésies ou dents manquantes précisées en notation FDI, dents incluses)
 
 4. PARODONTE, HYGIÈNE & TISSUS MOUS :
 
-5. FONCTIONS & ESTHÉTIQUE : (ventilation, déglutition, ATM, sourire, profil — si évaluable)
+5. FONCTIONS & ESTHÉTIQUE : (déglutition, ventilation, dysfonctions, ATM, posture linguale, profil — si évaluable)
 
 6. SYNTHÈSE DIAGNOSTIQUE : (liste hiérarchisée des problèmes) & EXAMENS COMPLÉMENTAIRES À PRÉVOIR
 </diagnostic>`;
@@ -731,6 +753,16 @@ const TREATMENT_TEMPLATE = `<traitement>
 
 7. DURÉE ESTIMÉE & CONTENTION :
 </traitement>`;
+
+const DEP_TEMPLATE = `<dep>
+{
+  "agenesie": "Description clinique exacte des agénésies constatées (ex: 'Agénésie des incisives latérales supérieures 12 et 22'), ou 'Aucune agénésie constatée'",
+  "facteurFonctionnel": "Description précise des troubles fonctionnels (ex: 'Déglutition atypique avec interposition linguale antérieure et respiration préférentiellement buccale'), ou 'Fonctions orofaciales évaluées sans anomalie majeure'",
+  "dentsIncluesOuSurnumeraires": "Dents incluses/surnuméraires constatées en notation FDI ou 'Aucune dent incluse constatée'",
+  "malpositions": "Malpositions dentaires majeures en notation FDI (rotations, ectopies...) ou 'Malpositions légères'",
+  "planDeTraitement": "Plan de traitement résumé pour la DEP (2 à 4 lignes) : appareillage retenu, phases, durée estimée et contention"
+}
+</dep>`;
 
 // ============================================================================
 // ANALYSE DES CLICHÉS PHOTOGRAPHIQUES
@@ -838,7 +870,9 @@ Rédige ton rapport en français en respectant STRICTEMENT ce format, sans aucun
 
 ${DIAGNOSTIC_TEMPLATE}
 
-${TREATMENT_TEMPLATE}`;
+${TREATMENT_TEMPLATE}
+
+${DEP_TEMPLATE}`;
 
         try {
             onStatusUpdate?.(getAnalysisMode() === 'approfondi'
@@ -1156,7 +1190,9 @@ Rédige en français médical rigoureux en respectant STRICTEMENT ce format, san
 
 ${DIAGNOSTIC_TEMPLATE}
 
-${TREATMENT_TEMPLATE}`;
+${TREATMENT_TEMPLATE}
+
+${DEP_TEMPLATE}`;
 
         try {
             onStatusUpdate?.(getAnalysisMode() === 'approfondi'
