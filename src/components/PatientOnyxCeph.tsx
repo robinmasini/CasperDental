@@ -263,33 +263,6 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                             <Icon name="trash" size={16} />
                         </button>
                     </div>
-
-                    {/* Aperçu / Intégration interactive */}
-                    <div className="onyxceph-frame-container" onClick={(e) => e.stopPropagation()}>
-                        <div className="onyxceph-frame-header">
-                            <span className="onyxceph-frame-title">
-                                <Icon name="eye" size={14} /> Aperçu direct du dossier OnyxCeph
-                            </span>
-                            <a
-                                href={savedUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="om-btn om-btn--ghost om-btn--sm"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                Grand écran <Icon name="externalLink" size={12} />
-                            </a>
-                        </div>
-                        <div className="onyxceph-frame-body">
-                            <iframe
-                                src={savedUrl}
-                                title={`OnyxCeph pour ${patientName}`}
-                                className="onyxceph-iframe"
-                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                                loading="lazy"
-                            />
-                        </div>
-                    </div>
                 </div>
             )}
         </div>
