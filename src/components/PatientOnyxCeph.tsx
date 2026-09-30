@@ -23,12 +23,14 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
     const [saving, setSaving] = useState(false);
     const [copied, setCopied] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     useEffect(() => {
         let isMounted = true;
         setSavedUrl(initialUrl || '');
         setUrlInput(initialUrl || '');
         setIsEditing(!initialUrl);
+        setErrorMessage(null);
 
         getOnyxCephUrlRecord(patientId, patientName).then((remoteUrl) => {
             if (isMounted && remoteUrl) {
@@ -36,6 +38,8 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                 setUrlInput(remoteUrl);
                 setIsEditing(false);
             }
+        }).catch((err) => {
+            if (isMounted) console.error('Erreur lecture OnyxCeph:', err);
         });
 
         return () => {
@@ -51,14 +55,16 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
         }
 
         setSaving(true);
+        setErrorMessage(null);
         try {
             await onSaveUrl(trimmed);
             setSavedUrl(trimmed);
             setIsEditing(false);
             setSuccessMessage('Lien OnyxCeph enregistré avec succès !');
             setTimeout(() => setSuccessMessage(null), 3000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Erreur lors de la sauvegarde du lien OnyxCeph:', err);
+            setErrorMessage(err?.message || 'Erreur lors de l\'enregistrement du lien.');
         } finally {
             setSaving(false);
         }
@@ -78,6 +84,7 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
     const handleDelete = async () => {
         if (window.confirm('Voulez-vous vraiment supprimer le lien OnyxCeph de ce patient ?')) {
             setSaving(true);
+            setErrorMessage(null);
             try {
                 await onSaveUrl('');
                 setSavedUrl('');
@@ -85,6 +92,8 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                 setIsEditing(true);
                 setSuccessMessage('Lien supprimé.');
                 setTimeout(() => setSuccessMessage(null), 3000);
+            } catch (err: any) {
+                setErrorMessage(err?.message || 'Erreur lors de la suppression.');
             } finally {
                 setSaving(false);
             }
@@ -112,6 +121,13 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                 <div className="om-notice om-notice--success animate-fade-in" role="status">
                     <Icon name="check" size={16} />
                     <span>{successMessage}</span>
+                </div>
+            )}
+
+            {errorMessage && (
+                <div className="om-notice om-notice--danger animate-fade-in" role="alert">
+                    <Icon name="alert" size={16} />
+                    <span>{errorMessage}</span>
                 </div>
             )}
 

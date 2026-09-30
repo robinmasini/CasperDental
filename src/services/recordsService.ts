@@ -105,10 +105,8 @@ export const getOnyxCephUrlRecord = async (patientId: string, patientName?: stri
             const uuid = asUuid(patientId);
             let query = supabase
                 .from('clinical_records')
-                .select('diagnostic_text, meta')
-                .or(`diagnostic_text.like.ONYXCEPH_LINK::%,type.eq.onyxceph`)
-                .order('created_at', { ascending: false })
-                .limit(1);
+                .select('diagnostic_text, meta, type')
+                .order('created_at', { ascending: false });
 
             if (uuid) {
                 query = query.eq('patient_id', uuid);
@@ -116,16 +114,26 @@ export const getOnyxCephUrlRecord = async (patientId: string, patientName?: stri
                 query = query.eq('patient_name', patientName);
             }
 
-            const { data } = await query.maybeSingle();
+            const { data, error } = await query;
 
-            if (data?.diagnostic_text) {
-                const url = data.diagnostic_text.startsWith('ONYXCEPH_LINK::')
-                    ? data.diagnostic_text.replace('ONYXCEPH_LINK::', '')
-                    : (data.meta?.onyxceph_url as string || data.diagnostic_text);
+            if (error) {
+                console.error('Erreur Supabase lecture OnyxCeph:', error.message);
+            } else if (data && data.length > 0) {
+                const match = data.find((r: any) =>
+                    r.diagnostic_text?.startsWith('ONYXCEPH_LINK::') ||
+                    r.meta?.onyxceph_url ||
+                    r.type === 'onyxceph'
+                );
 
-                if (url) {
-                    localStorage.setItem(localKey, url);
-                    return url;
+                if (match) {
+                    const url = match.diagnostic_text?.startsWith('ONYXCEPH_LINK::')
+                        ? match.diagnostic_text.replace('ONYXCEPH_LINK::', '')
+                        : (match.meta?.onyxceph_url as string || match.diagnostic_text);
+
+                    if (url) {
+                        localStorage.setItem(localKey, url);
+                        return url;
+                    }
                 }
             }
         } catch (e) {
@@ -161,8 +169,7 @@ export const saveOnyxCephUrlRecord = async (patientId: string, patientName: stri
             const uuid = asUuid(patientId);
             let query = supabase
                 .from('clinical_records')
-                .select('id')
-                .or(`diagnostic_text.like.ONYXCEPH_LINK::%,type.eq.onyxceph`);
+                .select('id, diagnostic_text, meta, type');
 
             if (uuid) {
                 query = query.eq('patient_id', uuid);
@@ -170,7 +177,17 @@ export const saveOnyxCephUrlRecord = async (patientId: string, patientName: stri
                 query = query.eq('patient_name', patientName);
             }
 
-            const { data: existing } = await query.maybeSingle();
+            const { data: records, error: fetchErr } = await query;
+            if (fetchErr) {
+                console.error('Erreur Supabase recherche OnyxCeph:', fetchErr.message);
+                throw cloudError('Synchronisation OnyxCeph', fetchErr);
+            }
+
+            const existing = (records || []).find((r: any) =>
+                r.diagnostic_text?.startsWith('ONYXCEPH_LINK::') ||
+                r.meta?.onyxceph_url ||
+                r.type === 'onyxceph'
+            );
 
             if (existing?.id) {
                 const { error } = await supabase
@@ -180,7 +197,7 @@ export const saveOnyxCephUrlRecord = async (patientId: string, patientName: stri
                         meta: { onyxceph_url: url }
                     })
                     .eq('id', existing.id);
-                if (error) console.error('Erreur MAJ OnyxCeph cloud:', error.message);
+                if (error) throw cloudError('Mise à jour du lien OnyxCeph', error);
             } else if (url) {
                 const { error } = await supabase
                     .from('clinical_records')
@@ -193,10 +210,11 @@ export const saveOnyxCephUrlRecord = async (patientId: string, patientName: stri
                         traitement_text: 'Lien OnyxCeph',
                         meta: { onyxceph_url: url }
                     });
-                if (error) console.error('Erreur insertion OnyxCeph cloud:', error.message);
+                if (error) throw cloudError('Enregistrement du lien OnyxCeph', error);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Erreur sauvegarde OnyxCeph cloud:', err);
+            throw err;
         }
     } else {
         const records = readLocal();

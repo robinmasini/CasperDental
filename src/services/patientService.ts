@@ -204,14 +204,19 @@ export const updatePatient = async (id: string, patient: Partial<Patient>): Prom
     }
 
     try {
-        const { data, error } = await supabase
-            .from('patients')
-            .update(sanitized)
-            .eq('id', id)
-            .select()
-            .single();
+        const { onyxceph_url: _onyx, ...cloudFields } = sanitized;
+        if (Object.keys(cloudFields).length > 0) {
+            const { data, error } = await supabase
+                .from('patients')
+                .update(cloudFields)
+                .eq('id', id)
+                .select()
+                .single();
 
-        if (!error && data) return data;
+            if (!error && data) {
+                return { ...data, onyxceph_url: patient.onyxceph_url || data.onyxceph_url };
+            }
+        }
     } catch (e) {}
 
     const localList = getLocalPatients();
