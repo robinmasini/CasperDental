@@ -689,7 +689,7 @@ const attachReferences = (report: AnalysisResult, passages: RetrievedPassage[]):
     const fullText = `${report.diagnostic}\n${report.traitement}`;
     const cited = new Set((fullText.match(/\[S\d+\]/g) || []).map(m => m.slice(1, -1)));
     return {
-        diagnostic: report.diagnostic + buildReferencesSection(fullText, passages),
+        diagnostic: report.diagnostic,
         traitement: report.traitement,
         dep: report.dep,
         meta: {
@@ -708,50 +708,48 @@ const EXPERT_PERSONA = `Tu es OrthoMind, l'assistant d'aide au diagnostic du cab
 
 const EXPERT_RULES = `RÈGLES D'EXPERTISE (impératives) :
 1. Terminologie orthodontique française standard : Classe d'Angle (I, II division 1, II division 2, III), surplomb, recouvrement, supraclusion, béance, articulé inversé / occlusion inversée, endognathie, dysharmonie dento-maxillaire (DDM), proalvéolie, rétroalvéolie, rétrognathie, promandibulie, canine incluse, agénésie, notation dentaire FDI.
-2. Analyse dans les trois sens de l'espace : sagittal, vertical, transversal — puis dentaire, fonctionnel (ventilation, déglutition, ATM), parodontal et esthétique.
-3. Honnêteté clinique : distingue explicitement ce qui est CONSTATÉ, ce qui est PROBABLE (à confirmer) et ce qui n'est PAS ÉVALUABLE avec les données fournies. N'invente jamais une mesure chiffrée : donne une estimation qualitative, ou une valeur en mm uniquement si elle est dite par le praticien ou mesurable, en la marquant « estimé ». Ne répète jamais de formules génériques ou passe-partout.
-4. Le diagnostic squelettique définitif requiert téléradiographie de profil et analyse céphalométrique ; la situation des germes et des racines requiert une radiographie panoramique (voire un CBCT). Indique les examens complémentaires réellement utiles.
-5. Plan de traitement individualisé : tiens compte de l'âge et du potentiel de croissance (interception, orthopédie, compensation, orthodontie-chirurgie), de la sévérité et des priorités du patient. Propose l'option recommandée ET les alternatives crédibles, avec leurs indications. N'impose jamais les aligneurs par défaut : choisis l'appareillage le plus adapté au cas (aligneurs, multi-attaches, disjoncteur, appareil fonctionnel, ancrage osseux…).
-6. Bibliothèque du cabinet : appuie tes points clés sur les passages fournis en citant leur identifiant entre crochets, par exemple [S3], directement dans la phrase concernée. Ne cite un passage que s'il soutient réellement l'affirmation. N'invente jamais d'ouvrage, d'auteur ni de page. Les passages sont souvent en anglais : reformule-les en français. Quand un point ne repose sur aucun passage, appuie-toi sur tes connaissances cliniques sans citation.
-7. Ne rédige PAS de liste de références en fin de document : elle est générée automatiquement à partir de tes citations [S#].
-8. Mise en forme : titres de sections numérotés en MAJUSCULES, puces "- ", termes clés en **gras**. Pas de tableau Markdown.`;
+2. Structure impérative du diagnostic selon les 4 axes du cabinet :
+   - A. SQUELETTIQUE : Classe I/II/III, Prognathie/Rétrognathie, Endognatie, Divergence (Normo/Hyper/Hypodivergent)
+   - B. DENTAIRE : Classe molaire et canine, DDM, DDD, Articulé croisé antérieur, Biproalvéolie, Supraclusion, Béance, Ectopies, Dents incluses
+   - C. FONCTIONNEL : Déglutition atypique (interposition linguale antérieure/latérale), Respiration buccale, Frein lingual/labial, Succion
+   - D. TRANSVERSAL : Endoalvéolie Supérieure/Inférieure, Articulé croisé latéral droit/gauche, Déviation des milieux
+3. Structure impérative du plan de traitement numéroté (ex: 1°. Correction de la déglutition..., 2°. Traitement interceptif / Disjoncteur / Quad'hélix, 3°. Nivellement par aligneurs sup et inf avec taquets fixes OU Multibague, 4°. Traction intermaxillaire, 5°. Chirurgie / Rétraction, 6°. Finition, 7°. Contention).
+4. Honnêteté clinique : distingue explicitement ce qui est CONSTATÉ, ce qui est PROBABLE (à confirmer) et ce qui n'est PAS ÉVALUABLE avec les données fournies. N'invente jamais une mesure chiffrée.
+5. Ne génère AUCUNE section de liste de références bibliographiques à la fin du document.`;
 
 const buildLibraryBlock = (passages: RetrievedPassage[]): string =>
     passages.length > 0
         ? `### PASSAGES DE LA BIBLIOTHÈQUE DU CABINET (${passages.length} extraits sélectionnés parmi 54 ouvrages) :\n${formatPassagesForPrompt(passages)}`
-        : `### BIBLIOTHÈQUE DU CABINET : aucun passage pertinent trouvé pour ce cas. Appuie-toi sur tes connaissances cliniques, sans citation [S#].`;
+        : `### BIBLIOTHÈQUE DU CABINET : aucun passage pertinent trouvé pour ce cas. Appuie-toi sur tes connaissances cliniques.`;
 
 const DIAGNOSTIC_TEMPLATE = `<diagnostic>
-1. CLASSIFICATION D'ANGLE : (mise en avant très visible de la Classe d'Angle molaire et canine, droite et gauche, avec justification et niveau de certitude)
+A. SQUELETTIQUE :
+- Classe d'Angle & décalage squelettique (Classe I, Classe II par Prognathie Maxillaire / Rétrognathie Mandibulaire, Classe III par Prognathie Mandibulaire / Brachygnatie)
+- Divergence faciale (Normodivergent, Hyperdivergent, Hypodivergent)
+- Sens transversal squelettique (Endognatie, Latérognatie Gauche/Droite)
 
-2. ANALYSE OCCLUSALE TRIDIMENSIONNELLE :
-- Sens sagittal (surplomb, rapports molaires et canins)
-- Sens vertical (recouvrement, supraclusion / béance, courbe de Spee)
-- Sens transversal (articulé inversé, endognathie, lignes médianes)
+B. DENTAIRE :
+- Rapprochements molaires et canins (Classe I molaire, Classe II molaire division 1/2, Classe III molaire, subdivisions)
+- Anomalies alvéolaires (Proalvéolie/Rétroalvéolie sup et inf, Supraclusion, Béance antérieure par infra-alvéolie incisives)
+- Dysharmonies & Occlusion (Dysharmonie dento-maxillaire DDM, Dysharmonie dento-dentaire DDD, Articulé croisé antérieur, Ectopies, Dents incluses en notation FDI)
 
-3. ANOMALIES DENTO-ALVÉOLAIRES : (encombrement / DDM, rotations, diastèmes, agénésies ou dents manquantes précisées en notation FDI, dents incluses)
+C. FONCTIONNEL :
+- Ventilation & Déglutition (Déglutition atypique avec interposition linguale antérieure/latérale, Respiration buccale nocturne/permanente)
+- Freins & Habits (Bride du frein lingual haut, Insertion basse du frein labial supérieur, Succion digitale)
 
-4. PARODONTE, HYGIÈNE & TISSUS MOUS :
-
-5. FONCTIONS & ESTHÉTIQUE : (déglutition, ventilation, dysfonctions, ATM, posture linguale, profil — si évaluable)
-
-6. SYNTHÈSE DIAGNOSTIQUE : (liste hiérarchisée des problèmes) & EXAMENS COMPLÉMENTAIRES À PRÉVOIR
+D. TRANSVERSAL :
+- Endoalvéolie Supérieure / Mandibulaire
+- Articulé croisé latéral droit / gauche, Latérodéviation, Non concordance des milieux
 </diagnostic>`;
 
 const TREATMENT_TEMPLATE = `<traitement>
-1. OBJECTIFS THÉRAPEUTIQUES :
-
-2. OPTION RECOMMANDÉE & ALTERNATIVES : (appareillage retenu et justification, puis alternatives avec leurs indications)
-
-3. SÉQUENCEMENT PAR PHASES : (étapes cliniques concrètes et biomécanique)
-
-4. GESTION DE L'ESPACE & DE L'ANCRAGE : (expansion, stripping/IPR, extractions, mini-vis — uniquement ce qui est pertinent pour ce cas)
-
-5. POINTS DE VIGILANCE & RISQUES : (parodonte, résorptions, récidive, observance, conditions préalables)
-
-6. CONSIGNES POUR L'ÉQUIPE ET LE PATIENT : (actes préalables, hygiène, observance, rythme des contrôles)
-
-7. DURÉE ESTIMÉE & CONTENTION :
+1°. Correction de la déglutition et de la respiration nasale
+2°. Traitement interceptif (ex: Disjoncteur / Quad'hélix / Éducateur fonctionnel / Activateur de Classe II / Carrière motion)
+3°. Nivellement (Aligneurs sup et inf avec taquets fixes OU Multibague Sup et Inf)
+4°. Traction intermaxillaire (Traction de Classe II, Classe III ou asymétrique)
+5°. Rétraction incisive / Chirurgie / Réévaluation en denture définitive
+6°. Finition
+7°. Contention
 </traitement>`;
 
 const DEP_TEMPLATE = `<dep>

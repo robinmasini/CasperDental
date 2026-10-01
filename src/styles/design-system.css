@@ -297,7 +297,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--om-text);
+  color: var(--om-accent);
   margin: var(--om-space-5) 0 var(--om-space-2);
 }
 .om-report h4:first-child { margin-top: 0; }

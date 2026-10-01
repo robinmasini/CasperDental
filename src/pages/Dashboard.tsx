@@ -13,7 +13,7 @@ import CameraCapture from '../components/CameraCapture';
 import { AiMissingBanner, AiReportMeta } from '../components/AiStatus';
 import Icon from '../components/Icon';
 
-const MAX_ANALYSIS_PHOTOS = 10;
+const MAX_ANALYSIS_PHOTOS = 15;
 import { analyzeDentition, getGeminiApiKey, testGeminiKey, describeAiFailure, AnalysisResult, getAnalysisMode, setAnalysisMode, AnalysisMode, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import { AudioConsultation } from '../components/AudioConsultation';

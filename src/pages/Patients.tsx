@@ -642,12 +642,16 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                                 {isOpen && (
                                                     <div className="om-accordion-body">
                                                         <div className="session-section">
-                                                            <h3 className="om-label fiche-stat-label"><Icon name="activity" size={14} /> Diagnostic</h3>
+                                                            <h3 className="om-label fiche-stat-label" style={{ color: 'var(--om-accent)', fontSize: '0.92rem', fontWeight: 700 }}>
+                                                                <Icon name="activity" size={15} style={{ color: 'var(--om-accent)' }} /> DIAGNOSTIC
+                                                            </h3>
                                                             <ClinicalReport text={ana.diagnostic_text} />
                                                         </div>
                                                         {ana.traitement_text && (
                                                             <div className="session-section">
-                                                                <h3 className="om-label fiche-stat-label"><Icon name="tooth" size={14} /> Plan de traitement</h3>
+                                                                <h3 className="om-label fiche-stat-label" style={{ color: 'var(--om-accent)', fontSize: '0.92rem', fontWeight: 700 }}>
+                                                                    <Icon name="tooth" size={15} style={{ color: 'var(--om-accent)' }} /> PLAN DE TRAITEMENT
+                                                                </h3>
                                                                 <ClinicalReport text={ana.traitement_text} />
                                                             </div>
                                                         )}

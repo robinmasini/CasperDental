@@ -197,7 +197,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
 
             {showCamera && (
                 <CameraCapture
-                    maxShots={10}
+                    maxShots={15}
                     onClose={() => setShowCamera(false)}
                     onDone={(files) => { setShowCamera(false); addPhotos(files); }}
                 />

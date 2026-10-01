@@ -448,12 +448,8 @@ export const formatPassagesForPrompt = (passages: RetrievedPassage[]): string =>
 
 // Construit la section "Références" à partir des identifiants réellement cités
 // dans le texte généré : aucune référence ne peut être inventée par le modèle.
-export const buildReferencesSection = (generatedText: string, passages: RetrievedPassage[]): string => {
-    const cited = new Set((generatedText.match(/\[S\d+\]/g) || []).map(m => m.slice(1, -1)));
-    const used = passages.filter(p => cited.has(p.id));
-    if (used.length === 0) return '';
-    const lines = used.map(p => `- **[${p.id}]** ${prettifyBookTitle(p.book_title)}${p.page_number ? `, p. ${p.page_number}` : ''}`);
-    return `\n\n---\n📚 **RÉFÉRENCES DE LA BIBLIOTHÈQUE ORTHOMIND (${used.length} passage${used.length > 1 ? 's' : ''} cité${used.length > 1 ? 's' : ''}) :**\n${lines.join('\n')}`;
+export const buildReferencesSection = (_generatedText: string, _passages: RetrievedPassage[]): string => {
+    return '';
 };
 
 // Mode hors-ligne : extraits bruts des passages les plus pertinents
