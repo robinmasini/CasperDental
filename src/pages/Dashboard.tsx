@@ -1175,9 +1175,32 @@ const Dashboard = () => {
                                 <div className="merged-divider" />
 
                                 {/* Formulaire diagnostic */}
-                                <h2>Nouveau Diagnostic</h2>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                    <h2 style={{ margin: 0 }}>Nouveau Diagnostic</h2>
+                                    <button
+                                        type="button"
+                                        className="om-btn om-btn--ghost om-btn--sm"
+                                        onClick={() => {
+                                            setSelectedPatientObj(null);
+                                            setPatientName('');
+                                            previewUrls.forEach(url => URL.revokeObjectURL(url));
+                                            setImageFiles([]);
+                                            setPreviewUrls([]);
+                                            setPractitionerDictation('');
+                                            setAnalysisResult(null);
+                                            setStreamingReport('');
+                                            setConsoleLogs([]);
+                                            setScanStatusText('');
+                                            setIsScanning(false);
+                                        }}
+                                        style={{ gap: '6px', color: 'var(--primary-cyan)', borderColor: 'rgba(6, 182, 212, 0.3)' }}
+                                        title="Réinitialiser les clichés et la sélection du patient"
+                                    >
+                                        <Icon name="refresh" size={15} /> Réinitialiser
+                                    </button>
+                                </div>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>
-                                    Associez un patient et sélectonnez vos clichés pour commencer.
+                                    Associez un patient et sélectionnez vos clichés pour commencer.
                                 </p>
 
                                 {/* Patient Selector dropdown & quick create */}

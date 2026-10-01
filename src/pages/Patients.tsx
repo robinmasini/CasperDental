@@ -117,13 +117,21 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [depSessionId, setDepSessionId] = useState<string | null>(null);
     const [dataError, setDataError] = useState<string | null>(null);
 
-    // Fetch patients
+    type PatientFilterStatus = 'tous' | 'a_valider' | 'termines';
+    const [statusFilter, setStatusFilter] = useState<PatientFilterStatus>('tous');
+    const [allRecords, setAllRecords] = useState<ClinicalRecord[]>([]);
+
+    // Fetch patients and all records
     useEffect(() => {
-        const fetchPatients = async () => {
+        const fetchPatientsAndRecords = async () => {
             setLoading(true);
             try {
-                const data = await getPatients();
-                setPatients(data.map(convertToDisplayPatient));
+                const [patientsData, recordsData] = await Promise.all([
+                    getPatients(),
+                    listRecords().catch(() => [])
+                ]);
+                setPatients(patientsData.map(convertToDisplayPatient));
+                setAllRecords(recordsData);
                 setDataError(null);
             } catch (err: any) {
                 setDataError(err.message);
@@ -131,7 +139,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                 setLoading(false);
             }
         };
-        fetchPatients();
+        fetchPatientsAndRecords();
     }, []);
 
     const depFromSession = (session: any, patient: DisplayPatient): OrthoMindDepData =>
@@ -141,6 +149,21 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             `${patient.nom} ${patient.prenom}`,
             patient.id
         );
+
+    // Helper to calculate validation status per patient
+    const getPatientValidationStatus = (patientId: string, patientName: string): 'a_valider' | 'termines' | 'non_diagnostique' => {
+        const pRecords = allRecords.filter(r =>
+            r.patient_id === patientId ||
+            (patientName && r.patient_name?.toLowerCase() === patientName.toLowerCase())
+        );
+        if (pRecords.length === 0) return 'non_diagnostique';
+        const hasValidated = pRecords.some(r => r.dep_data?.status === 'selectionne' || (r.meta as any)?.validated === true);
+        if (hasValidated) return 'termines';
+        return 'a_valider';
+    };
+
+    const countAValider = patients.filter(p => getPatientValidationStatus(p.id, `${p.nom} ${p.prenom}`) === 'a_valider').length;
+    const countTermines = patients.filter(p => getPatientValidationStatus(p.id, `${p.nom} ${p.prenom}`) === 'termines').length;
 
     // Fetch appointments & diagnostics when selected patient changes
     useEffect(() => {
@@ -229,10 +252,16 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
         };
     }, [selectedPatient, showLinkModal, showImmersionModal]);
 
-    const filteredPatients = patients.filter(p =>
-        `${p.nom} ${p.prenom}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.numeroDossier.includes(searchQuery)
-    );
+    const filteredPatients = patients.filter(p => {
+        const matchesQuery = `${p.nom} ${p.prenom}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.numeroDossier.includes(searchQuery);
+        if (!matchesQuery) return false;
+
+        const status = getPatientValidationStatus(p.id, `${p.nom} ${p.prenom}`);
+        if (statusFilter === 'a_valider') return status === 'a_valider';
+        if (statusFilter === 'termines') return status === 'termines';
+        return true;
+    });
 
     const handlePatientCreated = (patient: Patient) => {
         const displayPatient = convertToDisplayPatient(patient);
@@ -253,13 +282,14 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                     patient_name: `${selectedPatient.nom} ${selectedPatient.prenom}`,
                     type: 'dep',
                     images: [],
-                    diagnostic_text: 'Fiche DEP saisie manuellement',
+                    diagnostic_text: 'Fiche DEP validée par le praticien',
                     traitement_text: updatedData.planDeTraitement || '',
                     dep_data: updatedData,
                 });
                 setDepSessionId(saved.id);
             }
             setPatientAnalyses(await listRecords(selectedPatient.id));
+            setAllRecords(await listRecords().catch(() => []));
             setDataError(null);
         } catch (err: any) {
             setDataError(err.message);
@@ -391,6 +421,31 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         aria-label="Rechercher un patient"
                     />
                 </div>
+                <div className="patients-status-filters" style={{ display: 'flex', gap: '8px', padding: '0 16px 12px', flexWrap: 'wrap' }}>
+                    <button
+                        type="button"
+                        className={`om-btn om-btn--sm ${statusFilter === 'tous' ? 'om-btn--primary' : 'om-btn--ghost'}`}
+                        onClick={() => setStatusFilter('tous')}
+                    >
+                        Tous ({patients.length})
+                    </button>
+                    <button
+                        type="button"
+                        className={`om-btn om-btn--sm ${statusFilter === 'a_valider' ? 'om-btn--accent' : 'om-btn--ghost'}`}
+                        onClick={() => setStatusFilter('a_valider')}
+                        style={{ gap: '6px' }}
+                    >
+                        <Icon name="clock" size={14} /> À valider par praticien ({countAValider})
+                    </button>
+                    <button
+                        type="button"
+                        className={`om-btn om-btn--sm ${statusFilter === 'termines' ? 'om-btn--success' : 'om-btn--ghost'}`}
+                        onClick={() => setStatusFilter('termines')}
+                        style={{ gap: '6px' }}
+                    >
+                        <Icon name="check" size={14} /> Terminés (validés) ({countTermines})
+                    </button>
+                </div>
                 {dataError && (
                     <div className="om-notice om-notice--danger" role="alert" style={{ margin: '0 16px 12px' }}>
                         <p>{dataError}</p>
@@ -400,6 +455,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                     {!loading && filteredPatients.length > 0 && (
                         <div className="patients-list-head" aria-hidden="true">
                             <span>Patient</span>
+                            <span>Statut Diag</span>
                             <span>Naissance</span>
                             <span>Téléphone</span>
                             <span>N° de dossier</span>
@@ -409,25 +465,33 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                     {loading ? (
                         <p className="patients-list-status">Chargement…</p>
                     ) : filteredPatients.length === 0 ? (
-                        <p className="patients-list-status">Aucun patient trouvé</p>
+                        <p className="patients-list-status">Aucun patient dans cette catégorie</p>
                     ) : (
-                        filteredPatients.map((patient) => (
-                            <button
-                                key={patient.id}
-                                className={`patient-row ${selectedPatient?.id === patient.id ? 'is-active' : ''}`}
-                                onClick={() => setSelectedPatient(patient)}
-                            >
-                                <span className="patient-avatar" aria-hidden="true">{patient.prenom[0]}{patient.nom[0]}</span>
-                                <span className="patient-row-text">
-                                    <span className="patient-row-name">{patient.nom} {patient.prenom}</span>
-                                    <span className="patient-row-meta">{patient.age || 'Âge inconnu'} · {patient.praticien}</span>
-                                </span>
-                                <span className="patient-row-col">{formatDate(patient.dateNaissance)}</span>
-                                <span className="patient-row-col">{patient.telephone || '—'}</span>
-                                <span className="patient-row-col patient-row-col--muted">Dossier {patient.numeroDossier.slice(-8)}</span>
-                                <span className="patient-row-open">Ouvrir la fiche</span>
-                            </button>
-                        ))
+                        filteredPatients.map((patient) => {
+                            const pStatus = getPatientValidationStatus(patient.id, `${patient.nom} ${patient.prenom}`);
+                            return (
+                                <button
+                                    key={patient.id}
+                                    className={`patient-row ${selectedPatient?.id === patient.id ? 'is-active' : ''}`}
+                                    onClick={() => setSelectedPatient(patient)}
+                                >
+                                    <span className="patient-avatar" aria-hidden="true">{patient.prenom[0]}{patient.nom[0]}</span>
+                                    <span className="patient-row-text">
+                                        <span className="patient-row-name">{patient.nom} {patient.prenom}</span>
+                                        <span className="patient-row-meta">{patient.age || 'Âge inconnu'} · {patient.praticien}</span>
+                                    </span>
+                                    <span className="patient-row-col">
+                                        {pStatus === 'termines' && <span className="om-badge om-badge--success" style={{ fontSize: '0.72rem' }}>✓ Validé par praticien</span>}
+                                        {pStatus === 'a_valider' && <span className="om-badge om-badge--warning" style={{ fontSize: '0.72rem' }}>⚠️ À valider</span>}
+                                        {pStatus === 'non_diagnostique' && <span className="om-badge om-badge--ghost" style={{ fontSize: '0.72rem' }}>Non renseigné</span>}
+                                    </span>
+                                    <span className="patient-row-col">{formatDate(patient.dateNaissance)}</span>
+                                    <span className="patient-row-col">{patient.telephone || '—'}</span>
+                                    <span className="patient-row-col patient-row-col--muted">Dossier {patient.numeroDossier.slice(-8)}</span>
+                                    <span className="patient-row-open">Ouvrir la fiche</span>
+                                </button>
+                            );
+                        })
                     )}
                 </div>
             </section>

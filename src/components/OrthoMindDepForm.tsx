@@ -102,10 +102,15 @@ export const OrthoMindDepForm: React.FC<OrthoMindDepFormProps> = ({
     };
 
     const handleFormSubmit = () => {
+        const validatedData: OrthoMindDepData = {
+            ...formData,
+            status: 'selectionne'
+        };
+        setFormData(validatedData);
         if (onSave) {
-            onSave(formData);
+            onSave(validatedData);
         } else {
-            alert('Fiche DEP enregistrée dans le dossier du patient.');
+            alert('Fiche DEP validée par le praticien et enregistrée dans le dossier du patient.');
         }
     };
 
@@ -615,10 +620,10 @@ export const OrthoMindDepForm: React.FC<OrthoMindDepFormProps> = ({
                         <span className="legend-box non-saisi"></span> Diag non saisi
                     </span>
                     <span className="legend-badge">
-                        <span className="legend-box saisi"></span> Diag saisi (Validation OrthoMind)
+                        <span className="legend-box saisi"></span> À valider par praticien (OrthoMind)
                     </span>
                     <span className="legend-badge">
-                        <span className="legend-box selectionne"></span> Diag sélectionné
+                        <span className="legend-box selectionne"></span> Validé par praticien (Terminé)
                     </span>
                 </div>
 
@@ -630,7 +635,7 @@ export const OrthoMindDepForm: React.FC<OrthoMindDepFormProps> = ({
                             </button>
                         )}
                         <button type="button" className="btn-orthomind-cta" onClick={handleFormSubmit}>
-                            Enregistrer dans la fiche patient
+                            ✓ Valider par le praticien & Enregistrer
                         </button>
                     </div>
                 )}
