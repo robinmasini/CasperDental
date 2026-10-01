@@ -25,8 +25,39 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
     const [error, setError] = useState<string | null>(null);
     const [viewerIndex, setViewerIndex] = useState<number | null>(null);
     const [showCamera, setShowCamera] = useState(false);
+    const [isDownloadingAll, setIsDownloadingAll] = useState(false);
     const galleryRef = useRef<HTMLInputElement>(null);
     const canUseCamera = !!navigator.mediaDevices?.getUserMedia && window.matchMedia('(pointer: coarse)').matches;
+
+    const handleDownloadAllPhotos = async () => {
+        if (photos.length === 0) return;
+        setIsDownloadingAll(true);
+        try {
+            for (let i = 0; i < photos.length; i++) {
+                const photo = photos[i];
+                if (!photo.url) continue;
+                try {
+                    const response = await fetch(photo.url);
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const dateStr = photo.taken_at ? new Date(photo.taken_at).toISOString().slice(0, 10) : `photo_${i + 1}`;
+                    const cleanPatient = (patientName || 'patient').replace(/[^a-zA-Z0-9_-]/g, '_');
+                    a.download = `${cleanPatient}_cliche_${i + 1}_${dateStr}.jpg`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+                    await new Promise(r => setTimeout(r, 350));
+                } catch (err) {
+                    console.error("Error downloading image:", err);
+                }
+            }
+        } finally {
+            setIsDownloadingAll(false);
+        }
+    };
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -96,9 +127,9 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
 
     return (
         <div className="patient-photos">
-            <div className="fiche-section-bar">
-                <h3 className="om-title">Photos de {patientName}</h3>
-                <div className="fiche-section-actions">
+            <div className="fiche-section-bar" style={{ alignItems: 'flex-start' }}>
+                <h3 className="om-title" style={{ marginTop: '6px' }}>Photos de {patientName}</h3>
+                <div className="fiche-section-actions" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                     <input
                         ref={galleryRef}
                         type="file"
@@ -107,13 +138,30 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                         hidden
                         onChange={(e) => addPhotos(Array.from(e.target.files || []))}
                     />
-                    {canUseCamera && (
-                        <button className="om-btn om-btn--primary om-btn--sm" onClick={() => setShowCamera(true)} disabled={uploading}>
-                            <Icon name="camera" /> Prendre des photos
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {canUseCamera && (
+                            <button className="om-btn om-btn--primary om-btn--sm" onClick={() => setShowCamera(true)} disabled={uploading}>
+                                <Icon name="camera" /> Prendre des photos
+                            </button>
+                        )}
+                        <button className="om-btn om-btn--secondary om-btn--sm" onClick={() => galleryRef.current?.click()} disabled={uploading}>
+                            <Icon name="image" /> {uploading ? 'Envoi…' : 'Ajouter depuis la galerie'}
                         </button>
-                    )}
-                    <button className="om-btn om-btn--secondary om-btn--sm" onClick={() => galleryRef.current?.click()} disabled={uploading}>
-                        <Icon name="image" /> {uploading ? 'Envoi…' : 'Ajouter depuis la galerie'}
+                    </div>
+                    <button
+                        type="button"
+                        className="om-btn om-btn--ghost om-btn--sm"
+                        onClick={handleDownloadAllPhotos}
+                        disabled={uploading || isDownloadingAll || photos.length === 0}
+                        style={{ gap: '6px', color: photos.length > 0 ? 'var(--om-accent)' : 'var(--om-text-3)', borderColor: photos.length > 0 ? 'rgba(0, 242, 254, 0.3)' : undefined }}
+                        title={photos.length === 0 ? "Aucune photo à télécharger" : "Télécharger tous les clichés du patient"}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        {isDownloadingAll ? 'Téléchargement…' : 'Télécharger toutes les photos'}
                     </button>
                 </div>
             </div>
