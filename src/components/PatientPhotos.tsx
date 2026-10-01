@@ -5,8 +5,8 @@ import CameraCapture from './CameraCapture';
 import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable } from '../services/photosService';
 import './PatientPhotos.css';
 
-// Onglet Photos de la fiche patient : tous les clichés archivés, horodatés,
-// regroupés par jour, avec visionneuse plein écran.
+// Onglet Photos de la fiche patient : tous les clichés archivés (13 vues ordonnées),
+// regroupés par jour, avec titre explicite en haut de chaque photo et visionneuse plein écran.
 
 interface PatientPhotosProps {
     patientId: string;
@@ -44,7 +44,8 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                     a.href = url;
                     const dateStr = photo.taken_at ? new Date(photo.taken_at).toISOString().slice(0, 10) : `photo_${i + 1}`;
                     const cleanPatient = (patientName || 'patient').replace(/[^a-zA-Z0-9_-]/g, '_');
-                    a.download = `${cleanPatient}_cliche_${i + 1}_${dateStr}.jpg`;
+                    const cleanLabel = (photo.label || `cliche_${i + 1}`).replace(/[^a-zA-Z0-9_-]/g, '_');
+                    a.download = `${cleanPatient}_${cleanLabel}_${dateStr}.jpg`;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
@@ -128,7 +129,12 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
     return (
         <div className="patient-photos">
             <div className="fiche-section-bar" style={{ alignItems: 'flex-start' }}>
-                <h3 className="om-title" style={{ marginTop: '6px' }}>Photos de {patientName}</h3>
+                <div>
+                    <h3 className="om-title" style={{ marginTop: '6px' }}>Photos de {patientName}</h3>
+                    <p className="om-muted" style={{ fontSize: '0.84rem' }}>
+                        Clichés orthodontiques (séquence de 13 vues : 7 intra-orales, 4 visage, 2 buste)
+                    </p>
+                </div>
                 <div className="fiche-section-actions" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                     <input
                         ref={galleryRef}
@@ -141,7 +147,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {canUseCamera && (
                             <button className="om-btn om-btn--primary om-btn--sm" onClick={() => setShowCamera(true)} disabled={uploading}>
-                                <Icon name="camera" /> Prendre des photos
+                                <Icon name="camera" /> Prendre les 13 clichés
                             </button>
                         )}
                         <button className="om-btn om-btn--secondary om-btn--sm" onClick={() => galleryRef.current?.click()} disabled={uploading}>
@@ -183,6 +189,26 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                         <div className="photos-grid">
                             {group.items.map(({ photo, index }) => (
                                 <button key={photo.id} className="photo-tile" onClick={() => setViewerIndex(index)}>
+                                    {photo.label && (
+                                        <div className="photo-tile-header" style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            background: 'linear-gradient(to bottom, rgba(15, 23, 42, 0.85), transparent)',
+                                            color: 'var(--om-accent, #00f2fe)',
+                                            fontSize: '0.74rem',
+                                            fontWeight: 600,
+                                            padding: '6px 8px',
+                                            zIndex: 2,
+                                            textAlign: 'left',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis'
+                                        }}>
+                                            {photo.label}
+                                        </div>
+                                    )}
                                     {photo.url ? <img src={photo.url} alt={photo.label || `Photo du ${group.day}`} loading="lazy" /> : <span className="photo-missing">Indisponible</span>}
                                     <span className="photo-caption">
                                         <span>{timeLabel(photo.taken_at)}</span>
@@ -197,7 +223,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
 
             {showCamera && (
                 <CameraCapture
-                    maxShots={15}
+                    maxShots={13}
                     onClose={() => setShowCamera(false)}
                     onDone={(files) => { setShowCamera(false); addPhotos(files); }}
                 />
@@ -207,8 +233,8 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                 <div className="photo-viewer" role="dialog" aria-modal="true" onClick={() => setViewerIndex(null)}>
                     <div className="photo-viewer-top" onClick={e => e.stopPropagation()}>
                         <div>
-                            <strong>{dayLabel(current.taken_at)} à {timeLabel(current.taken_at)}</strong>
-                            {current.label && <span className="photo-viewer-label">{current.label}</span>}
+                            <strong>{current.label ? current.label : `${dayLabel(current.taken_at)} à ${timeLabel(current.taken_at)}`}</strong>
+                            <span className="photo-viewer-label">{dayLabel(current.taken_at)} à {timeLabel(current.taken_at)}</span>
                         </div>
                         <div className="photo-viewer-actions">
                             <button className="om-btn om-btn--danger om-btn--sm" onClick={removeCurrent}>Supprimer</button>

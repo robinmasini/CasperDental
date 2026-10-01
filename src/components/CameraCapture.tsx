@@ -3,21 +3,22 @@ import { createPortal } from 'react-dom';
 import Icon from './Icon';
 import './CameraCapture.css';
 
-// Caméra intégrée : enchaîner les clichés sans repasser par l'interface
-// (l'appareil photo natif d'iOS ne prend qu'une photo par ouverture).
-
-// Série photographique orthodontique de référence, proposée dans l'ordre
-const SUGGESTED_VIEWS = [
-    'Face — sourire',
-    'Face — repos',
-    'Profil droit',
-    'Intra-buccale — face',
-    'Intra-buccale — latérale droite',
-    'Intra-buccale — latérale gauche',
-    'Occlusale maxillaire',
-    'Occlusale mandibulaire',
-    'Profil gauche',
-    'Cliché complémentaire',
+// Caméra intégrée : enchaîner les clichés sans repasser par l'interface.
+// Série photographique orthodontique de référence (13 clichés DANS L'ORDRE).
+export const PHOTO_SUGGESTED_VIEWS = [
+    'Intra-oral — face',
+    'Intra-oral — face dessous',
+    'Intra-oral — courbe de Spee',
+    'Intra-oral — droit',
+    'Intra-oral — gauche',
+    'Intra-oral — haut',
+    'Intra-oral — bas',
+    'Visage — face',
+    'Visage — sourire',
+    'Visage — gauche',
+    'Visage — droit',
+    'Buste — face',
+    'Buste — profil',
 ];
 
 interface Shot {
@@ -26,13 +27,13 @@ interface Shot {
 }
 
 interface CameraCaptureProps {
-    maxShots: number;
+    maxShots?: number;
     startIndex?: number;
     onDone: (files: File[]) => void;
     onClose: () => void;
 }
 
-const CameraCapture = ({ maxShots, startIndex = 0, onDone, onClose }: CameraCaptureProps) => {
+const CameraCapture = ({ maxShots = 13, startIndex = 0, onDone, onClose }: CameraCaptureProps) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
@@ -95,12 +96,14 @@ const CameraCapture = ({ maxShots, startIndex = 0, onDone, onClose }: CameraCapt
         const video = videoRef.current;
         if (!video || !video.videoWidth || remaining <= 0) return;
         const index = ++shotCounter.current;
+        const currentIdx = startIndex + shots.length;
+        const viewLabel = PHOTO_SUGGESTED_VIEWS[Math.min(currentIdx, PHOTO_SUGGESTED_VIEWS.length - 1)];
+
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d')!;
         if (facingMode === 'user') {
-            // La caméra frontale est affichée en miroir : on enregistre l'image réelle
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
         }
@@ -112,7 +115,7 @@ const CameraCapture = ({ maxShots, startIndex = 0, onDone, onClose }: CameraCapt
 
         canvas.toBlob(blob => {
             if (!blob) return;
-            const file = new File([blob], `cliche-${String(index).padStart(2, '0')}.jpg`, { type: 'image/jpeg' });
+            const file = new File([blob], `cliche-${String(index).padStart(2, '0')}__${viewLabel}.jpg`, { type: 'image/jpeg' });
             setShots(prev => [...prev, { file, url: URL.createObjectURL(file) }]);
         }, 'image/jpeg', 0.92);
     };
@@ -120,9 +123,18 @@ const CameraCapture = ({ maxShots, startIndex = 0, onDone, onClose }: CameraCapt
     // Import depuis la photothèque sans quitter la caméra
     const addFromGallery = (fileList: FileList | null) => {
         if (!fileList) return;
-        const files = Array.from(fileList).slice(0, Math.max(0, maxShots - shots.length));
-        shotCounter.current += files.length;
-        setShots(prev => [...prev, ...files.map(file => ({ file, url: URL.createObjectURL(file) }))]);
+        const rawFiles = Array.from(fileList).slice(0, Math.max(0, maxShots - shots.length));
+        
+        const newShots: Shot[] = rawFiles.map((file, i) => {
+            const currentIdx = startIndex + shots.length + i;
+            const viewLabel = PHOTO_SUGGESTED_VIEWS[Math.min(currentIdx, PHOTO_SUGGESTED_VIEWS.length - 1)];
+            const fileName = file.name.includes('__') ? file.name : `cliche-${String(currentIdx + 1).padStart(2, '0')}__${viewLabel}.jpg`;
+            const taggedFile = new File([file], fileName, { type: file.type || 'image/jpeg' });
+            return { file: taggedFile, url: URL.createObjectURL(taggedFile) };
+        });
+
+        shotCounter.current += rawFiles.length;
+        setShots(prev => [...prev, ...newShots]);
         if (galleryInputRef.current) galleryInputRef.current.value = '';
     };
 
@@ -145,7 +157,8 @@ const CameraCapture = ({ maxShots, startIndex = 0, onDone, onClose }: CameraCapt
         onClose();
     };
 
-    const nextView = SUGGESTED_VIEWS[Math.min(startIndex + shots.length, SUGGESTED_VIEWS.length - 1)];
+    const currentIdx = startIndex + shots.length;
+    const nextView = PHOTO_SUGGESTED_VIEWS[Math.min(currentIdx, PHOTO_SUGGESTED_VIEWS.length - 1)];
 
     return createPortal(
         <div className="camera-capture" role="dialog" aria-modal="true" aria-label="Prise de clichés">
@@ -166,7 +179,7 @@ const CameraCapture = ({ maxShots, startIndex = 0, onDone, onClose }: CameraCapt
                 <div className="camera-hint">
                     {remaining > 0 ? (
                         <>
-                            <span className="camera-hint-label">Vue suggérée · {startIndex + shots.length} / {startIndex + maxShots}</span>
+                            <span className="camera-hint-label">Vue suggérée · {startIndex + shots.length + 1} / {startIndex + maxShots}</span>
                             <span className="camera-hint-view">{nextView}</span>
                         </>
                     ) : (

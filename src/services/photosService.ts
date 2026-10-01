@@ -2,9 +2,8 @@ import { supabase } from '../lib/supabase';
 import { isCloudMode } from './recordsService';
 
 // ============================================================================
-// Photos des patients : conservées dans l'espace de stockage privé du cabinet
-// (Supabase Storage « patient-photos ») et horodatées, pour être reconsultées
-// depuis la fiche patient sur tous les appareils.
+// Photos & Radiographies des patients : conservées dans l'espace de stockage
+// privé du cabinet (Supabase Storage « patient-photos ») et horodatées.
 // ============================================================================
 
 const BUCKET = 'patient-photos';
@@ -20,6 +19,15 @@ export interface PatientPhoto {
     label: string | null;
     url?: string;
 }
+
+export const RADIOGRAPHY_TITLES = [
+    'Panoramique',
+    'Téléradiographie de profil',
+    'Téléradiographie de face',
+    'Radiographie du poignet (évaluation de la maturation osseuse)'
+] as const;
+
+export type RadiographyTitle = typeof RADIOGRAPHY_TITLES[number];
 
 export const photosAvailable = () => isCloudMode();
 
@@ -40,9 +48,9 @@ const prepareForStorage = async (file: File): Promise<Blob> => {
     }
 };
 
-// Nom de fichier « cliche-03__Face — sourire.jpg » produit par la caméra intégrée
+// Extraction du titre (« cliche-03__Visage — sourire.jpg » -> « Visage — sourire »)
 const labelFromName = (name: string): string | null => {
-    const match = name.match(/__(.+)\.[a-z]+$/i);
+    const match = name.match(/__(.+)\.[a-z0-9]+$/i);
     return match ? match[1] : null;
 };
 
@@ -55,7 +63,6 @@ export const uploadPatientPhotos = async (
 
     let uploaded = 0;
     for (const file of files) {
-        // Date de prise : celle du fichier (heure de la prise pour la caméra intégrée)
         const takenAt = new Date(file.lastModified || Date.now());
         const day = takenAt.toISOString().slice(0, 10);
         const path = `${patientId}/${day}/${crypto.randomUUID()}.jpg`;
@@ -67,12 +74,14 @@ export const uploadPatientPhotos = async (
         });
         if (uploadError) throw new Error(`Envoi d'une photo impossible : ${uploadError.message}`);
 
+        const label = labelFromName(file.name);
+
         const { error: rowError } = await supabase.from('patient_photos').insert({
             patient_id: patientId,
             record_id: recordId && UUID_RE.test(recordId) ? recordId : null,
             storage_path: path,
             taken_at: takenAt.toISOString(),
-            label: labelFromName(file.name),
+            label: label,
         });
         if (rowError) {
             await supabase.storage.from(BUCKET).remove([path]);
@@ -90,21 +99,92 @@ export const listPatientPhotos = async (patientId: string): Promise<PatientPhoto
         .select('*')
         .eq('patient_id', patientId)
         .order('taken_at', { ascending: false });
-    if (error) throw new Error(`Lecture des photos impossible : ${error.message}`);
-    const photos: PatientPhoto[] = data || [];
-    if (photos.length === 0) return photos;
 
-    // Liens temporaires (1 h) : le stockage reste privé
+    if (error) throw new Error(`Lecture des photos impossible : ${error.message}`);
+    
+    // Filtrer pour ne conserver que les photos (et pas les radios identifiées RADIO::)
+    const rawPhotos: PatientPhoto[] = (data || []).filter(p => !p.label?.startsWith('RADIO::'));
+    if (rawPhotos.length === 0) return [];
+
     const { data: signed, error: signError } = await supabase.storage
         .from(BUCKET)
-        .createSignedUrls(photos.map(p => p.storage_path), 3600);
+        .createSignedUrls(rawPhotos.map(p => p.storage_path), 3600);
+
     if (signError) throw new Error(`Accès aux photos impossible : ${signError.message}`);
     const urls = new Map<string, string>((signed || []).map((s: any) => [s.path, s.signedUrl]));
-    return photos.map(p => ({ ...p, url: urls.get(p.storage_path) }));
+    return rawPhotos.map(p => ({ ...p, url: urls.get(p.storage_path) }));
 };
 
 export const deletePatientPhoto = async (photo: PatientPhoto): Promise<void> => {
     const { error } = await supabase.from('patient_photos').delete().eq('id', photo.id);
     if (error) throw new Error(`Suppression impossible : ${error.message}`);
     await supabase.storage.from(BUCKET).remove([photo.storage_path]);
+};
+
+// ============================================================================
+// Radiographies (Panoramique, Téléradiographies, Poignet)
+// ============================================================================
+
+export const uploadPatientRadio = async (
+    patientId: string,
+    file: File,
+    radioTitle: string
+): Promise<void> => {
+    if (!isCloudMode() || !UUID_RE.test(patientId)) return;
+
+    const takenAt = new Date(file.lastModified || Date.now());
+    const day = takenAt.toISOString().slice(0, 10);
+    const path = `${patientId}/radios/${day}/${crypto.randomUUID()}.jpg`;
+
+    const blob = await prepareForStorage(file);
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, blob, {
+        contentType: 'image/jpeg',
+        upsert: false,
+    });
+    if (uploadError) throw new Error(`Envoi de la radiographie impossible : ${uploadError.message}`);
+
+    const { error: rowError } = await supabase.from('patient_photos').insert({
+        patient_id: patientId,
+        record_id: null,
+        storage_path: path,
+        taken_at: takenAt.toISOString(),
+        label: `RADIO::${radioTitle}`,
+    });
+
+    if (rowError) {
+        await supabase.storage.from(BUCKET).remove([path]);
+        throw new Error(`Enregistrement de la radiographie impossible : ${rowError.message}`);
+    }
+};
+
+export const listPatientRadios = async (patientId: string): Promise<Record<string, PatientPhoto>> => {
+    if (!isCloudMode() || !UUID_RE.test(patientId)) return {};
+    
+    const { data, error } = await supabase
+        .from('patient_photos')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('taken_at', { ascending: false });
+
+    if (error) throw new Error(`Lecture des radiographies impossible : ${error.message}`);
+    
+    const radioRows: PatientPhoto[] = (data || []).filter(p => p.label?.startsWith('RADIO::'));
+    if (radioRows.length === 0) return {};
+
+    const { data: signed, error: signError } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrls(radioRows.map(p => p.storage_path), 3600);
+
+    if (signError) throw new Error(`Accès aux radiographies impossible : ${signError.message}`);
+    const urls = new Map<string, string>((signed || []).map((s: any) => [s.path, s.signedUrl]));
+
+    // Associer la plus récente par titre de radio
+    const radiosMap: Record<string, PatientPhoto> = {};
+    for (const r of radioRows) {
+        const title = r.label?.replace(/^RADIO::/, '') || '';
+        if (title && !radiosMap[title]) {
+            radiosMap[title] = { ...r, url: urls.get(r.storage_path) };
+        }
+    }
+    return radiosMap;
 };

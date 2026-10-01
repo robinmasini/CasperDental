@@ -13,7 +13,7 @@ import CameraCapture from '../components/CameraCapture';
 import { AiMissingBanner, AiReportMeta } from '../components/AiStatus';
 import Icon from '../components/Icon';
 
-const MAX_ANALYSIS_PHOTOS = 15;
+const MAX_ANALYSIS_PHOTOS = 13;
 import { analyzeDentition, getGeminiApiKey, testGeminiKey, describeAiFailure, AnalysisResult, getAnalysisMode, setAnalysisMode, AnalysisMode, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import { AudioConsultation } from '../components/AudioConsultation';
@@ -1268,8 +1268,8 @@ const Dashboard = () => {
                                                     <circle cx="8.5" cy="8.5" r="1.5" />
                                                     <polyline points="21 15 16 10 5 21" />
                                                 </svg>
-                                                <div className="dropzone-title">{canUseCamera ? 'Ou choisir dans la photothèque' : 'Sélectionner les clichés dentaires'}</div>
-                                                <div className="dropzone-subtitle">Formats JPEG, PNG, HEIC supportés. Maximum {MAX_ANALYSIS_PHOTOS} images.</div>
+                                                <div className="dropzone-title">{canUseCamera ? 'Ou choisir dans la photothèque' : 'Sélectionner les 13 clichés dentaires'}</div>
+                                                <div className="dropzone-subtitle">Formats JPEG, PNG, HEIC supportés. Séquence de 13 clichés max (7 intra-oraux, 4 visage, 2 buste).</div>
                                             </>
                                         )}
                                     </label>
