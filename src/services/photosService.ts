@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { isCloudMode } from './recordsService';
+import JSZip from 'jszip';
 
 // ============================================================================
 // Photos & Radiographies des patients : conservées dans l'espace de stockage
@@ -187,4 +188,65 @@ export const listPatientRadios = async (patientId: string): Promise<Record<strin
         }
     }
     return radiosMap;
+};
+
+// ============================================================================
+// Téléchargement global en archive ZIP (Dossiers Photos & Radiographies séparés)
+// ============================================================================
+
+export const downloadPatientDossierZip = async (
+    patientId: string,
+    patientName: string
+): Promise<void> => {
+    const photos = await listPatientPhotos(patientId);
+    const radiosMap = await listPatientRadios(patientId);
+
+    const zip = new JSZip();
+    const cleanPatient = (patientName || 'patient').replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    // Créer les 2 sous-dossiers distincts dans l'archive ZIP
+    const photosFolder = zip.folder('Photos');
+    const radiosFolder = zip.folder('Radiographies');
+
+    // 1. Ajout des photos dans Photos/
+    for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        if (!photo.url) continue;
+        try {
+            const res = await fetch(photo.url);
+            const blob = await res.blob();
+            const label = photo.label ? photo.label.replace(/[^a-zA-Z0-9_-]/g, '_') : `cliche_${i + 1}`;
+            const dateStr = photo.taken_at ? new Date(photo.taken_at).toISOString().slice(0, 10) : '';
+            photosFolder?.file(`${String(i + 1).padStart(2, '0')}_${label}${dateStr ? '_' + dateStr : ''}.jpg`, blob);
+        } catch (err) {
+            console.error('Erreur de téléchargement photo pour le ZIP :', err);
+        }
+    }
+
+    // 2. Ajout des radios dans Radiographies/
+    const radioKeys = Object.keys(radiosMap);
+    for (let i = 0; i < radioKeys.length; i++) {
+        const title = radioKeys[i];
+        const radio = radiosMap[title];
+        if (!radio || !radio.url) continue;
+        try {
+            const res = await fetch(radio.url);
+            const blob = await res.blob();
+            const cleanTitle = title.replace(/[^a-zA-Z0-9_-]/g, '_');
+            radiosFolder?.file(`${String(i + 1).padStart(2, '0')}_${cleanTitle}.jpg`, blob);
+        } catch (err) {
+            console.error('Erreur de téléchargement radio pour le ZIP :', err);
+        }
+    }
+
+    // Générer et télécharger le fichier ZIP unique
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = window.URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${cleanPatient}_Dossier_Iconographique.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 };

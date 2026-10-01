@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon';
 import CameraCapture from './CameraCapture';
-import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable } from '../services/photosService';
+import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip } from '../services/photosService';
 import './PatientPhotos.css';
 
 // Onglet Photos de la fiche patient : tous les clichés archivés (13 vues ordonnées),
@@ -30,31 +30,12 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
     const canUseCamera = !!navigator.mediaDevices?.getUserMedia && window.matchMedia('(pointer: coarse)').matches;
 
     const handleDownloadAllPhotos = async () => {
-        if (photos.length === 0) return;
         setIsDownloadingAll(true);
         try {
-            for (let i = 0; i < photos.length; i++) {
-                const photo = photos[i];
-                if (!photo.url) continue;
-                try {
-                    const response = await fetch(photo.url);
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    const dateStr = photo.taken_at ? new Date(photo.taken_at).toISOString().slice(0, 10) : `photo_${i + 1}`;
-                    const cleanPatient = (patientName || 'patient').replace(/[^a-zA-Z0-9_-]/g, '_');
-                    const cleanLabel = (photo.label || `cliche_${i + 1}`).replace(/[^a-zA-Z0-9_-]/g, '_');
-                    a.download = `${cleanPatient}_${cleanLabel}_${dateStr}.jpg`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-                    await new Promise(r => setTimeout(r, 350));
-                } catch (err) {
-                    console.error("Error downloading image:", err);
-                }
-            }
+            await downloadPatientDossierZip(patientId, patientName);
+        } catch (err: any) {
+            console.error("Error creating ZIP download:", err);
+            setError(err.message || 'Erreur lors de la création du fichier ZIP');
         } finally {
             setIsDownloadingAll(false);
         }
@@ -167,7 +148,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                             <polyline points="7 10 12 15 17 10" />
                             <line x1="12" y1="15" x2="12" y2="3" />
                         </svg>
-                        {isDownloadingAll ? 'Téléchargement…' : 'Télécharger toutes les photos'}
+                        {isDownloadingAll ? 'Création de l\'archive ZIP…' : 'Télécharger le dossier complet (ZIP)'}
                     </button>
                 </div>
             </div>
