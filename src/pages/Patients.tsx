@@ -435,7 +435,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         onClick={() => setStatusFilter('a_valider')}
                         style={{ gap: '6px' }}
                     >
-                        <Icon name="clock" size={14} /> À valider par praticien ({countAValider})
+                        <Icon name="clock" size={14} /> À valider par Praticien ({countAValider})
                     </button>
                     <button
                         type="button"
@@ -443,7 +443,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         onClick={() => setStatusFilter('termines')}
                         style={{ gap: '6px' }}
                     >
-                        <Icon name="check" size={14} /> Terminés (validés) ({countTermines})
+                        <Icon name="check" size={14} /> Terminés ({countTermines})
                     </button>
                 </div>
                 {dataError && (
@@ -481,7 +481,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                         <span className="patient-row-meta">{patient.age || 'Âge inconnu'} · {patient.praticien}</span>
                                     </span>
                                     <span className="patient-row-col">
-                                        {pStatus === 'termines' && <span className="om-badge om-badge--success" style={{ fontSize: '0.72rem' }}>✓ Validé par praticien</span>}
+                                        {pStatus === 'termines' && <span className="om-badge om-badge--success" style={{ fontSize: '0.72rem' }}>✓ Validé par Praticien</span>}
                                         {pStatus === 'a_valider' && <span className="om-badge om-badge--warning" style={{ fontSize: '0.72rem' }}>⚠️ À valider</span>}
                                         {pStatus === 'non_diagnostique' && <span className="om-badge om-badge--ghost" style={{ fontSize: '0.72rem' }}>Non renseigné</span>}
                                     </span>

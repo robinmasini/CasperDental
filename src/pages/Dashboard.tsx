@@ -1196,7 +1196,7 @@ const Dashboard = () => {
                                         style={{ gap: '6px', color: 'var(--primary-cyan)', borderColor: 'rgba(6, 182, 212, 0.3)' }}
                                         title="Réinitialiser les clichés et la sélection du patient"
                                     >
-                                        <Icon name="refresh" size={15} /> Réinitialiser
+                                        <Icon name="refresh" size={15} style={{ color: '#ffffff' }} />Réinitialiser
                                     </button>
                                 </div>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>

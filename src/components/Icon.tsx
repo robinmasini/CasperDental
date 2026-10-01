@@ -33,6 +33,8 @@ const PATHS = {
     externalLink: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3',
     edit: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z',
     trash: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+    refresh: 'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5',
+    clock: 'M12 8v4l3 3M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z',
 } as const;
 
 export type IconName = keyof typeof PATHS;
@@ -41,9 +43,10 @@ interface IconProps {
     name: IconName;
     size?: number;
     className?: string;
+    style?: React.CSSProperties;
 }
 
-const Icon = ({ name, size = 16, className }: IconProps) => (
+const Icon = ({ name, size = 16, className, style }: IconProps) => (
     <svg
         width={size}
         height={size}
@@ -54,6 +57,7 @@ const Icon = ({ name, size = 16, className }: IconProps) => (
         strokeLinecap="round"
         strokeLinejoin="round"
         className={className}
+        style={style}
         aria-hidden="true"
     >
         <path d={PATHS[name]} />

@@ -620,10 +620,10 @@ export const OrthoMindDepForm: React.FC<OrthoMindDepFormProps> = ({
                         <span className="legend-box non-saisi"></span> Diag non saisi
                     </span>
                     <span className="legend-badge">
-                        <span className="legend-box saisi"></span> À valider par praticien (OrthoMind)
+                        <span className="legend-box saisi"></span> À valider par Praticien (OrthoMind)
                     </span>
                     <span className="legend-badge">
-                        <span className="legend-box selectionne"></span> Validé par praticien (Terminé)
+                        <span className="legend-box selectionne"></span> Validé par Praticien (Terminé)
                     </span>
                 </div>
 
