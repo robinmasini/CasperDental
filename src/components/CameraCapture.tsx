@@ -285,21 +285,7 @@ const CameraCapture = ({ maxShots = 13, startIndex = 0, onDone, onClose }: Camer
                 </div>
             )}
 
-            {/* Sélecteur rapide de zoom */}
-            {!error && (
-                <div className="camera-zoom-controls">
-                    {[1, 1.5, 2, 3].map(z => (
-                        <button
-                            key={z}
-                            type="button"
-                            className={`camera-zoom-btn ${Math.abs(zoomScale - z) < 0.15 ? 'is-active' : ''}`}
-                            onClick={() => applyZoom(z)}
-                        >
-                            {z}x
-                        </button>
-                    ))}
-                </div>
-            )}
+
 
             <footer className="camera-bottom">
                 {shots.length > 0 && (
