@@ -222,7 +222,8 @@
     background: rgba(3, 6, 12, 0.66);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    animation: fiche-fade-in 0.16s ease-out;
+    animation: fiche-fade-in 0.12s ease-out;
+    overscroll-behavior: none;
 }
 
 .patient-details-panel {
@@ -236,7 +237,8 @@
     border-radius: var(--om-radius-lg);
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
     overflow-y: auto;
-    animation: fiche-pop-in 0.18s ease-out;
+    overscroll-behavior: none;
+    animation: fiche-fade-in 0.12s ease-out;
 }
 
 @keyframes fiche-fade-in {
@@ -245,8 +247,8 @@
 }
 
 @keyframes fiche-pop-in {
-    from { opacity: 0; transform: translateY(12px) scale(0.99); }
-    to { opacity: 1; transform: none; }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .fiche-mobile-bar {
@@ -563,7 +565,8 @@
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), 0 4px 20px rgba(0, 0, 0, 0.4);
         background: var(--om-surface-solid);
         overflow-y: auto;
-        animation: fiche-pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        overscroll-behavior: none;
+        animation: fiche-fade-in 0.12s ease-out;
     }
 
     .fiche-mobile-bar {
