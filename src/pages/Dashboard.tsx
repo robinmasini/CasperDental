@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
@@ -2247,7 +2248,7 @@ const Dashboard = () => {
             )}
 
             {/* Mobile Bottom Navigation Bar */}
-            {!isPatientAccount && (
+            {!isPatientAccount && createPortal(
                 <nav className="mobile-bottom-navbar" aria-label="Navigation principale mobile">
                     <button 
                         className={`mobile-navbar-tab ${activeTab === 'analyse' ? 'active' : ''}`}
@@ -2310,7 +2311,8 @@ const Dashboard = () => {
                         </svg>
                         <span className="mobile-navbar-label">Config</span>
                     </button>
-                </nav>
+                </nav>,
+                document.body
             )}
         </div>
     );

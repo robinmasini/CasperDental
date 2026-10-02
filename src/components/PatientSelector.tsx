@@ -18,6 +18,7 @@ export const PatientSelector: React.FC<PatientSelectorProps> = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const [showNewPatientForm, setShowNewPatientForm] = useState(false);
+    const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
     const [loading, setLoading] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -74,12 +75,28 @@ export const PatientSelector: React.FC<PatientSelectorProps> = ({
         setShowNewPatientForm(false);
     };
 
+    const handlePatientUpdated = (updatedPatient: Patient) => {
+        setPatients(prev => prev.map(p => p.id === updatedPatient.id ? updatedPatient : p));
+        if (selectedPatient?.id === updatedPatient.id) {
+            onSelectPatient(updatedPatient);
+        }
+        setEditingPatient(null);
+    };
+
     return (
         <div className={`patient-selector-wrapper ${isOpen ? 'is-open' : ''}`} ref={containerRef}>
             {showNewPatientForm && (
                 <PatientForm
                     onClose={() => setShowNewPatientForm(false)}
                     onSuccess={handleNewPatientCreated}
+                />
+            )}
+
+            {editingPatient && (
+                <PatientForm
+                    initialPatient={editingPatient}
+                    onClose={() => setEditingPatient(null)}
+                    onSuccess={handlePatientUpdated}
                 />
             )}
 
@@ -107,9 +124,22 @@ export const PatientSelector: React.FC<PatientSelectorProps> = ({
                         </div>
                     </div>
 
-                    <button className="clear-patient-btn" onClick={handleClear} title="Changer de patient">
-                        ✕ Modifier
-                    </button>
+                    <div className="selected-patient-actions">
+                        <button
+                            className="btn-edit-patient"
+                            onClick={() => setEditingPatient(selectedPatient)}
+                            title="Modifier la fiche patient"
+                        >
+                            ✏️ Modifier
+                        </button>
+                        <button
+                            className="clear-patient-btn"
+                            onClick={handleClear}
+                            title="Changer de patient"
+                        >
+                            ✕ Changer
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <div className="selector-input-container">
@@ -167,20 +197,37 @@ export const PatientSelector: React.FC<PatientSelectorProps> = ({
                                         <div
                                             key={p.id || Math.random()}
                                             className="dropdown-patient-item"
-                                            onClick={() => handleSelect(p)}
                                         >
-                                            <div className="item-avatar">
+                                            <div className="item-avatar" onClick={() => handleSelect(p)}>
                                                 {p.prenom[0]}{p.nom[0]}
                                             </div>
-                                            <div className="item-info">
+                                            <div className="item-info" onClick={() => handleSelect(p)}>
                                                 <div className="item-name">{p.nom.toUpperCase()} {p.prenom}</div>
                                                 <div className="item-meta">
                                                     Né(e) le {p.date_naissance ? new Date(p.date_naissance).toLocaleDateString('fr-FR') : 'NC'} • 📱 {p.portable || p.telephone || 'Pas de numéro'}
                                                 </div>
                                             </div>
-                                            <button className="btn-item-select">
-                                                Associer ✓
-                                            </button>
+                                            <div className="dropdown-item-actions">
+                                                <button
+                                                    className="btn-item-edit"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setEditingPatient(p);
+                                                    }}
+                                                    title="Modifier cette fiche patient"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    className="btn-item-select"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSelect(p);
+                                                    }}
+                                                >
+                                                    Associer ✓
+                                                </button>
+                                            </div>
                                         </div>
                                     ))
                                 )}

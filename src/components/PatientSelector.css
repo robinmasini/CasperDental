@@ -66,6 +66,30 @@
     color: var(--primary-cyan);
 }
 
+.selected-patient-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-edit-patient {
+    background: rgba(0, 242, 254, 0.12);
+    border: 1px solid rgba(0, 242, 254, 0.35);
+    color: var(--primary-cyan);
+    padding: 6px 14px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-edit-patient:hover {
+    background: rgba(0, 242, 254, 0.25);
+    border-color: rgba(0, 242, 254, 0.6);
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.2);
+}
+
 .clear-patient-btn {
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -82,6 +106,29 @@
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.3);
     color: #f87171;
+}
+
+.dropdown-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.btn-item-edit {
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-item-edit:hover {
+    background: rgba(0, 242, 254, 0.2);
+    border-color: rgba(0, 242, 254, 0.4);
 }
 
 .selector-input-container {
