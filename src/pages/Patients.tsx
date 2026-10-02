@@ -757,6 +757,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 patientName={`${selectedPatient.prenom} ${selectedPatient.nom}`}
                                 initialUrl={raw.onyxceph_url || ''}
                                 onSaveUrl={handleSaveOnyxCephUrl}
+                                onNavigateToEmpreintes={() => setActiveTab('photos')}
                             />
                         )}
 

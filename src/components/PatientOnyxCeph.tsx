@@ -9,13 +9,15 @@ interface PatientOnyxCephProps {
     patientName: string;
     initialUrl?: string;
     onSaveUrl: (newUrl: string) => Promise<void> | void;
+    onNavigateToEmpreintes?: () => void;
 }
 
 const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
     patientId,
     patientName,
     initialUrl = '',
-    onSaveUrl
+    onSaveUrl,
+    onNavigateToEmpreintes
 }) => {
     const [urlInput, setUrlInput] = useState(initialUrl);
     const [savedUrl, setSavedUrl] = useState(initialUrl);
@@ -152,8 +154,8 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                     </div>
 
                     <div className="onyxceph-input-group">
-                        <label htmlFor="onyxceph-url-input" className="om-label">
-                            URL OnyxCeph
+                        <label htmlFor="onyxceph-url-input" className="om-label" style={{ color: 'var(--om-text-2, #94a3b8)', fontSize: '0.74rem', fontWeight: 600 }}>
+                            URL ONYXCEPH
                         </label>
                         <div className="onyxceph-input-wrapper">
                             <Icon name="link" className="input-icon" size={18} />
@@ -263,6 +265,19 @@ const PatientOnyxCeph: React.FC<PatientOnyxCephProps> = ({
                             <Icon name="trash" size={16} />
                         </button>
                     </div>
+                </div>
+            )}
+
+            {onNavigateToEmpreintes && (
+                <div className="onyxceph-empreintes-cta-wrap">
+                    <button
+                        type="button"
+                        className="om-btn om-btn--secondary onyxceph-empreintes-cta-btn"
+                        onClick={onNavigateToEmpreintes}
+                    >
+                        <span>🫆</span>
+                        <span>Accéder à la SECTION EMPREINTES (4 SCANS 3D .STL) de {patientName}</span>
+                    </button>
                 </div>
             )}
         </div>
