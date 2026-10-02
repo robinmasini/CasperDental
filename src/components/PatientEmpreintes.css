@@ -12,17 +12,27 @@
     gap: 12px;
 }
 
+/* Grille identique à la grille des photos & radios : minmax(150px, 1fr) */
 .empreintes-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: var(--om-space-3);
 }
 
+.empreinte-tile-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+}
+
+/* Vignette empreinte 3D identique en taille et ratio (4/3) à .photo-tile et .radio-tile */
 .empreinte-tile {
     position: relative;
+    width: 100%;
+    height: 100%;
     aspect-ratio: 4 / 3;
     padding: 0;
-    border: 1px solid var(--om-border);
+    border: 1px dashed var(--om-border-strong);
     border-radius: var(--om-radius);
     overflow: hidden;
     background: var(--om-surface-raised);
@@ -31,11 +41,22 @@
     flex-direction: column;
     text-align: left;
     outline: none;
-    transition: border-color 0.15s ease-out;
+    transition: all 0.15s ease-out;
 }
 
+.empreinte-tile.has-file {
+    border-style: solid;
+    border-color: var(--om-border);
+}
+
+.empreinte-tile.is-drag-over,
 .empreinte-tile:hover {
-    border-color: var(--om-accent);
+    border-color: var(--om-accent, #00f2fe);
+}
+
+.empreinte-tile.is-drag-over {
+    border-style: solid;
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
 }
 
 .empreinte-tile:focus-visible {
@@ -48,12 +69,12 @@
     top: 0;
     left: 0;
     right: 0;
-    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0));
+    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.35));
     color: var(--om-accent, #00f2fe);
-    font-size: 0.74rem;
+    font-size: 0.78rem;
     font-weight: 600;
     padding: 6px 8px;
-    z-index: 2;
+    z-index: 3;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -70,7 +91,7 @@
     justify-content: center;
     height: 100%;
     width: 100%;
-    padding: 24px 12px 12px;
+    padding: 24px 8px 8px;
     gap: 6px;
     color: var(--om-text-2);
     text-align: center;
@@ -96,7 +117,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
+    max-width: 90%;
 }
 
 .empreinte-tile-caption {
@@ -123,18 +144,24 @@
     justify-content: center;
     height: 100%;
     width: 100%;
-    padding: 8px;
+    padding: 24px 8px 8px;
     gap: 6px;
-    color: var(--om-text-3);
-    font-size: 0.72rem;
+    color: var(--om-text-2);
+    font-size: 0.76rem;
+    font-weight: 500;
     text-align: center;
-    border: 1px dashed var(--om-border);
-    border-radius: var(--om-radius);
-    background: rgba(15, 23, 42, 0.3);
+    background: rgba(15, 23, 42, 0.4);
+    transition: background 0.15s ease-out;
+}
+
+.empreinte-tile:hover .empreinte-tile-empty,
+.empreinte-tile.is-drag-over .empreinte-tile-empty {
+    background: rgba(56, 189, 248, 0.12);
+    color: var(--om-accent);
 }
 
 .empreinte-tile-empty .stl-icon {
-    font-size: 1.3rem;
+    font-size: 1.4rem;
 }
 
 @media (max-width: 768px) {
@@ -143,3 +170,4 @@
         gap: 10px;
     }
 }
+

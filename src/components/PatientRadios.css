@@ -19,12 +19,20 @@
     gap: var(--om-space-3);
 }
 
+.radio-tile-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+}
+
 /* Vignette radio identique en taille et ratio (4/3) à .photo-tile */
 .radio-tile {
     position: relative;
+    width: 100%;
+    height: 100%;
     aspect-ratio: 4 / 3;
     padding: 0;
-    border: 1px solid var(--om-border);
+    border: 1px dashed var(--om-border-strong);
     border-radius: var(--om-radius);
     overflow: hidden;
     background: var(--om-surface-raised);
@@ -33,6 +41,22 @@
     flex-direction: column;
     text-align: left;
     outline: none;
+    transition: all 0.15s ease-out;
+}
+
+.radio-tile.has-image {
+    border-style: solid;
+    border-color: var(--om-border);
+}
+
+.radio-tile.is-drag-over,
+.radio-tile:hover {
+    border-color: var(--om-accent, #00f2fe);
+}
+
+.radio-tile.is-drag-over {
+    border-style: solid;
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
 }
 
 .radio-tile:focus-visible {
@@ -51,12 +75,12 @@
     top: 0;
     left: 0;
     right: 0;
-    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0));
+    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.35));
     color: var(--om-accent, #00f2fe);
-    font-size: 0.74rem;
+    font-size: 0.78rem;
     font-weight: 600;
     padding: 6px 8px;
-    z-index: 2;
+    z-index: 3;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -90,19 +114,25 @@
     justify-content: center;
     height: 100%;
     width: 100%;
-    padding: 8px;
-    gap: 4px;
-    color: var(--om-text-3);
-    font-size: 0.72rem;
+    padding: 24px 8px 8px;
+    gap: 6px;
+    color: var(--om-text-2);
+    font-size: 0.76rem;
+    font-weight: 500;
     text-align: center;
-    border: 1px dashed var(--om-border);
-    border-radius: var(--om-radius);
-    background: rgba(15, 23, 42, 0.3);
+    background: rgba(15, 23, 42, 0.4);
+    transition: background 0.15s ease-out;
+}
+
+.radio-tile:hover .radio-tile-empty,
+.radio-tile.is-drag-over .radio-tile-empty {
+    background: rgba(56, 189, 248, 0.12);
+    color: var(--om-accent);
 }
 
 .radio-tile-empty svg {
     color: var(--om-accent);
-    opacity: 0.7;
+    opacity: 0.85;
 }
 
 @media (max-width: 768px) {

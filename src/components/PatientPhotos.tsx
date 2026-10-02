@@ -215,7 +215,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
             <div style={{ marginTop: '36px', paddingTop: '24px', borderTop: '1px solid var(--om-border, rgba(255, 255, 255, 0.12))' }}>
                 <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span className="om-badge om-badge--warning" style={{ fontSize: '0.8rem', padding: '4px 12px', fontWeight: 700, letterSpacing: '0.5px' }}>
-                        💀 SECTION RADIOGRAPHIES (4 CLICHÉS SCANS)
+                        💀 SECTION RADIOGRAPHIES (4 SCANS)
                     </span>
                 </div>
                 <PatientRadios patientId={patientId} patientName={patientName} hideTitleBar={true} />

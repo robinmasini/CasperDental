@@ -41,7 +41,7 @@ interface Appointment {
     praticien: string;
 }
 
-type FicheTab = 'dep' | 'dossier' | 'photos' | 'radios' | 'onyxceph' | 'synthese' | 'rdv' | 'admin' | 'travaux';
+type FicheTab = 'dep' | 'dossier' | 'photos' | 'onyxceph' | 'synthese' | 'rdv' | 'admin' | 'travaux';
 
 // Calculate age from date of birth
 const calculateAge = (dateNaissance: string): string => {
@@ -631,8 +631,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         {([
                             ['dep', 'Fiche DEP', null, 'clipboard'],
                             ['dossier', 'Diagnostics', patientAnalyses.length, 'stethoscope'],
-                            ['photos', 'Photos & Radios', null, 'camera'],
-                            ['radios', 'Radiographies', null, 'scan'],
+                            ['photos', 'Photos/Radios/Empreintes', null, 'camera'],
                             ['travaux', 'Monday', null, null],
                             ['onyxceph', 'OnyxCeph', null, 'link'],
                             ['synthese', 'Synthèse', null, 'chart'],
@@ -750,10 +749,6 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
                         {activeTab === 'photos' && (
                             <PatientPhotos patientId={selectedPatient.id} patientName={`${selectedPatient.prenom} ${selectedPatient.nom}`} />
-                        )}
-
-                        {activeTab === 'radios' && (
-                            <PatientRadios patientId={selectedPatient.id} patientName={`${selectedPatient.prenom} ${selectedPatient.nom}`} />
                         )}
 
                         {activeTab === 'onyxceph' && (

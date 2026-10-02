@@ -29,7 +29,29 @@ const PatientRadios = ({ patientId, patientName, hideTitleBar = false }: Patient
     const [isDownloadingAll, setIsDownloadingAll] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeViewerTitle, setActiveViewerTitle] = useState<RadiographyTitle | null>(null);
+    const [dragOverTitle, setDragOverTitle] = useState<string | null>(null);
     const slotInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+    const handleDragOver = (e: React.DragEvent, title: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverTitle(title);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverTitle(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, title: RadiographyTitle) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverTitle(null);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFileUpload(title, e.dataTransfer.files);
+        }
+    };
 
     const loadRadios = useCallback(async () => {
         setLoading(true);
@@ -139,7 +161,7 @@ const PatientRadios = ({ patientId, patientName, hideTitleBar = false }: Patient
                         const isUploading = uploadingTitle === title;
 
                         return (
-                            <div key={title} style={{ position: 'relative' }}>
+                            <div key={title} className="radio-tile-wrap">
                                 <input
                                     ref={el => slotInputRefs.current[title] = el}
                                     type="file"
@@ -150,7 +172,10 @@ const PatientRadios = ({ patientId, patientName, hideTitleBar = false }: Patient
 
                                 <button
                                     type="button"
-                                    className="radio-tile"
+                                    className={`radio-tile ${radio ? 'has-image' : ''} ${dragOverTitle === title ? 'is-drag-over' : ''}`}
+                                    onDragOver={e => handleDragOver(e, title)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={e => handleDrop(e, title)}
                                     onClick={() => {
                                         if (radio) setActiveViewerTitle(title);
                                         else slotInputRefs.current[title]?.click();
@@ -161,14 +186,14 @@ const PatientRadios = ({ patientId, patientName, hideTitleBar = false }: Patient
                                             <Icon name="scan" size={13} style={{ color: 'var(--om-accent)', flexShrink: 0 }} />
                                             {idx + 1}. {title}
                                         </span>
-                                        <span style={{ fontSize: '0.66rem', opacity: radio ? 1 : 0.6, color: radio ? 'var(--om-success, #05c19c)' : 'var(--om-text-3)', flexShrink: 0 }}>
-                                            {radio ? '✓' : '＋'}
+                                        <span style={{ fontSize: '0.66rem', opacity: radio ? 1 : 0.7, color: radio ? 'var(--om-success, #05c19c)' : 'var(--om-text-2)', flexShrink: 0 }}>
+                                            {radio ? '✓ Intégré' : '＋ Importer'}
                                         </span>
                                     </div>
 
                                     {isUploading ? (
                                         <div className="radio-tile-empty">
-                                            <span className="om-muted" style={{ fontSize: '0.72rem' }}>Envoi…</span>
+                                            <span className="om-muted" style={{ fontSize: '0.74rem' }}>Envoi scan…</span>
                                         </div>
                                     ) : radio && radio.url ? (
                                         <>
@@ -186,8 +211,8 @@ const PatientRadios = ({ patientId, patientName, hideTitleBar = false }: Patient
                                         </>
                                     ) : (
                                         <div className="radio-tile-empty">
-                                            <Icon name="scan" size={20} />
-                                            <span>Importer scan</span>
+                                            <Icon name="scan" size={24} />
+                                            <span>Glisser ou cliquer pour importer scan</span>
                                         </div>
                                     )}
                                 </button>

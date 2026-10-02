@@ -27,7 +27,29 @@ const PatientEmpreintes = ({ patientId, patientName, hideTitleBar = false }: Pat
     const [uploadingTitle, setUploadingTitle] = useState<string | null>(null);
     const [isDownloadingAll, setIsDownloadingAll] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [dragOverTitle, setDragOverTitle] = useState<string | null>(null);
     const slotInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+    const handleDragOver = (e: React.DragEvent, title: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverTitle(title);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverTitle(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, title: EmpreinteTitle) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverTitle(null);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFileUpload(title, e.dataTransfer.files);
+        }
+    };
 
     const loadEmpreintes = useCallback(async () => {
         setLoading(true);
@@ -135,7 +157,7 @@ const PatientEmpreintes = ({ patientId, patientName, hideTitleBar = false }: Pat
                         const originalName = emp?.label?.split('::')[2] || `${title}.stl`;
 
                         return (
-                            <div key={title} style={{ position: 'relative' }}>
+                            <div key={title} className="empreinte-tile-wrap">
                                 <input
                                     ref={el => slotInputRefs.current[title] = el}
                                     type="file"
@@ -146,7 +168,10 @@ const PatientEmpreintes = ({ patientId, patientName, hideTitleBar = false }: Pat
 
                                 <button
                                     type="button"
-                                    className="empreinte-tile"
+                                    className={`empreinte-tile ${emp ? 'has-file' : ''} ${dragOverTitle === title ? 'is-drag-over' : ''}`}
+                                    onDragOver={e => handleDragOver(e, title)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={e => handleDrop(e, title)}
                                     onClick={() => {
                                         if (emp && emp.url) {
                                             const a = document.createElement('a');
@@ -160,17 +185,17 @@ const PatientEmpreintes = ({ patientId, patientName, hideTitleBar = false }: Pat
                                 >
                                     <div className="empreinte-tile-header">
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            <span style={{ fontSize: '0.9rem' }}>🫆</span>
+                                            <span style={{ fontSize: '0.85rem' }}>🫆</span>
                                             {idx + 1}. {title}
                                         </span>
-                                        <span style={{ fontSize: '0.66rem', opacity: emp ? 1 : 0.6, color: emp ? 'var(--om-success, #05c19c)' : 'var(--om-text-3)', flexShrink: 0 }}>
-                                            {emp ? '✓ Intégré' : '＋'}
+                                        <span style={{ fontSize: '0.66rem', opacity: emp ? 1 : 0.7, color: emp ? 'var(--om-success, #05c19c)' : 'var(--om-text-2)', flexShrink: 0 }}>
+                                            {emp ? '✓ Intégré' : '＋ Importer'}
                                         </span>
                                     </div>
 
                                     {isUploading ? (
                                         <div className="empreinte-tile-empty">
-                                            <span className="om-muted" style={{ fontSize: '0.72rem' }}>Envoi .STL…</span>
+                                            <span className="om-muted" style={{ fontSize: '0.74rem' }}>Envoi .STL…</span>
                                         </div>
                                     ) : emp ? (
                                         <>
@@ -192,7 +217,7 @@ const PatientEmpreintes = ({ patientId, patientName, hideTitleBar = false }: Pat
                                     ) : (
                                         <div className="empreinte-tile-empty">
                                             <span className="stl-icon">🫆</span>
-                                            <span>Importer .STL</span>
+                                            <span>Glisser ou cliquer pour importer .STL</span>
                                         </div>
                                     )}
                                 </button>
