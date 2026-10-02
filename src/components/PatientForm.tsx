@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Patient, createPatient } from '../services/patientService';
 import './PatientForm.css';
 
@@ -116,7 +117,7 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
         setShowSmsSuccessModal(false);
     };
 
-    return (
+    return createPortal(
         <div className="patient-form-overlay" onClick={onClose}>
             <div className="patient-form-modal simplified-patient-modal" onClick={(e) => e.stopPropagation()}>
                 
@@ -297,7 +298,7 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
                 )}
             </div>
         </div>
-    );
+    , document.body);
 };
 
 export default PatientForm;
