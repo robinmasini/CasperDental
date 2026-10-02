@@ -4,6 +4,10 @@
     margin-bottom: 20px;
 }
 
+.patient-selector-wrapper.is-open {
+    z-index: 500;
+}
+
 .selector-field-label {
     display: flex;
     align-items: center;
@@ -92,6 +96,7 @@
     flex: 1;
     display: flex;
     align-items: center;
+    min-width: 0;
 }
 
 .search-icon {
@@ -108,9 +113,9 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 12px;
     color: white;
-    font-size: 0.9rem;
+    font-size: 16px; /* Prevents iOS auto-zoom layout shift on focus */
     outline: none;
-    transition: all 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .selector-search-input:focus {
@@ -140,6 +145,7 @@
     cursor: pointer;
     white-space: nowrap;
     transition: all 0.2s ease;
+    flex-shrink: 0;
 }
 
 .btn-add-quick-patient:hover {
@@ -152,14 +158,15 @@
     top: calc(100% + 8px);
     left: 0;
     right: 0;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.96);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(0, 242, 254, 0.3);
     border-radius: 16px;
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
-    z-index: 100;
+    z-index: 500;
     overflow: hidden;
+    touch-action: pan-y;
 }
 
 .dropdown-header-bar {
@@ -186,6 +193,8 @@
     max-height: 240px;
     overflow-y: auto;
     padding: 6px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .dropdown-loading, .dropdown-empty {
@@ -240,17 +249,24 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
 }
 
 .item-name {
     font-size: 0.9rem;
     font-weight: 600;
     color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .item-meta {
     font-size: 0.78rem;
     color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .btn-item-select {
@@ -261,4 +277,12 @@
     border-radius: 8px;
     font-size: 0.76rem;
     font-weight: 600;
+    flex-shrink: 0;
 }
+
+@media (max-width: 768px) {
+    .dropdown-items-list {
+        max-height: 170px;
+    }
+}
+

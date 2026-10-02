@@ -75,7 +75,7 @@ export const PatientSelector: React.FC<PatientSelectorProps> = ({
     };
 
     return (
-        <div className="patient-selector-wrapper" ref={containerRef}>
+        <div className={`patient-selector-wrapper ${isOpen ? 'is-open' : ''}`} ref={containerRef}>
             {showNewPatientForm && (
                 <PatientForm
                     onClose={() => setShowNewPatientForm(false)}
