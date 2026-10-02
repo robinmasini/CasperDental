@@ -105,8 +105,9 @@
     opacity: 0.7;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
     .radios-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
 }

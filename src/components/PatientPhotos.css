@@ -158,8 +158,9 @@
     font-size: var(--om-text-xs);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
     .photos-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
 }

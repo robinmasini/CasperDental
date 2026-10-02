@@ -219,11 +219,12 @@
     align-items: center;
     justify-content: center;
     padding: var(--om-space-5);
-    background: rgba(3, 6, 12, 0.66);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    animation: fiche-fade-in 0.12s ease-out;
-    overscroll-behavior: none;
+    background: rgba(3, 6, 12, 0.85);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    animation: none;
+    overscroll-behavior: contain;
+    touch-action: none;
 }
 
 .patient-details-panel {
@@ -237,17 +238,20 @@
     border-radius: var(--om-radius-lg);
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
     overflow-y: auto;
-    overscroll-behavior: none;
-    animation: fiche-fade-in 0.12s ease-out;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    animation: none;
+    transform: none !important;
+    transition: none !important;
 }
 
 @keyframes fiche-fade-in {
-    from { opacity: 0; }
+    from { opacity: 1; }
     to { opacity: 1; }
 }
 
 @keyframes fiche-pop-in {
-    from { opacity: 0; }
+    from { opacity: 1; }
     to { opacity: 1; }
 }
 
@@ -585,9 +589,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(3, 6, 12, 0.72);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        background: rgba(3, 6, 12, 0.88);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        touch-action: none;
     }
 
     .patient-row {
@@ -604,8 +609,10 @@
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), 0 4px 20px rgba(0, 0, 0, 0.4);
         background: var(--om-surface-solid);
         overflow-y: auto;
-        overscroll-behavior: none;
-        animation: fiche-fade-in 0.12s ease-out;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        animation: none;
+        transform: none !important;
     }
 
     .fiche-mobile-bar {
