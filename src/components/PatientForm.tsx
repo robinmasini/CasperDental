@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Patient, createPatient } from '../services/patientService';
+import { Patient, createPatient, updatePatient } from '../services/patientService';
 import './PatientForm.css';
 
 interface PatientFormProps {
