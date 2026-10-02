@@ -547,8 +547,9 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         </button>
                     </div>
 
-                    {/* En-tête */}
-                    <header className="fiche-header">
+                    <div className="fiche-scroll-body">
+                        {/* En-tête */}
+                        <header className="fiche-header">
                         <div className="fiche-identity">
                             <span className="patient-avatar patient-avatar--lg" aria-hidden="true">
                                 {selectedPatient.prenom[0]}{selectedPatient.nom[0]}
@@ -881,6 +882,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 </section>
                             </div>
                         )}
+                    </div>
                     </div>
                 </section>
                 </div>,

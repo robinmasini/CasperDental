@@ -237,12 +237,19 @@
     border: 1px solid var(--om-border-strong);
     border-radius: var(--om-radius-lg);
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
     animation: none;
     transform: none !important;
     transition: none !important;
+}
+
+.fiche-scroll-body {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
 }
 
 @keyframes fiche-fade-in {
@@ -583,16 +590,15 @@
         display: none;
     }
 
-    /* La fiche s'ouvre en fenêtre flottante sur mobile */
+    /* La fiche s'ouvre en plein écran propre et stable sur mobile */
     .fiche-overlay {
-        padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+        position: fixed;
+        inset: 0;
+        z-index: 10050;
+        padding: 0;
+        background: var(--om-bg, #070b14);
         display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(3, 6, 12, 0.88);
-        backdrop-filter: none;
-        -webkit-backdrop-filter: none;
-        touch-action: none;
+        flex-direction: column;
     }
 
     .patient-row {
@@ -601,16 +607,16 @@
 
     .patient-details-panel {
         width: 100%;
-        max-width: 680px;
-        height: min(92vh, calc(100vh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
-        max-height: calc(100vh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-        border-radius: 20px;
-        border: 1px solid var(--om-border-strong);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), 0 4px 20px rgba(0, 0, 0, 0.4);
-        background: var(--om-surface-solid);
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        -webkit-overflow-scrolling: touch;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+        background: var(--om-bg, #070b14);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         animation: none;
         transform: none !important;
     }
@@ -619,18 +625,25 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        padding: var(--om-space-2) var(--om-space-3);
+        flex-shrink: 0;
+        padding: max(10px, env(safe-area-inset-top)) var(--om-space-3) 10px;
         background: var(--om-surface-solid);
         border-bottom: 1px solid var(--om-border);
-        border-top-left-radius: 19px;
-        border-top-right-radius: 19px;
+        z-index: 20;
+    }
+
+    .fiche-scroll-body {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        display: flex;
+        flex-direction: column;
+        padding-bottom: max(24px, env(safe-area-inset-bottom));
     }
 
     .fiche-actions .fiche-close {
-        display: flex;
+        display: none !important;
     }
 
     .fiche-actions .om-btn--primary {
@@ -666,9 +679,10 @@
     .fiche-tabs {
         padding: 0 var(--om-space-2);
         position: sticky;
-        top: 52px;
-        z-index: 1;
+        top: 0;
+        z-index: 10;
         background: var(--om-surface-solid);
+        border-bottom: 1px solid var(--om-border);
         overflow-x: auto;
         overflow-y: hidden;
         touch-action: pan-x;
