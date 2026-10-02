@@ -1,7 +1,7 @@
 .patient-radios {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: var(--om-space-4);
 }
 
 .radios-header-bar {
@@ -12,131 +12,101 @@
     gap: 12px;
 }
 
+/* Grille identique à la grille des photos : minmax(150px, 1fr) */
 .radios-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--om-space-3);
 }
 
-.radio-card {
-    background: var(--om-bg-card, rgba(15, 23, 42, 0.6));
-    border: 1px solid var(--om-border, rgba(255, 255, 255, 0.1));
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    transition: all 0.2s ease;
+/* Vignette radio identique en taille et ratio (4/3) à .photo-tile */
+.radio-tile {
     position: relative;
-    overflow: hidden;
-}
-
-.radio-card:hover {
-    border-color: rgba(0, 242, 254, 0.4);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-.radio-card-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.radio-card-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--om-text-1, #f8fafc);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.radio-card-subtitle {
-    font-size: 0.78rem;
-    color: var(--om-text-3, #94a3b8);
-    margin-top: 2px;
-}
-
-.radio-card-body {
     aspect-ratio: 4 / 3;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px dashed var(--om-border, rgba(255, 255, 255, 0.15));
+    padding: 0;
+    border: 1px solid var(--om-border);
+    border-radius: var(--om-radius);
+    overflow: hidden;
+    background: var(--om-surface-raised);
+    cursor: pointer;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-    transition: background 0.2s ease;
+    text-align: left;
+    outline: none;
 }
 
-.radio-card-body.has-image {
-    border-style: solid;
-    border-color: transparent;
+.radio-tile:focus-visible {
+    outline: none;
+    box-shadow: var(--om-focus);
 }
 
-.radio-card-body img {
+.radio-tile-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 8px;
 }
 
-.radio-empty-placeholder {
+.radio-tile-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0));
+    color: var(--om-accent, #00f2fe);
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 6px 8px;
+    z-index: 2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+}
+
+.radio-tile-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 8px 6px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+    color: #fff;
+    font-family: var(--om-font);
+    font-size: var(--om-text-xs);
+    font-weight: 600;
+    z-index: 2;
+}
+
+.radio-tile-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 16px;
+    height: 100%;
+    width: 100%;
+    padding: 8px;
+    gap: 4px;
+    color: var(--om-text-3);
+    font-size: 0.72rem;
     text-align: center;
-    color: var(--om-text-3, #94a3b8);
+    border: 1px dashed var(--om-border);
+    border-radius: var(--om-radius);
+    background: rgba(15, 23, 42, 0.3);
 }
 
-.radio-empty-placeholder svg {
-    color: var(--om-accent, #00f2fe);
-    opacity: 0.6;
+.radio-tile-empty svg {
+    color: var(--om-accent);
+    opacity: 0.7;
 }
 
-.radio-empty-placeholder span {
-    font-size: 0.82rem;
-}
-
-.radio-card-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    border-radius: 8px;
-}
-
-.radio-card-body:hover .radio-card-overlay {
-    opacity: 1;
-}
-
-.radio-card-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: var(--om-text-3, #94a3b8);
-}
-
-.radio-badge {
-    font-size: 0.7rem;
-    padding: 2px 8px;
-    border-radius: 12px;
-    background: rgba(0, 242, 254, 0.12);
-    color: var(--om-accent, #00f2fe);
-    border: 1px solid rgba(0, 242, 254, 0.25);
-    font-weight: 500;
+@media (max-width: 480px) {
+    .radios-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }

@@ -20,7 +20,7 @@ interface PatientRadiosProps {
 }
 
 const dayLabel = (iso: string) =>
-    new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 
 const PatientRadios = ({ patientId, patientName, hideTitleBar = false }: PatientRadiosProps) => {
     const [radiosMap, setRadiosMap] = useState<Record<string, PatientPhoto>>({});
@@ -139,22 +139,7 @@ const PatientRadios = ({ patientId, patientName, hideTitleBar = false }: Patient
                         const isUploading = uploadingTitle === title;
 
                         return (
-                            <div key={title} className="radio-card">
-                                <div className="radio-card-header">
-                                    <div>
-                                        <div className="radio-card-title">
-                                            <Icon name="scan" size={16} style={{ color: 'var(--om-accent)' }} />
-                                            <span>{idx + 1}. {title}</span>
-                                        </div>
-                                        <div className="radio-card-subtitle">
-                                            {title.includes('poignet') ? 'Évaluation de la maturation osseuse' : 'Cliché radio scan'}
-                                        </div>
-                                    </div>
-                                    <span className={`radio-badge ${radio ? 'om-badge--success' : ''}`}>
-                                        {radio ? 'Intégré' : 'Manquant'}
-                                    </span>
-                                </div>
-
+                            <div key={title} style={{ position: 'relative' }}>
                                 <input
                                     ref={el => slotInputRefs.current[title] = el}
                                     type="file"
@@ -163,57 +148,49 @@ const PatientRadios = ({ patientId, patientName, hideTitleBar = false }: Patient
                                     onChange={e => handleFileUpload(title, e.target.files)}
                                 />
 
-                                <div
-                                    className={`radio-card-body ${radio ? 'has-image' : ''}`}
+                                <button
+                                    type="button"
+                                    className="radio-tile"
                                     onClick={() => {
                                         if (radio) setActiveViewerTitle(title);
                                         else slotInputRefs.current[title]?.click();
                                     }}
                                 >
+                                    <div className="radio-tile-header">
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            <Icon name="scan" size={13} style={{ color: 'var(--om-accent)', flexShrink: 0 }} />
+                                            {idx + 1}. {title}
+                                        </span>
+                                        <span style={{ fontSize: '0.66rem', opacity: radio ? 1 : 0.6, color: radio ? 'var(--om-success, #05c19c)' : 'var(--om-text-3)', flexShrink: 0 }}>
+                                            {radio ? '✓' : '＋'}
+                                        </span>
+                                    </div>
+
                                     {isUploading ? (
-                                        <div className="radio-empty-placeholder">
-                                            <span className="om-muted">Envoi du scan…</span>
+                                        <div className="radio-tile-empty">
+                                            <span className="om-muted" style={{ fontSize: '0.72rem' }}>Envoi…</span>
                                         </div>
                                     ) : radio && radio.url ? (
                                         <>
-                                            <img src={radio.url} alt={title} loading="lazy" />
-                                            <div className="radio-card-overlay">
-                                                <button
-                                                    className="om-btn om-btn--primary om-btn--sm"
-                                                    onClick={(e) => { e.stopPropagation(); setActiveViewerTitle(title); }}
+                                            <img className="radio-tile-img" src={radio.url} alt={title} loading="lazy" />
+                                            <div className="radio-tile-caption">
+                                                <span>{dayLabel(radio.taken_at)}</span>
+                                                <span
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(title, radio); }}
+                                                    style={{ color: 'var(--om-danger, #ff49db)', cursor: 'pointer', padding: '2px 4px' }}
+                                                    title="Supprimer cette radio"
                                                 >
-                                                    <Icon name="eye" size={14} /> Voir
-                                                </button>
-                                                <button
-                                                    className="om-btn om-btn--secondary om-btn--sm"
-                                                    onClick={(e) => { e.stopPropagation(); slotInputRefs.current[title]?.click(); }}
-                                                    title="Remplacer le scan"
-                                                >
-                                                    <Icon name="edit" size={14} /> Chg.
-                                                </button>
+                                                    <Icon name="trash" size={12} />
+                                                </span>
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="radio-empty-placeholder">
-                                            <Icon name="scan" size={28} />
-                                            <span>Cliquez pour importer le scan {title}</span>
+                                        <div className="radio-tile-empty">
+                                            <Icon name="scan" size={20} />
+                                            <span>Importer scan</span>
                                         </div>
                                     )}
-                                </div>
-
-                                <div className="radio-card-footer">
-                                    <span>{radio ? `Ajouté le ${dayLabel(radio.taken_at)}` : 'Aucun fichier importé'}</span>
-                                    {radio && (
-                                        <button
-                                            className="om-btn om-btn--ghost om-btn--sm"
-                                            style={{ padding: '2px 6px', color: 'var(--om-danger, #ff49db)' }}
-                                            onClick={() => handleDelete(title, radio)}
-                                            title="Supprimer cette radio"
-                                        >
-                                            <Icon name="trash" size={13} />
-                                        </button>
-                                    )}
-                                </div>
+                                </button>
                             </div>
                         );
                     })}
