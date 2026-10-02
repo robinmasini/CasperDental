@@ -1,6 +1,4 @@
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { Patient, getPatients, updatePatient } from '../services/patientService';
+import { Patient, getPatients, updatePatient, deletePatient } from '../services/patientService';
 import { getAppointmentsByPatientId } from '../services/appointmentService';
 import PatientForm from '../components/PatientForm';
 import PatientPortal from './PatientPortal';
@@ -107,6 +105,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [selectedPatient, setSelectedPatient] = useState<DisplayPatient | null>(null);
     const [activeTab, setActiveTab] = useState<FicheTab>('dep');
     const [showForm, setShowForm] = useState(false);
+    const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
     const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([]);
     const [loadingAppointments, setLoadingAppointments] = useState(false);
     const [showLinkModal, setShowLinkModal] = useState(false);
@@ -264,11 +263,37 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
         return true;
     });
 
-    const handlePatientCreated = (patient: Patient) => {
+    const handlePatientSaved = (patient: Patient) => {
         const displayPatient = convertToDisplayPatient(patient);
-        setPatients(prev => [displayPatient, ...prev]);
-        setSelectedPatient(displayPatient);
+        setPatients(prev => {
+            const existingIdx = prev.findIndex(p => p.id === displayPatient.id);
+            if (existingIdx !== -1) {
+                const updated = [...prev];
+                updated[existingIdx] = displayPatient;
+                return updated;
+            }
+            return [displayPatient, ...prev];
+        });
+        if (selectedPatient?.id === displayPatient.id || editingPatient) {
+            setSelectedPatient(displayPatient);
+        }
         setShowForm(false);
+        setEditingPatient(null);
+    };
+
+    const handleDeletePatient = async (patientToDelete: DisplayPatient) => {
+        if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement la fiche de ${patientToDelete.prenom} ${patientToDelete.nom} ? cette action est irréversible.`)) {
+            return;
+        }
+        try {
+            await deletePatient(patientToDelete.id);
+            setPatients(prev => prev.filter(p => p.id !== patientToDelete.id));
+            if (selectedPatient?.id === patientToDelete.id) {
+                setSelectedPatient(null);
+            }
+        } catch (err: any) {
+            alert(`Erreur lors de la suppression du patient : ${err.message || String(err)}`);
+        }
     };
 
     const saveDep = async (updatedData: OrthoMindDepData) => {
@@ -338,10 +363,14 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
 
     return (
         <div className="patients-container">
-            {showForm && (
+            {(showForm || editingPatient) && (
                 <PatientForm
-                    onClose={() => setShowForm(false)}
-                    onSuccess={handlePatientCreated}
+                    initialPatient={editingPatient}
+                    onClose={() => {
+                        setShowForm(false);
+                        setEditingPatient(null);
+                    }}
+                    onSuccess={handlePatientSaved}
                 />
             )}
 
@@ -523,7 +552,29 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 {selectedPatient.prenom[0]}{selectedPatient.nom[0]}
                             </span>
                             <div>
-                                <h1 className="fiche-name">{selectedPatient.prenom} {selectedPatient.nom}</h1>
+                                <div className="fiche-identity-name-row">
+                                    <h1 className="fiche-name">{selectedPatient.prenom} {selectedPatient.nom}</h1>
+                                    <div className="patient-name-actions">
+                                        <button
+                                            type="button"
+                                            className="patient-action-btn edit-btn"
+                                            onClick={() => setEditingPatient(selectedPatient.raw)}
+                                            title="Modifier la fiche patient"
+                                            aria-label="Modifier la fiche patient"
+                                        >
+                                            <Icon name="edit" size={17} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="patient-action-btn delete-btn"
+                                            onClick={() => handleDeletePatient(selectedPatient)}
+                                            title="Supprimer la fiche patient"
+                                            aria-label="Supprimer la fiche patient"
+                                        >
+                                            <Icon name="trash" size={17} />
+                                        </button>
+                                    </div>
+                                </div>
                                 <p className="fiche-meta">
                                     {[
                                         selectedPatient.age,

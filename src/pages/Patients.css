@@ -271,6 +271,13 @@
     min-width: 0;
 }
 
+.fiche-identity-name-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .fiche-name {
     font-family: var(--om-font-display);
     font-size: var(--om-text-xl);
@@ -278,6 +285,38 @@
     letter-spacing: -0.01em;
     color: var(--om-text);
     margin: 0;
+}
+
+.patient-name-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.patient-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--om-radius-sm);
+    border: 1px solid var(--om-border);
+    background: var(--om-surface-raised);
+    color: var(--om-text-2);
+    cursor: pointer;
+    transition: all 0.15s ease-out;
+}
+
+.patient-action-btn.edit-btn:hover {
+    background: var(--om-surface-hover);
+    color: var(--om-accent, #00f2fe);
+    border-color: var(--om-accent, #00f2fe);
+}
+
+.patient-action-btn.delete-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border-color: #ef4444;
 }
 
 .fiche-meta {

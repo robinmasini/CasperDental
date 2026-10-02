@@ -5,26 +5,44 @@ import './PatientForm.css';
 interface PatientFormProps {
     onClose: () => void;
     onSuccess: (patient: Patient, smsSent?: boolean) => void;
+    initialPatient?: Patient | null;
 }
 
-const PatientForm = ({ onClose, onSuccess }: PatientFormProps) => {
+const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [showSmsSuccessModal, setShowSmsSuccessModal] = useState(false);
     const [createdPatientData, setCreatedPatientData] = useState<Patient | null>(null);
 
-    const [formData, setFormData] = useState<Partial<Patient>>({
-        nom: '',
-        prenom: '',
-        date_naissance: '',
-        responsable_num_secu: '',
-        email: '',
-        portable: '',
-        civilite: 'M.',
-        sexe: 'M',
-        type_patient: 'Adulte',
-        praticien: 'Dr. Renaud Desouches',
-        suivi_exclusif: false
+    const [formData, setFormData] = useState<Partial<Patient>>(() => {
+        if (initialPatient) {
+            return {
+                civilite: initialPatient.civilite || 'M.',
+                nom: initialPatient.nom || '',
+                prenom: initialPatient.prenom || '',
+                date_naissance: initialPatient.date_naissance || '',
+                responsable_num_secu: initialPatient.responsable_num_secu || '',
+                email: initialPatient.email || '',
+                portable: initialPatient.portable || initialPatient.telephone || '',
+                sexe: initialPatient.sexe || 'M',
+                type_patient: initialPatient.type_patient || 'Adulte',
+                praticien: initialPatient.praticien || 'Dr. Renaud Desouches',
+                suivi_exclusif: initialPatient.suivi_exclusif || false
+            };
+        }
+        return {
+            nom: '',
+            prenom: '',
+            date_naissance: '',
+            responsable_num_secu: '',
+            email: '',
+            portable: '',
+            civilite: 'M.',
+            sexe: 'M',
+            type_patient: 'Adulte',
+            praticien: 'Dr. Renaud Desouches',
+            suivi_exclusif: false
+        };
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -45,7 +63,8 @@ const PatientForm = ({ onClose, onSuccess }: PatientFormProps) => {
             return;
         }
 
-        const patientToCreate: Patient = {
+        const patientDataToSave: Patient = {
+            ...initialPatient,
             civilite: formData.civilite || 'M.',
             nom: formData.nom.trim(),
             prenom: formData.prenom.trim(),
@@ -57,22 +76,32 @@ const PatientForm = ({ onClose, onSuccess }: PatientFormProps) => {
             telephone: formData.portable.trim(),
             email: formData.email ? formData.email.trim() : '',
             responsable_num_secu: formData.responsable_num_secu ? formData.responsable_num_secu.trim() : '',
-            suivi_exclusif: false
+            suivi_exclusif: formData.suivi_exclusif || false
         };
 
         try {
-            const { data, error: apiError } = await createPatient(patientToCreate);
+            let resData: Patient | null = null;
+            let apiErr: any = null;
+
+            if (initialPatient?.id) {
+                resData = await updatePatient(initialPatient.id, patientDataToSave);
+            } else {
+                const { data, error: errRes } = await createPatient(patientDataToSave);
+                resData = data;
+                apiErr = errRes;
+            }
+
             setIsLoading(false);
 
-            if (data) {
-                if (sendSms) {
-                    setCreatedPatientData(data);
+            if (resData) {
+                if (sendSms && !initialPatient) {
+                    setCreatedPatientData(resData);
                     setShowSmsSuccessModal(true);
                 } else {
-                    onSuccess(data, false);
+                    onSuccess(resData, false);
                 }
             } else {
-                setError(apiError?.message || 'Erreur lors de la création de la fiche patient.');
+                setError(apiErr?.message || 'Erreur lors de l\'enregistrement de la fiche patient.');
             }
         } catch (err: any) {
             setIsLoading(false);
@@ -94,26 +123,28 @@ const PatientForm = ({ onClose, onSuccess }: PatientFormProps) => {
                 {/* Header */}
                 <div className="form-header">
                     <div>
-                        <h2>👤 CRÉATION FICHE PATIENT SIMPLIFIÉE</h2>
+                        <h2>{initialPatient ? '✏️ MODIFICATION FICHE PATIENT' : '👤 CRÉATION FICHE PATIENT SIMPLIFIÉE'}</h2>
                         <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                            Portail Praticien OrthoMind — Renseignement des 6 constantes essentielles
+                            {initialPatient ? 'Modification des données du patient' : 'Portail Praticien OrthoMind — Renseignement des 6 constantes essentielles'}
                         </p>
                     </div>
                     <button className="close-btn" onClick={onClose}>×</button>
                 </div>
 
                 {!showSmsSuccessModal ? (
-                    <form onSubmit={(e) => { e.preventDefault(); handleSave(true); }}>
+                    <form onSubmit={(e) => { e.preventDefault(); handleSave(!initialPatient); }}>
                         {error && <div className="form-error">{error}</div>}
 
-                        {/* Vonage SMS Banner Info */}
-                        <div className="vonage-sms-notice-banner">
-                            <div className="vonage-sms-icon">📲</div>
-                            <div className="vonage-sms-text">
-                                <strong>Envoi automatique du lien personnel par SMS (Vonage Sender ID "OrthoMind")</strong>
-                                <span>Le patient recevra son lien sécurisé personnel pour compléter sa fiche et suivre son traitement.</span>
+                        {/* Vonage SMS Banner Info (seulement lors de la création) */}
+                        {!initialPatient && (
+                            <div className="vonage-sms-notice-banner">
+                                <div className="vonage-sms-icon">📲</div>
+                                <div className="vonage-sms-text">
+                                    <strong>Envoi automatique du lien personnel par SMS (Vonage Sender ID "OrthoMind")</strong>
+                                    <span>Le patient recevra son lien sécurisé personnel pour compléter sa fiche et suivre son traitement.</span>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="simplified-form-grid">
                             {/* Nom */}
@@ -180,7 +211,7 @@ const PatientForm = ({ onClose, onSuccess }: PatientFormProps) => {
 
                             {/* Téléphone Portable */}
                             <div className="form-group">
-                                <label>Téléphone Portable * (Obligatoire pour envoi SMS)</label>
+                                <label>Téléphone Portable *</label>
                                 <input
                                     type="tel"
                                     name="portable"
@@ -203,29 +234,42 @@ const PatientForm = ({ onClose, onSuccess }: PatientFormProps) => {
                                 Annuler
                             </button>
 
-                            <button
-                                type="button"
-                                className="btn-secondary-save"
-                                onClick={() => handleSave(false)}
-                                disabled={isLoading}
-                            >
-                                Enregistrer uniquement
-                            </button>
+                            {initialPatient ? (
+                                <button
+                                    type="button"
+                                    className="btn-sms-submit"
+                                    onClick={() => handleSave(false)}
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? 'Enregistrement…' : 'Enregistrer les modifications ✓'}
+                                </button>
+                            ) : (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="btn-secondary-save"
+                                        onClick={() => handleSave(false)}
+                                        disabled={isLoading}
+                                    >
+                                        Enregistrer uniquement
+                                    </button>
 
-                            <button
-                                type="button"
-                                className="btn-sms-submit"
-                                onClick={() => handleSave(true)}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    'Création en cours...'
-                                ) : (
-                                    <>
-                                        📲 Enregistrer & Envoyer le lien par SMS (Vonage)
-                                    </>
-                                )}
-                            </button>
+                                    <button
+                                        type="button"
+                                        className="btn-sms-submit"
+                                        onClick={() => handleSave(true)}
+                                        disabled={isLoading}
+                                    >
+                                        {isLoading ? (
+                                            'Création en cours...'
+                                        ) : (
+                                            <>
+                                                📲 Enregistrer & Envoyer le lien par SMS (Vonage)
+                                            </>
+                                        )}
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </form>
                 ) : (
