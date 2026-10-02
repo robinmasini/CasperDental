@@ -637,8 +637,8 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                 )}
 
                 {/* Dual Grid inside the same rectangle */}
-                <div className="audio-studio-dual-container">
-                    {/* Left Column: Live Micro Recorder Subcard */}
+                <div className="audio-studio-content-stack">
+                    {/* 1. Live Micro Recorder Subcard */}
                     <div className={`audio-recorder-subcard ${recordingState === 'recording' ? 'is-recording' : ''} ${recordingState === 'paused' ? 'is-paused' : ''}`}>
                         <div className="subcard-header-row">
                             <span className="subcard-icon"><Icon name="mic" size={18} /></span>
@@ -739,7 +739,105 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                         )}
                     </div>
 
-                    {/* Right Column: Audio MP4 Drag & Drop Uploader Subcard (Analyse Différée) */}
+                    {/* 2. Live Transcription & Synthesis Panel (Placé juste en dessous du bouton micro et au dessus de l'import) */}
+                    <div className="transcript-card">
+                        <div className="transcript-header-row">
+                            <h3>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-cyan)" strokeWidth="2.5">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <line x1="16" y1="13" x2="8" y2="13" />
+                                    <line x1="16" y1="17" x2="8" y2="17" />
+                                    <polyline points="10 9 9 9 8 9" />
+                                </svg>
+                                Retranscription Vocale du Dialogue Praticien-Patient
+                            </h3>
+
+                            <div className="transcript-actions-row">
+                                <button className="transcript-action-btn" onClick={handleFormatOrthodonticTerms} disabled={!transcript}>
+                                    Formater le vocabulaire
+                                </button>
+                                <button className="transcript-action-btn" onClick={handleCopyTranscript} disabled={!transcript}>
+                                    {isCopied ? 'Copié' : 'Copier'}
+                                </button>
+                                <button className="transcript-action-btn" onClick={() => setTranscript('')} disabled={!transcript}>
+                                    Effacer
+                                </button>
+                            </div>
+                        </div>
+
+                        {isTranscribingAudio && (
+                            <div style={{ background: 'rgba(0, 242, 254, 0.08)', border: '1px solid rgba(0, 242, 254, 0.3)', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
+                                <span className="step-spinner" style={{ width: '22px', height: '22px', borderWidth: '2.5px', flexShrink: 0 }}></span>
+                                <div>
+                                    <strong style={{ color: 'var(--primary-cyan)', fontSize: '0.92rem', display: 'block', marginBottom: '2px' }}>
+                                        Retranscription de l'audio en cours…
+                                    </strong>
+                                    <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                                        L'IA analyse le fichier audio pour extraire le dialogue exact entre le praticien et le patient. Le texte apparaîtra ci-dessous dès la fin de l'écoute.
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        <textarea
+                            className="transcript-textarea"
+                            value={transcript + (interimText ? (transcript ? ' ' : '') + interimText : '')}
+                            onChange={(e) => setTranscript(e.target.value)}
+                            placeholder="La retranscription du dialogue s'affichera ici en direct au fur et à mesure que vous parlez avec votre patient... (Vous pouvez aussi modifier le texte manuellement)."
+                        />
+
+                        {/* PROMINENT CALL TO ACTION BANNER FOR SYNTHESIZING THE CONSULTATION */}
+                        {!hideSynthesisCta && (
+                        <div className="synthesis-cta-banner">
+                            <div className="synthesis-cta-info">
+                                <div className="synthesis-cta-icon-box">
+                                    <img src={logoSeul} alt="OrthoMind" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+                                </div>
+                                <div className="synthesis-cta-text">
+                                    <h3>
+                                        Synthétiser la Séance d'Orthodontie
+                                    </h3>
+                                    <p>
+                                        Analyse le dialogue oral, croise les observations avec les <strong>54 ouvrages scientifiques d'OrthoMind RAG</strong> et génère le diagnostic et le plan de traitement du patient.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                                <button
+                                    className="btn-synthesis-launch"
+                                    onClick={handleStartSynthesis}
+                                    disabled={isSynthesizing || isTranscribingAudio || (!transcript && !interimText)}
+                                >
+                                    {isSynthesizing ? (
+                                        <>
+                                            <span className="synthesis-spinner-glow" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></span>
+                                            Synthèse en cours...
+                                        </>
+                                    ) : isTranscribingAudio ? (
+                                        <>
+                                            <span className="synthesis-spinner-glow" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></span>
+                                            Retranscription en cours...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                                            Lancer le compte rendu
+                                        </>
+                                    )}
+                                </button>
+                                {(!transcript && !interimText) && (
+                                    <span style={{ fontSize: '0.76rem', color: '#fbbf24', fontWeight: 600 }}>
+                                        Chargez et vérifiez la retranscription ci-dessus avant de lancer le compte-rendu.
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        )}
+                    </div>
+
+                    {/* 3. Audio MP4 Drag & Drop Uploader Subcard (Analyse Différée) */}
                     <div 
                         className={`audio-uploader-subcard ${isDraggingFile ? 'is-dragging' : ''}`}
                         onDragOver={handleDragOver}
@@ -796,104 +894,6 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
                         )}
                     </div>
                 </div>
-            </div>
-
-            {/* Live Transcription Panel */}
-            <div className="transcript-card">
-                <div className="transcript-header-row">
-                    <h3>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-cyan)" strokeWidth="2.5">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                            <polyline points="10 9 9 9 8 9" />
-                        </svg>
-                        Retranscription Vocale du Dialogue Praticien-Patient
-                    </h3>
-
-                    <div className="transcript-actions-row">
-                        <button className="transcript-action-btn" onClick={handleFormatOrthodonticTerms} disabled={!transcript}>
-                            Formater le vocabulaire
-                        </button>
-                        <button className="transcript-action-btn" onClick={handleCopyTranscript} disabled={!transcript}>
-                            {isCopied ? 'Copié' : 'Copier'}
-                        </button>
-                        <button className="transcript-action-btn" onClick={() => setTranscript('')} disabled={!transcript}>
-                            Effacer
-                        </button>
-                    </div>
-                </div>
-
-                {isTranscribingAudio && (
-                    <div style={{ background: 'rgba(0, 242, 254, 0.08)', border: '1px solid rgba(0, 242, 254, 0.3)', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
-                        <span className="step-spinner" style={{ width: '22px', height: '22px', borderWidth: '2.5px', flexShrink: 0 }}></span>
-                        <div>
-                            <strong style={{ color: 'var(--primary-cyan)', fontSize: '0.92rem', display: 'block', marginBottom: '2px' }}>
-                                Retranscription de l'audio en cours…
-                            </strong>
-                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                                L'IA analyse le fichier audio pour extraire le dialogue exact entre le praticien et le patient. Le texte apparaîtra ci-dessous dès la fin de l'écoute.
-                            </span>
-                        </div>
-                    </div>
-                )}
-
-                <textarea
-                    className="transcript-textarea"
-                    value={transcript + (interimText ? (transcript ? ' ' : '') + interimText : '')}
-                    onChange={(e) => setTranscript(e.target.value)}
-                    placeholder="La retranscription du dialogue s'affichera ici en direct au fur et à mesure que vous parlez avec votre patient... (Vous pouvez aussi modifier le texte manuellement)."
-                />
-
-                {/* PROMINENT CALL TO ACTION BANNER FOR SYNTHESIZING THE CONSULTATION */}
-                {!hideSynthesisCta && (
-                <div className="synthesis-cta-banner">
-                    <div className="synthesis-cta-info">
-                        <div className="synthesis-cta-icon-box">
-                            <img src={logoSeul} alt="OrthoMind" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
-                        </div>
-                        <div className="synthesis-cta-text">
-                            <h3>
-                                Synthétiser la Séance d'Orthodontie
-                            </h3>
-                            <p>
-                                Analyse le dialogue oral, croise les observations avec les <strong>54 ouvrages scientifiques d'OrthoMind RAG</strong> et génère le diagnostic et le plan de traitement du patient.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                        <button
-                            className="btn-synthesis-launch"
-                            onClick={handleStartSynthesis}
-                            disabled={isSynthesizing || isTranscribingAudio || (!transcript && !interimText)}
-                        >
-                            {isSynthesizing ? (
-                                <>
-                                    <span className="synthesis-spinner-glow" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></span>
-                                    Synthèse en cours...
-                                </>
-                            ) : isTranscribingAudio ? (
-                                <>
-                                    <span className="synthesis-spinner-glow" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></span>
-                                    Retranscription en cours...
-                                </>
-                            ) : (
-                                <>
-                                    <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-                                    Lancer le compte rendu
-                                </>
-                            )}
-                        </button>
-                        {(!transcript && !interimText) && (
-                            <span style={{ fontSize: '0.76rem', color: '#fbbf24', fontWeight: 600 }}>
-                                Chargez et vérifiez la retranscription ci-dessus avant de lancer le compte-rendu.
-                            </span>
-                        )}
-                    </div>
-                </div>
-                )}
             </div>
 
             {/* SYNTHESIS REFLECTION CONSOLE WITH ROBOT LIGHT BEAM SCANNER */}
