@@ -40,8 +40,8 @@ export const DEFAULT_PHOTO_TITLES = [
     'Intra-oral — bas',
     'Visage — face',
     'Visage — sourire',
-    'Visage — gauche',
     'Visage — droit',
+    'Visage — gauche',
     'Buste — face',
     'Buste — profil',
 ] as const;
