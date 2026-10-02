@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon';
 import CameraCapture from './CameraCapture';
+import PatientRadios from './PatientRadios';
 import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip } from '../services/photosService';
 import './PatientPhotos.css';
 
 // Onglet Photos de la fiche patient : tous les clichés archivés (13 vues ordonnées),
-// regroupés par jour, avec titre explicite en haut de chaque photo et visionneuse plein écran.
+// avec balisage explicite des sections Photos et Radiographies visibles directement en vision continue.
 
 interface PatientPhotosProps {
     patientId: string;
@@ -113,7 +114,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                 <div>
                     <h3 className="om-title" style={{ marginTop: '6px' }}>Photos de {patientName}</h3>
                     <p className="om-muted" style={{ fontSize: '0.84rem' }}>
-                        Clichés orthodontiques (séquence de 13 vues : 7 intra-orales, 4 visage, 2 buste)
+                        Clichés orthodontiques (13 vues) & Radiographies (4 scans) balisés ci-dessous
                     </p>
                 </div>
                 <div className="fiche-section-actions" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
@@ -141,7 +142,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                         onClick={handleDownloadAllPhotos}
                         disabled={uploading || isDownloadingAll || photos.length === 0}
                         style={{ gap: '6px', color: photos.length > 0 ? 'var(--om-accent)' : 'var(--om-text-3)', borderColor: photos.length > 0 ? 'rgba(0, 242, 254, 0.3)' : undefined }}
-                        title={photos.length === 0 ? "Aucune photo à télécharger" : "Télécharger tous les clichés du patient"}
+                        title={photos.length === 0 ? "Aucune photo à télécharger" : "Télécharger tous les clichés du patient au format ZIP"}
                     >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -155,11 +156,18 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
 
             {error && <div className="om-notice om-notice--danger" role="alert"><p>{error}</p></div>}
 
+            {/* SECTION 1 : PHOTOS ORTHODONTIQUES */}
+            <div style={{ marginTop: '16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="om-badge om-badge--accent" style={{ fontSize: '0.8rem', padding: '4px 12px', fontWeight: 700, letterSpacing: '0.5px' }}>
+                    📷 SECTION PHOTOS (13 CLICHÉS ORTHODONTIQUES)
+                </span>
+            </div>
+
             {loading ? (
                 <p className="om-muted">Chargement des photos…</p>
             ) : photos.length === 0 ? (
-                <div className="om-empty">
-                    <p>Aucune photo pour ce patient. Les clichés de chaque analyse sont archivés ici automatiquement.</p>
+                <div className="om-empty" style={{ margin: '12px 0 24px' }}>
+                    <p>Aucune photo orthodontique enregistrée pour ce patient.</p>
                 </div>
             ) : (
                 groups.map(group => (
@@ -201,6 +209,16 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                     </section>
                 ))
             )}
+
+            {/* SECTION 2 : RADIOGRAPHIES & SCANS (BALISÉ ET VISIBLE DIRECTEMENT SANS DOSSIER MASQUÉ) */}
+            <div style={{ marginTop: '36px', paddingTop: '24px', borderTop: '1px solid var(--om-border, rgba(255, 255, 255, 0.12))' }}>
+                <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span className="om-badge om-badge--success" style={{ fontSize: '0.8rem', padding: '4px 12px', fontWeight: 700, letterSpacing: '0.5px' }}>
+                        ⚡ SECTION RADIOGRAPHIES (4 CLICHÉS SCANS)
+                    </span>
+                </div>
+                <PatientRadios patientId={patientId} patientName={patientName} hideTitleBar={true} />
+            </div>
 
             {showCamera && (
                 <CameraCapture

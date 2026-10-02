@@ -239,12 +239,12 @@ export const downloadPatientDossierZip = async (
         }
     }
 
-    // Générer et télécharger le fichier ZIP unique
+    // Générer et télécharger le fichier ZIP unique au nom de "(Nom) (Prénom).zip"
     const zipBlob = await zip.generateAsync({ type: 'blob' });
     const url = window.URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${cleanPatient}_Dossier_Iconographique.zip`;
+    a.download = `${(patientName || 'patient').trim()}.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

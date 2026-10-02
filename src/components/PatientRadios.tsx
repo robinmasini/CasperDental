@@ -16,12 +16,13 @@ import './PatientRadios.css';
 interface PatientRadiosProps {
     patientId: string;
     patientName: string;
+    hideTitleBar?: boolean;
 }
 
 const dayLabel = (iso: string) =>
     new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-const PatientRadios = ({ patientId, patientName }: PatientRadiosProps) => {
+const PatientRadios = ({ patientId, patientName, hideTitleBar = false }: PatientRadiosProps) => {
     const [radiosMap, setRadiosMap] = useState<Record<string, PatientPhoto>>({});
     const [loading, setLoading] = useState(true);
     const [uploadingTitle, setUploadingTitle] = useState<string | null>(null);
@@ -97,29 +98,31 @@ const PatientRadios = ({ patientId, patientName }: PatientRadiosProps) => {
 
     return (
         <div className="patient-radios">
-            <div className="radios-header-bar">
-                <div>
-                    <h3 className="om-title" style={{ marginTop: '4px' }}>Radiographies de {patientName}</h3>
-                    <p className="om-muted" style={{ fontSize: '0.84rem' }}>
-                        Dossier des 4 clichés radiographiques (scans issus des équipements d'imagerie du cabinet)
-                    </p>
+            {!hideTitleBar && (
+                <div className="radios-header-bar">
+                    <div>
+                        <h3 className="om-title" style={{ marginTop: '4px' }}>Radiographies de {patientName}</h3>
+                        <p className="om-muted" style={{ fontSize: '0.84rem' }}>
+                            Dossier des 4 clichés radiographiques (scans issus des équipements d'imagerie du cabinet)
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        className="om-btn om-btn--ghost om-btn--sm"
+                        onClick={handleDownloadAllZip}
+                        disabled={isDownloadingAll}
+                        style={{ gap: '6px', color: 'var(--om-accent)', borderColor: 'rgba(0, 242, 254, 0.3)' }}
+                        title="Télécharger le dossier iconographique complet (Photos + Radios dans une archive ZIP unique)"
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        {isDownloadingAll ? 'Création de l\'archive ZIP…' : 'Télécharger le dossier complet (ZIP)'}
+                    </button>
                 </div>
-                <button
-                    type="button"
-                    className="om-btn om-btn--ghost om-btn--sm"
-                    onClick={handleDownloadAllZip}
-                    disabled={isDownloadingAll}
-                    style={{ gap: '6px', color: 'var(--om-accent)', borderColor: 'rgba(0, 242, 254, 0.3)' }}
-                    title="Télécharger le dossier iconographique complet (Photos + Radios dans une archive ZIP unique)"
-                >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    {isDownloadingAll ? 'Création de l\'archive ZIP…' : 'Télécharger le dossier complet (ZIP)'}
-                </button>
-            </div>
+            )}
 
             {error && (
                 <div className="om-notice om-notice--danger" role="alert">

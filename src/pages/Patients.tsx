@@ -577,7 +577,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         {([
                             ['dep', 'Fiche DEP', null, 'clipboard'],
                             ['dossier', 'Diagnostics', patientAnalyses.length, 'stethoscope'],
-                            ['photos', 'Photos', null, 'camera'],
+                            ['photos', 'Photos & Radios', null, 'camera'],
                             ['radios', 'Radiographies', null, 'scan'],
                             ['travaux', 'Monday', null, null],
                             ['onyxceph', 'OnyxCeph', null, 'link'],
