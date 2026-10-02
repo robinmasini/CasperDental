@@ -30,6 +30,46 @@ export const RADIOGRAPHY_TITLES = [
 
 export type RadiographyTitle = typeof RADIOGRAPHY_TITLES[number];
 
+export const DEFAULT_PHOTO_TITLES = [
+    'Intra-oral — face',
+    'Intra-oral — face dessous',
+    'Intra-oral — courbe de Spee',
+    'Intra-oral — droit',
+    'Intra-oral — gauche',
+    'Intra-oral — haut',
+    'Intra-oral — bas',
+    'Visage — face',
+    'Visage — sourire',
+    'Visage — gauche',
+    'Visage — droit',
+    'Buste — face',
+    'Buste — profil',
+] as const;
+
+// Nettoyage propre du nom de fichier : "Intra-oral — face" -> "Intra-oral-face"
+const cleanTitleForFileName = (title: string): string => {
+    return title
+        .replace(/—/g, '-')
+        .replace(/[\(\)]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .trim();
+};
+
+export const formatPhotoFileName = (index: number, label?: string | null): string => {
+    const num = String(index + 1).padStart(2, '0');
+    let title = label && !label.startsWith('cliche_') && !label.startsWith('cliche-') ? label : DEFAULT_PHOTO_TITLES[index] || `Cliché-${index + 1}`;
+    const cleaned = cleanTitleForFileName(title);
+    return `${num}-Cliché-${cleaned}.jpg`;
+};
+
+export const formatRadioFileName = (index: number, title: string): string => {
+    const num = String(index + 1).padStart(2, '0');
+    const cleaned = cleanTitleForFileName(title);
+    return `${num}-Radio-${cleaned}.jpg`;
+};
+
 export const photosAvailable = () => isCloudMode();
 
 // Qualité clinique préservée (2048 px, JPEG 0,9) pour un stockage raisonnable
@@ -63,7 +103,8 @@ export const uploadPatientPhotos = async (
     if (!isCloudMode() || !UUID_RE.test(patientId) || files.length === 0) return 0;
 
     let uploaded = 0;
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         const takenAt = new Date(file.lastModified || Date.now());
         const day = takenAt.toISOString().slice(0, 10);
         const path = `${patientId}/${day}/${crypto.randomUUID()}.jpg`;
@@ -75,7 +116,8 @@ export const uploadPatientPhotos = async (
         });
         if (uploadError) throw new Error(`Envoi d'une photo impossible : ${uploadError.message}`);
 
-        const label = labelFromName(file.name);
+        const extractedLabel = labelFromName(file.name);
+        const label = extractedLabel || DEFAULT_PHOTO_TITLES[i] || `cliche_${i + 1}`;
 
         const { error: rowError } = await supabase.from('patient_photos').insert({
             patient_id: patientId,
@@ -202,40 +244,56 @@ export const downloadPatientDossierZip = async (
     const radiosMap = await listPatientRadios(patientId);
 
     const zip = new JSZip();
-    const cleanPatient = (patientName || 'patient').replace(/[^a-zA-Z0-9_-]/g, '_');
 
     // Créer les 2 sous-dossiers distincts dans l'archive ZIP
     const photosFolder = zip.folder('Photos');
     const radiosFolder = zip.folder('Radiographies');
 
-    // 1. Ajout des photos dans Photos/
+    // 1. Ajout des photos dans Photos/ (Titres explicites par étape)
     for (let i = 0; i < photos.length; i++) {
         const photo = photos[i];
         if (!photo.url) continue;
         try {
             const res = await fetch(photo.url);
             const blob = await res.blob();
-            const label = photo.label ? photo.label.replace(/[^a-zA-Z0-9_-]/g, '_') : `cliche_${i + 1}`;
-            const dateStr = photo.taken_at ? new Date(photo.taken_at).toISOString().slice(0, 10) : '';
-            photosFolder?.file(`${String(i + 1).padStart(2, '0')}_${label}${dateStr ? '_' + dateStr : ''}.jpg`, blob);
+            const fileName = formatPhotoFileName(i, photo.label);
+            photosFolder?.file(fileName, blob);
         } catch (err) {
             console.error('Erreur de téléchargement photo pour le ZIP :', err);
         }
     }
 
-    // 2. Ajout des radios dans Radiographies/
-    const radioKeys = Object.keys(radiosMap);
-    for (let i = 0; i < radioKeys.length; i++) {
-        const title = radioKeys[i];
+    // 2. Ajout des radios dans Radiographies/ (Titres explicites par radio)
+    const processedRadioTitles = new Set<string>();
+    for (let i = 0; i < RADIOGRAPHY_TITLES.length; i++) {
+        const title = RADIOGRAPHY_TITLES[i];
         const radio = radiosMap[title];
-        if (!radio || !radio.url) continue;
-        try {
-            const res = await fetch(radio.url);
-            const blob = await res.blob();
-            const cleanTitle = title.replace(/[^a-zA-Z0-9_-]/g, '_');
-            radiosFolder?.file(`${String(i + 1).padStart(2, '0')}_${cleanTitle}.jpg`, blob);
-        } catch (err) {
-            console.error('Erreur de téléchargement radio pour le ZIP :', err);
+        if (radio && radio.url) {
+            processedRadioTitles.add(title);
+            try {
+                const res = await fetch(radio.url);
+                const blob = await res.blob();
+                const fileName = formatRadioFileName(i, title);
+                radiosFolder?.file(fileName, blob);
+            } catch (err) {
+                console.error('Erreur de téléchargement radio pour le ZIP :', err);
+            }
+        }
+    }
+    // S'il existe des radios sous un autre titre
+    const extraRadioKeys = Object.keys(radiosMap).filter(k => !processedRadioTitles.has(k));
+    for (let j = 0; j < extraRadioKeys.length; j++) {
+        const title = extraRadioKeys[j];
+        const radio = radiosMap[title];
+        if (radio && radio.url) {
+            try {
+                const res = await fetch(radio.url);
+                const blob = await res.blob();
+                const fileName = formatRadioFileName(RADIOGRAPHY_TITLES.length + j, title);
+                radiosFolder?.file(fileName, blob);
+            } catch (err) {
+                console.error('Erreur de téléchargement radio supplémentaire pour le ZIP :', err);
+            }
         }
     }
 
