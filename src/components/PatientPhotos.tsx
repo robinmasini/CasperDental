@@ -143,14 +143,14 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                         onClick={handleDownloadAllPhotos}
                         disabled={uploading || isDownloadingAll || photos.length === 0}
                         style={{ gap: '6px', color: photos.length > 0 ? 'var(--om-accent)' : 'var(--om-text-3)', borderColor: photos.length > 0 ? 'rgba(0, 242, 254, 0.3)' : undefined }}
-                        title={photos.length === 0 ? "Aucune photo à télécharger" : "Télécharger tous les clichés du patient au format ZIP"}
+                        title={photos.length === 0 ? "Aucun fichier à télécharger" : "Télécharger tous les fichiers du dossier patient directement sans fichier ZIP"}
                     >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                             <polyline points="7 10 12 15 17 10" />
                             <line x1="12" y1="15" x2="12" y2="3" />
                         </svg>
-                        {isDownloadingAll ? 'Création de l\'archive ZIP…' : 'Télécharger le dossier complet (ZIP)'}
+                        {isDownloadingAll ? 'Téléchargement du dossier…' : 'Tout télécharger (Dossier complet)'}
                     </button>
                 </div>
             </div>

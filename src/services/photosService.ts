@@ -318,10 +318,10 @@ export const listPatientEmpreintes = async (patientId: string): Promise<Record<s
 };
 
 // ============================================================================
-// Téléchargement global en archive ZIP (Dossiers Photos & Radiographies séparés)
+// Téléchargement direct des fichiers du dossier patient (Sans archive ZIP)
 // ============================================================================
 
-export const downloadPatientDossierZip = async (
+export const downloadPatientDossierDirectFiles = async (
     patientId: string,
     patientName: string
 ): Promise<void> => {
@@ -329,14 +329,100 @@ export const downloadPatientDossierZip = async (
     const radiosMap = await listPatientRadios(patientId);
     const empreintesMap = await listPatientEmpreintes(patientId);
 
-    const zip = new JSZip();
+    const safePatientName = (patientName || 'patient').trim();
 
-    // Créer les 3 sous-dossiers distincts dans l'archive ZIP
-    const photosFolder = zip.folder('Photos');
-    const radiosFolder = zip.folder('Radiographies');
-    const empreintesFolder = zip.folder('Empreintes');
+    // 1. Tenter le File System Access API (sur Mac/PC Chrome, Edge, Brave, Opera)
+    // Permet d'écrire le dossier et tous ses fichiers directement sur le disque de l'utilisateur sans aucun ZIP.
+    if ('showDirectoryPicker' in window) {
+        try {
+            const rootDirHandle = await (window as any).showDirectoryPicker({
+                mode: 'readwrite',
+                startIn: 'downloads'
+            });
 
-    // 1. Ajout des photos dans Photos/ (Titres explicites par étape)
+            // Créer les sous-dossiers Photos, Radiographies, Empreintes dans le dossier sélectionné
+            const photosDir = await rootDirHandle.getDirectoryHandle('Photos', { create: true });
+            const radiosDir = await rootDirHandle.getDirectoryHandle('Radiographies', { create: true });
+            const empreintesDir = await rootDirHandle.getDirectoryHandle('Empreintes', { create: true });
+
+            // Écrire les photos dans Photos/
+            for (let i = 0; i < photos.length; i++) {
+                const photo = photos[i];
+                if (!photo.url) continue;
+                try {
+                    const res = await fetch(photo.url);
+                    const blob = await res.blob();
+                    const fileName = formatPhotoFileName(i, photo.label);
+                    const fileHandle = await photosDir.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                } catch (err) {
+                    console.error('Erreur écriture fichier photo :', err);
+                }
+            }
+
+            // Écrire les radios dans Radiographies/
+            const processedRadioTitles = new Set<string>();
+            for (let i = 0; i < RADIOGRAPHY_TITLES.length; i++) {
+                const title = RADIOGRAPHY_TITLES[i];
+                const radio = radiosMap[title];
+                if (radio && radio.url) {
+                    processedRadioTitles.add(title);
+                    try {
+                        const res = await fetch(radio.url);
+                        const blob = await res.blob();
+                        const fileName = formatRadioFileName(i, title);
+                        const fileHandle = await radiosDir.getFileHandle(fileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                    } catch (err) {
+                        console.error('Erreur écriture fichier radio :', err);
+                    }
+                }
+            }
+
+            // Écrire les empreintes dans Empreintes/
+            for (let i = 0; i < EMPREINTE_TITLES.length; i++) {
+                const title = EMPREINTE_TITLES[i];
+                const emp = empreintesMap[title];
+                if (emp && emp.url) {
+                    try {
+                        const res = await fetch(emp.url);
+                        const blob = await res.blob();
+                        const originalName = emp.label?.split('::')[2] || 'scan.stl';
+                        const fileName = formatEmpreinteFileName(i, title, originalName);
+                        const fileHandle = await empreintesDir.getFileHandle(fileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                    } catch (err) {
+                        console.error('Erreur écriture fichier empreinte :', err);
+                    }
+                }
+            }
+
+            return; // Dossier et fichiers téléchargés sans ZIP !
+        } catch (err: any) {
+            if (err.name === 'AbortError') return; // L'utilisateur a annulé la sélection du dossier
+            console.warn('Accès dossier direct indisponible ou refusé, passage aux téléchargements directs individuel :', err);
+        }
+    }
+
+    // 2. Fallback Téléchargement Direct individuel (Sans aucun fichier ZIP)
+    const triggerDirectDownload = (blob: Blob, fileName: string) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    };
+
+    // Télécharger les photos directement
     for (let i = 0; i < photos.length; i++) {
         const photo = photos[i];
         if (!photo.url) continue;
@@ -344,13 +430,14 @@ export const downloadPatientDossierZip = async (
             const res = await fetch(photo.url);
             const blob = await res.blob();
             const fileName = formatPhotoFileName(i, photo.label);
-            photosFolder?.file(fileName, blob);
+            triggerDirectDownload(blob, `Photos_${fileName}`);
+            await new Promise(r => setTimeout(r, 180));
         } catch (err) {
-            console.error('Erreur de téléchargement photo pour le ZIP :', err);
+            console.error('Erreur téléchargement photo direct :', err);
         }
     }
 
-    // 2. Ajout des radios dans Radiographies/
+    // Télécharger les radios directement
     const processedRadioTitles = new Set<string>();
     for (let i = 0; i < RADIOGRAPHY_TITLES.length; i++) {
         const title = RADIOGRAPHY_TITLES[i];
@@ -361,29 +448,15 @@ export const downloadPatientDossierZip = async (
                 const res = await fetch(radio.url);
                 const blob = await res.blob();
                 const fileName = formatRadioFileName(i, title);
-                radiosFolder?.file(fileName, blob);
+                triggerDirectDownload(blob, `Radiographies_${fileName}`);
+                await new Promise(r => setTimeout(r, 180));
             } catch (err) {
-                console.error('Erreur de téléchargement radio pour le ZIP :', err);
-            }
-        }
-    }
-    const extraRadioKeys = Object.keys(radiosMap).filter(k => !processedRadioTitles.has(k));
-    for (let j = 0; j < extraRadioKeys.length; j++) {
-        const title = extraRadioKeys[j];
-        const radio = radiosMap[title];
-        if (radio && radio.url) {
-            try {
-                const res = await fetch(radio.url);
-                const blob = await res.blob();
-                const fileName = formatRadioFileName(RADIOGRAPHY_TITLES.length + j, title);
-                radiosFolder?.file(fileName, blob);
-            } catch (err) {
-                console.error('Erreur de téléchargement radio supplémentaire pour le ZIP :', err);
+                console.error('Erreur téléchargement radio direct :', err);
             }
         }
     }
 
-    // 3. Ajout des empreintes dans Empreintes/ (.STL)
+    // Télécharger les empreintes directement (.STL)
     for (let i = 0; i < EMPREINTE_TITLES.length; i++) {
         const title = EMPREINTE_TITLES[i];
         const emp = empreintesMap[title];
@@ -393,21 +466,13 @@ export const downloadPatientDossierZip = async (
                 const blob = await res.blob();
                 const originalName = emp.label?.split('::')[2] || 'scan.stl';
                 const fileName = formatEmpreinteFileName(i, title, originalName);
-                empreintesFolder?.file(fileName, blob);
+                triggerDirectDownload(blob, `Empreintes_${fileName}`);
+                await new Promise(r => setTimeout(r, 180));
             } catch (err) {
-                console.error('Erreur de téléchargement empreinte 3D pour le ZIP :', err);
+                console.error('Erreur téléchargement empreinte direct :', err);
             }
         }
     }
-
-    // Générer et télécharger le fichier ZIP unique au nom de "(Nom) (Prénom).zip"
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-    const url = window.URL.createObjectURL(zipBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${(patientName || 'patient').trim()}.zip`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 };
+
+export const downloadPatientDossierZip = downloadPatientDossierDirectFiles;
