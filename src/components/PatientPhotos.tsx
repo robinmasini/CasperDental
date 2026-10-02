@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import Icon from './Icon';
 import CameraCapture from './CameraCapture';
 import PatientRadios from './PatientRadios';
+import PatientEmpreintes from './PatientEmpreintes';
 import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip } from '../services/photosService';
 import './PatientPhotos.css';
 
@@ -213,11 +214,21 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
             {/* SECTION 2 : RADIOGRAPHIES & SCANS (BALISÉ ET VISIBLE DIRECTEMENT SANS DOSSIER MASQUÉ) */}
             <div style={{ marginTop: '36px', paddingTop: '24px', borderTop: '1px solid var(--om-border, rgba(255, 255, 255, 0.12))' }}>
                 <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span className="om-badge om-badge--success" style={{ fontSize: '0.8rem', padding: '4px 12px', fontWeight: 700, letterSpacing: '0.5px' }}>
-                        ⚡ SECTION RADIOGRAPHIES (4 CLICHÉS SCANS)
+                    <span className="om-badge om-badge--warning" style={{ fontSize: '0.8rem', padding: '4px 12px', fontWeight: 700, letterSpacing: '0.5px' }}>
+                        💀 SECTION RADIOGRAPHIES (4 CLICHÉS SCANS)
                     </span>
                 </div>
                 <PatientRadios patientId={patientId} patientName={patientName} hideTitleBar={true} />
+            </div>
+
+            {/* SECTION 3 : EMPREINTES SCANS 3D (.STL) */}
+            <div style={{ marginTop: '36px', paddingTop: '24px', borderTop: '1px solid var(--om-border, rgba(255, 255, 255, 0.12))' }}>
+                <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span className="om-badge om-badge--accent" style={{ fontSize: '0.8rem', padding: '4px 12px', fontWeight: 700, letterSpacing: '0.5px' }}>
+                        🫆 SECTION EMPREINTES (4 SCANS 3D .STL)
+                    </span>
+                </div>
+                <PatientEmpreintes patientId={patientId} patientName={patientName} hideTitleBar={true} />
             </div>
 
             {showCamera && (

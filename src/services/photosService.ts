@@ -233,6 +233,91 @@ export const listPatientRadios = async (patientId: string): Promise<Record<strin
 };
 
 // ============================================================================
+// Empreintes 3D (BiteScan, BiteScan 2, UpperJawScan, LowerJawScan .STL)
+// ============================================================================
+
+export const EMPREINTE_TITLES = [
+    'BiteScan',
+    'BiteScan 2',
+    'UpperJawScan',
+    'LowerJawScan'
+] as const;
+
+export type EmpreinteTitle = typeof EMPREINTE_TITLES[number];
+
+export const formatEmpreinteFileName = (index: number, title: string, originalFileName?: string): string => {
+    const num = String(index + 1).padStart(2, '0');
+    const cleaned = cleanTitleForFileName(title);
+    const ext = originalFileName && originalFileName.includes('.')
+        ? originalFileName.substring(originalFileName.lastIndexOf('.'))
+        : '.stl';
+    return `${num}-Empreinte-${cleaned}${ext}`;
+};
+
+export const uploadPatientEmpreinte = async (
+    patientId: string,
+    file: File,
+    empreinteTitle: string
+): Promise<void> => {
+    if (!isCloudMode() || !UUID_RE.test(patientId)) return;
+
+    const takenAt = new Date(file.lastModified || Date.now());
+    const day = takenAt.toISOString().slice(0, 10);
+    const path = `${patientId}/empreintes/${day}/${crypto.randomUUID()}_${file.name}`;
+
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: false,
+    });
+    if (uploadError) throw new Error(`Envoi de l'empreinte 3D impossible : ${uploadError.message}`);
+
+    const { error: rowError } = await supabase.from('patient_photos').insert({
+        patient_id: patientId,
+        record_id: null,
+        storage_path: path,
+        taken_at: takenAt.toISOString(),
+        label: `EMPREINTE::${empreinteTitle}::${file.name}`,
+    });
+
+    if (rowError) {
+        await supabase.storage.from(BUCKET).remove([path]);
+        throw new Error(`Enregistrement de l'empreinte 3D impossible : ${rowError.message}`);
+    }
+};
+
+export const listPatientEmpreintes = async (patientId: string): Promise<Record<string, PatientPhoto>> => {
+    if (!isCloudMode() || !UUID_RE.test(patientId)) return {};
+    
+    const { data, error } = await supabase
+        .from('patient_photos')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('taken_at', { ascending: false });
+
+    if (error) throw new Error(`Lecture des empreintes 3D impossible : ${error.message}`);
+    
+    const empreinteRows: PatientPhoto[] = (data || []).filter(p => p.label?.startsWith('EMPREINTE::') || p.label?.startsWith('STL::'));
+    if (empreinteRows.length === 0) return {};
+
+    const { data: signed, error: signError } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrls(empreinteRows.map(p => p.storage_path), 3600);
+
+    if (signError) throw new Error(`Accès aux empreintes 3D impossible : ${signError.message}`);
+    const urls = new Map<string, string>((signed || []).map((s: any) => [s.path, s.signedUrl]));
+
+    const empreintesMap: Record<string, PatientPhoto> = {};
+    for (const r of empreinteRows) {
+        const parts = (r.label || '').split('::');
+        const title = parts[1] || '';
+        if (title && !empreintesMap[title]) {
+            empreintesMap[title] = { ...r, url: urls.get(r.storage_path) };
+        }
+    }
+    return empreintesMap;
+};
+
+// ============================================================================
 // Téléchargement global en archive ZIP (Dossiers Photos & Radiographies séparés)
 // ============================================================================
 
@@ -242,12 +327,14 @@ export const downloadPatientDossierZip = async (
 ): Promise<void> => {
     const photos = await listPatientPhotos(patientId);
     const radiosMap = await listPatientRadios(patientId);
+    const empreintesMap = await listPatientEmpreintes(patientId);
 
     const zip = new JSZip();
 
-    // Créer les 2 sous-dossiers distincts dans l'archive ZIP
+    // Créer les 3 sous-dossiers distincts dans l'archive ZIP
     const photosFolder = zip.folder('Photos');
     const radiosFolder = zip.folder('Radiographies');
+    const empreintesFolder = zip.folder('Empreintes');
 
     // 1. Ajout des photos dans Photos/ (Titres explicites par étape)
     for (let i = 0; i < photos.length; i++) {
@@ -263,7 +350,7 @@ export const downloadPatientDossierZip = async (
         }
     }
 
-    // 2. Ajout des radios dans Radiographies/ (Titres explicites par radio)
+    // 2. Ajout des radios dans Radiographies/
     const processedRadioTitles = new Set<string>();
     for (let i = 0; i < RADIOGRAPHY_TITLES.length; i++) {
         const title = RADIOGRAPHY_TITLES[i];
@@ -280,7 +367,6 @@ export const downloadPatientDossierZip = async (
             }
         }
     }
-    // S'il existe des radios sous un autre titre
     const extraRadioKeys = Object.keys(radiosMap).filter(k => !processedRadioTitles.has(k));
     for (let j = 0; j < extraRadioKeys.length; j++) {
         const title = extraRadioKeys[j];
@@ -293,6 +379,23 @@ export const downloadPatientDossierZip = async (
                 radiosFolder?.file(fileName, blob);
             } catch (err) {
                 console.error('Erreur de téléchargement radio supplémentaire pour le ZIP :', err);
+            }
+        }
+    }
+
+    // 3. Ajout des empreintes dans Empreintes/ (.STL)
+    for (let i = 0; i < EMPREINTE_TITLES.length; i++) {
+        const title = EMPREINTE_TITLES[i];
+        const emp = empreintesMap[title];
+        if (emp && emp.url) {
+            try {
+                const res = await fetch(emp.url);
+                const blob = await res.blob();
+                const originalName = emp.label?.split('::')[2] || 'scan.stl';
+                const fileName = formatEmpreinteFileName(i, title, originalName);
+                empreintesFolder?.file(fileName, blob);
+            } catch (err) {
+                console.error('Erreur de téléchargement empreinte 3D pour le ZIP :', err);
             }
         }
     }
