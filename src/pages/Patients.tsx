@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Patient, getPatients, updatePatient, deletePatient } from '../services/patientService';
 import { getAppointmentsByPatientId } from '../services/appointmentService';
 import PatientForm from '../components/PatientForm';
