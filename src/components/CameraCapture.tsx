@@ -41,13 +41,30 @@ const CameraCapture = ({ maxShots = 13, startIndex = 0, onDone, onClose }: Camer
     const [error, setError] = useState<string | null>(null);
     const [flash, setFlash] = useState(false);
     const [ready, setReady] = useState(false);
+    const [zoomScale, setZoomScale] = useState(1);
     const shotCounter = useRef(startIndex);
     const galleryInputRef = useRef<HTMLInputElement>(null);
+    const touchStartDistRef = useRef<number | null>(null);
+    const initialZoomRef = useRef<number>(1);
+
+    // Empêcher le zoom global de la page du navigateur lors du pincement dans la caméra
+    useEffect(() => {
+        const preventViewportZoom = (e: TouchEvent) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener('touchmove', preventViewportZoom, { passive: false });
+        return () => {
+            window.removeEventListener('touchmove', preventViewportZoom);
+        };
+    }, []);
 
     // Démarrage / changement de caméra
     useEffect(() => {
         let cancelled = false;
         setReady(false);
+        setZoomScale(1);
         (async () => {
             try {
                 streamRef.current?.getTracks().forEach(t => t.stop());
@@ -90,6 +107,53 @@ const CameraCapture = ({ maxShots = 13, startIndex = 0, onDone, onClose }: Camer
         return () => { document.body.style.overflow = previous; };
     }, []);
 
+    const applyZoom = (newZoom: number) => {
+        const clamped = Math.min(5, Math.max(1, Number(newZoom.toFixed(2))));
+        setZoomScale(clamped);
+        try {
+            const track = streamRef.current?.getVideoTracks()[0];
+            if (track) {
+                const capabilities = (track as any).getCapabilities?.();
+                if (capabilities && capabilities.zoom) {
+                    const min = capabilities.zoom.min || 1;
+                    const max = capabilities.zoom.max || 5;
+                    const hwZoom = Math.min(max, Math.max(min, clamped));
+                    (track as any).applyConstraints({ advanced: [{ zoom: hwZoom }] });
+                }
+            }
+        } catch {
+            // Ignorer silencieusement si la contrainte matérielle n'est pas supportée
+        }
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (e.touches.length === 2) {
+            const dist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            touchStartDistRef.current = dist;
+            initialZoomRef.current = zoomScale;
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (e.touches.length === 2 && touchStartDistRef.current !== null) {
+            const dist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            const factor = dist / touchStartDistRef.current;
+            applyZoom(initialZoomRef.current * factor);
+        }
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (e.touches.length < 2) {
+            touchStartDistRef.current = null;
+        }
+    };
+
     const remaining = maxShots - shots.length;
 
     const takeShot = () => {
@@ -103,11 +167,17 @@ const CameraCapture = ({ maxShots = 13, startIndex = 0, onDone, onClose }: Camer
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d')!;
+
+        const sWidth = video.videoWidth / zoomScale;
+        const sHeight = video.videoHeight / zoomScale;
+        const sx = (video.videoWidth - sWidth) / 2;
+        const sy = (video.videoHeight - sHeight) / 2;
+
         if (facingMode === 'user') {
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
         }
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
 
         setFlash(true);
         setTimeout(() => setFlash(false), 140);
@@ -162,14 +232,27 @@ const CameraCapture = ({ maxShots = 13, startIndex = 0, onDone, onClose }: Camer
 
     return createPortal(
         <div className="camera-capture" role="dialog" aria-modal="true" aria-label="Prise de clichés">
-            <video
-                ref={videoRef}
-                className={`camera-video ${facingMode === 'user' ? 'is-mirrored' : ''}`}
-                playsInline
-                muted
-                autoPlay
-                onLoadedData={() => setReady(true)}
-            />
+            <div
+                className="camera-video-wrapper"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            >
+                <video
+                    ref={videoRef}
+                    className={`camera-video ${facingMode === 'user' ? 'is-mirrored' : ''}`}
+                    style={{
+                        transform: facingMode === 'user'
+                            ? `scale(-${zoomScale}, ${zoomScale})`
+                            : `scale(${zoomScale})`
+                    }}
+                    playsInline
+                    muted
+                    autoPlay
+                    onLoadedData={() => setReady(true)}
+                />
+            </div>
+
             {flash && <div className="camera-flash" />}
 
             <header className="camera-top">
@@ -199,6 +282,22 @@ const CameraCapture = ({ maxShots = 13, startIndex = 0, onDone, onClose }: Camer
                 <div className="camera-error">
                     <p>{error}</p>
                     <button className="om-btn om-btn--secondary" onClick={onClose}>Revenir</button>
+                </div>
+            )}
+
+            {/* Sélecteur rapide de zoom */}
+            {!error && (
+                <div className="camera-zoom-controls">
+                    {[1, 1.5, 2, 3].map(z => (
+                        <button
+                            key={z}
+                            type="button"
+                            className={`camera-zoom-btn ${Math.abs(zoomScale - z) < 0.15 ? 'is-active' : ''}`}
+                            onClick={() => applyZoom(z)}
+                        >
+                            {z}x
+                        </button>
+                    ))}
                 </div>
             )}
 

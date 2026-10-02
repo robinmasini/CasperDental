@@ -2,12 +2,23 @@
 .camera-capture {
     position: fixed;
     inset: 0;
-    z-index: 10050; /* au-dessus de la barre de navigation mobile */
+    z-index: 20050; /* au-dessus de toutes les modales et fenêtres */
     background: #000;
     color: #fff;
     font-family: var(--om-font);
     overflow: hidden;
-    touch-action: manipulation;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.camera-video-wrapper {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
 }
 
 .camera-video {
@@ -16,10 +27,48 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transform-origin: center center;
+    transition: transform 0.08s ease-out;
 }
 
-.camera-video.is-mirrored {
-    transform: scaleX(-1);
+.camera-zoom-controls {
+    position: absolute;
+    bottom: 110px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.55);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    z-index: 5;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.camera-zoom-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.camera-zoom-btn.is-active {
+    background: var(--om-accent, #00f2fe);
+    color: #04121d;
+    border-color: var(--om-accent, #00f2fe);
+    transform: scale(1.1);
 }
 
 .camera-flash {
