@@ -916,7 +916,7 @@ export const AudioConsultation: React.FC<AudioConsultationProps> = ({
 
                     {/* Progress Bar & Percentage */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>
-                        <span>Avancement de l'Analyse Clinique RAG...</span>
+                        <span>Avancement du diagnostic...</span>
                         <span style={{ color: 'var(--primary-cyan)', fontSize: '1rem', fontWeight: 700 }}>{reflectionProgress}%</span>
                     </div>
 

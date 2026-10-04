@@ -1029,7 +1029,7 @@ const Dashboard = () => {
                                 borderRadius: '3px'
                             }} 
                         />
-                        Analyse Clinique
+                        Diagnostic
                     </button>
 
                     <button 
@@ -2253,12 +2253,12 @@ const Dashboard = () => {
                     <button 
                         className={`mobile-navbar-tab ${activeTab === 'analyse' ? 'active' : ''}`}
                         onClick={() => handleTabClick('analyse')}
-                        title="Analyse Clinique"
+                        title="Diagnostic"
                     >
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                         </svg>
-                        <span className="mobile-navbar-label">Analyse</span>
+                        <span className="mobile-navbar-label">Diagnostic</span>
                     </button>
 
                     <button 
