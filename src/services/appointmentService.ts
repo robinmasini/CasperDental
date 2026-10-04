@@ -71,3 +71,13 @@ export const getAppointmentsByPatientId = async (patientId: string): Promise<App
     }
     return data || [];
 };
+
+// Mise à jour d'un rendez-vous (statut, notes…) depuis le planning du cabinet
+export const updateAppointment = async (id: string, changes: Partial<Appointment>): Promise<boolean> => {
+    const { error } = await supabase.from('appointments').update(changes).eq('id', id);
+    if (error) {
+        console.error('Error updating appointment:', error);
+        return false;
+    }
+    return true;
+};

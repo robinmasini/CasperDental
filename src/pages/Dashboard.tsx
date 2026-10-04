@@ -11,6 +11,7 @@ import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import ClinicalReport, { formatClinicalReport } from '../components/ClinicalReport';
 import { warmUpKnowledge } from '../services/knowledgeBase';
 import CameraCapture from '../components/CameraCapture';
+import CabinetPlanning from '../components/CabinetPlanning';
 import { AiMissingBanner, AiReportMeta } from '../components/AiStatus';
 import Icon from '../components/Icon';
 
@@ -1036,13 +1037,8 @@ const Dashboard = () => {
                         className={`sidebar-nav-btn ${activeTab === 'audio' ? 'active' : ''}`}
                         onClick={() => handleTabClick('audio')}
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeTab === 'audio' ? 'var(--primary-cyan)' : 'inherit' }}>
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                            <line x1="12" y1="19" x2="12" y2="23" />
-                            <line x1="8" y1="23" x2="16" y2="23" />
-                        </svg>
-                        Consultation Audio
+                        <Icon name="calendar" size={18} style={{ color: activeTab === 'audio' ? 'var(--primary-cyan)' : 'inherit' }} />
+                        Planning
                     </button>
 
                     {!isPatientAccount && (
@@ -1125,7 +1121,7 @@ const Dashboard = () => {
                     </div>
                 )}
 
-                {(activeTab === 'analyse' || activeTab === 'audio') && (
+                {activeTab === 'analyse' && (
                     <AiMissingBanner onConfigure={() => handleTabClick('config')} />
                 )}
 
@@ -1449,20 +1445,8 @@ const Dashboard = () => {
                     </>
                 )}
 
-                {/* TAB: CONSULTATION AUDIO (STANDALONE) */}
-                {activeTab === 'audio' && (
-                    <div className="audio-tab-layout">
-                        <AudioConsultation
-                            initialTranscript={practitionerDictation}
-                            patientName={patientName} 
-                            selectedPatientId={selectedPatientObj?.id}
-                            patient={selectedPatientObj}
-                                    onTranscriptChange={setPractitionerDictation}
-                            onSendToOrthoMind={handleAudioTranscriptToOrthoMind} 
-                            onViewPatientFile={() => handleTabClick('patients')}
-                        />
-                    </div>
-                )}
+                {/* TAB: PLANNING DU CABINET (rendez-vous + étiquettes Monday) — l'audio est dans Diagnostic */}
+                {activeTab === 'audio' && <CabinetPlanning />}
 
                 {activeTab === 'patients' && (
                     <Patients 
@@ -2289,15 +2273,10 @@ const Dashboard = () => {
                     <button 
                         className={`mobile-navbar-tab ${activeTab === 'audio' ? 'active' : ''}`}
                         onClick={() => handleTabClick('audio')}
-                        title="Consultation Audio"
+                        title="Planning"
                     >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                            <line x1="12" y1="19" x2="12" y2="23" />
-                            <line x1="8" y1="23" x2="16" y2="23" />
-                        </svg>
-                        <span className="mobile-navbar-label">Audio</span>
+                        <Icon name="calendar" size={22} />
+                        <span className="mobile-navbar-label">Planning</span>
                     </button>
 
                     <button 

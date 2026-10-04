@@ -1,0 +1,117 @@
+.cabinet-planning {
+    display: flex;
+    flex-direction: column;
+    gap: var(--om-space-5);
+    font-family: var(--om-font);
+}
+
+.planning-title {
+    font-size: var(--om-text-xl);
+}
+
+.planning-section .om-title {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--om-space-2);
+}
+
+.planning-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--om-space-3);
+    padding: var(--om-space-4);
+    margin-bottom: var(--om-space-4);
+    border: 1px solid var(--om-border);
+    border-radius: var(--om-radius);
+    background: var(--om-surface-raised);
+}
+
+.planning-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.planning-form-notes {
+    grid-column: 1 / -1;
+}
+
+.planning-form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.planning-day + .planning-day {
+    margin-top: var(--om-space-5);
+}
+
+.planning-day-title {
+    display: block;
+    margin: 0 0 var(--om-space-2);
+    color: var(--om-text-2);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--om-text-sm);
+}
+
+.planning-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--om-border);
+    border-radius: var(--om-radius);
+    overflow: hidden;
+}
+
+.planning-item {
+    display: grid;
+    grid-template-columns: 56px 1fr auto auto;
+    align-items: center;
+    gap: var(--om-space-3);
+    padding: var(--om-space-3) var(--om-space-4);
+    border-bottom: 1px solid var(--om-border);
+}
+
+.planning-item:last-child {
+    border-bottom: none;
+}
+
+.planning-item.is-cancelled {
+    opacity: 0.55;
+}
+
+.planning-time {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--om-accent);
+}
+
+.planning-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.planning-main .om-muted {
+    font-size: var(--om-text-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.planning-actions {
+    display: flex;
+    gap: 4px;
+}
+
+@media (max-width: 640px) {
+    .planning-item {
+        grid-template-columns: 48px 1fr auto;
+    }
+
+    .planning-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+}
