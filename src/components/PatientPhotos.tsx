@@ -4,7 +4,7 @@ import Icon from './Icon';
 import CameraCapture from './CameraCapture';
 import PatientRadios from './PatientRadios';
 import PatientEmpreintes from './PatientEmpreintes';
-import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip, downloadPatientPhotosDirect } from '../services/photosService';
+import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip, downloadPatientPhotosDirect, isIntraOralPhoto, transformPatientPhoto, PhotoTransform } from '../services/photosService';
 import './PatientPhotos.css';
 
 // Onglet Photos de la fiche patient : tous les clichés archivés (13 vues ordonnées),
@@ -30,6 +30,45 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
     const [isDownloadingAll, setIsDownloadingAll] = useState(false);
     const [isDownloadingDirect, setIsDownloadingDirect] = useState(false);
     const galleryRef = useRef<HTMLInputElement>(null);
+    const [transformingId, setTransformingId] = useState<string | null>(null);
+
+    // Miroir / rotation 180° : enregistrés automatiquement dans le dossier
+    const applyTransform = async (photo: PatientPhoto, transform: PhotoTransform) => {
+        setTransformingId(photo.id);
+        try {
+            await transformPatientPhoto(photo, transform);
+            await load();
+            setError(null);
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setTransformingId(null);
+        }
+    };
+
+    const transformButtons = (photo: PatientPhoto) => (
+        <div className="photo-transform-bar">
+            <button
+                type="button"
+                className="om-btn om-btn--ghost om-btn--sm"
+                onClick={(e) => { e.stopPropagation(); applyTransform(photo, 'flip'); }}
+                disabled={transformingId !== null}
+                title="Miroir horizontal (enregistré automatiquement)"
+            >
+                <span aria-hidden="true">⇋</span> Miroir
+            </button>
+            <button
+                type="button"
+                className="om-btn om-btn--ghost om-btn--sm"
+                onClick={(e) => { e.stopPropagation(); applyTransform(photo, 'rotate180'); }}
+                disabled={transformingId !== null}
+                title="Rotation de 180° (enregistrée automatiquement)"
+            >
+                <Icon name="refresh" size={14} /> 180°
+            </button>
+            {transformingId === photo.id && <span className="om-muted photo-transform-busy">Enregistrement…</span>}
+        </div>
+    );
     const canUseCamera = !!navigator.mediaDevices?.getUserMedia && window.matchMedia('(pointer: coarse)').matches;
 
     const handleDownloadAllPhotos = async () => {
@@ -209,7 +248,8 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                         </h4>
                         <div className="photos-grid">
                             {group.items.map(({ photo, index }) => (
-                                <button key={photo.id} className="photo-tile" onClick={() => setViewerIndex(index)}>
+                                <div key={photo.id} className="photo-tile-wrap">
+                                <button className="photo-tile" onClick={() => setViewerIndex(index)}>
                                     {photo.label && (
                                         <div className="photo-tile-header" style={{
                                             position: 'absolute',
@@ -236,6 +276,8 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                                         {photo.label && <span className="photo-label">{photo.label}</span>}
                                     </span>
                                 </button>
+                                {isIntraOralPhoto(photo) && transformButtons(photo)}
+                                </div>
                             ))}
                         </div>
                     </section>
@@ -278,6 +320,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                             <span className="photo-viewer-label">{dayLabel(current.taken_at)} à {timeLabel(current.taken_at)}</span>
                         </div>
                         <div className="photo-viewer-actions">
+                            {isIntraOralPhoto(current) && transformButtons(current)}
                             <button className="om-btn om-btn--danger om-btn--sm" onClick={removeCurrent}>Supprimer</button>
                             <button className="om-btn om-btn--secondary om-btn--sm" onClick={() => setViewerIndex(null)}><Icon name="x" /> Fermer</button>
                         </div>

@@ -164,6 +164,48 @@ export const deletePatientPhoto = async (photo: PatientPhoto): Promise<void> => 
     await supabase.storage.from(BUCKET).remove([photo.storage_path]);
 };
 
+// Vues intra-orales (miroir / rotation proposés) : titres « Intra-oral — … »,
+// ou anciennes vues de la caméra (« Intra-buccale … », « Occlusale … »)
+export const isIntraOralPhoto = (photo: PatientPhoto) =>
+    /^(intra-oral|intra-buccale|occlusale)/i.test(photo.label || '');
+
+export type PhotoTransform = 'flip' | 'rotate180';
+
+// Applique un miroir horizontal ou une rotation de 180° à l'image stockée elle-même :
+// la fiche, la visionneuse et les téléchargements reflètent tous la correction.
+export const transformPatientPhoto = async (photo: PatientPhoto, transform: PhotoTransform): Promise<void> => {
+    if (!photo.url) throw new Error('Photo indisponible.');
+    const source = await (await fetch(photo.url)).blob();
+    const bitmap = await createImageBitmap(source);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d')!;
+    if (transform === 'flip') {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+    } else {
+        ctx.translate(canvas.width, canvas.height);
+        ctx.rotate(Math.PI);
+    }
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    if (!blob) throw new Error("Transformation de l'image impossible.");
+
+    // Nouveau fichier puis bascule de la fiche : l'original n'est supprimé qu'une fois la nouvelle version en place
+    const folder = photo.storage_path.split('/').slice(0, -1).join('/');
+    const newPath = `${folder}/${crypto.randomUUID()}.jpg`;
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(newPath, blob, { contentType: 'image/jpeg', upsert: false });
+    if (uploadError) throw new Error(`Enregistrement de la photo modifiée impossible : ${uploadError.message}`);
+    const { error: rowError } = await supabase.from('patient_photos').update({ storage_path: newPath }).eq('id', photo.id);
+    if (rowError) {
+        await supabase.storage.from(BUCKET).remove([newPath]);
+        throw new Error(`Enregistrement de la photo modifiée impossible : ${rowError.message}`);
+    }
+    await supabase.storage.from(BUCKET).remove([photo.storage_path]);
+};
+
 // ============================================================================
 // Radiographies (Panoramique, Téléradiographies, Poignet)
 // ============================================================================

@@ -164,3 +164,32 @@
         gap: 10px;
     }
 }
+
+/* Miroir / rotation sous les vues intra-orales */
+.photo-tile-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.photo-transform-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.photo-transform-bar .om-btn {
+    flex: 1;
+    min-width: 0;
+}
+
+.photo-transform-busy {
+    font-size: var(--om-text-xs);
+}
+
+.photo-viewer-actions .photo-transform-bar .om-btn {
+    flex: none;
+    color: #fff;
+}
