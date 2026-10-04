@@ -146,7 +146,7 @@ export const listPatientPhotos = async (patientId: string): Promise<PatientPhoto
     if (error) throw new Error(`Lecture des photos impossible : ${error.message}`);
     
     // Filtrer pour ne conserver que les photos (et pas les radios identifiées RADIO::)
-    const rawPhotos: PatientPhoto[] = (data || []).filter(p => !p.label?.startsWith('RADIO::'));
+    const rawPhotos: PatientPhoto[] = (data || []).filter((p: any) => !p.label?.startsWith('RADIO::'));
     if (rawPhotos.length === 0) return [];
 
     const { data: signed, error: signError } = await supabase.storage
@@ -253,7 +253,7 @@ export const listPatientRadios = async (patientId: string): Promise<Record<strin
 
     if (error) throw new Error(`Lecture des radiographies impossible : ${error.message}`);
     
-    const radioRows: PatientPhoto[] = (data || []).filter(p => p.label?.startsWith('RADIO::'));
+    const radioRows: PatientPhoto[] = (data || []).filter((p: any) => p.label?.startsWith('RADIO::'));
     if (radioRows.length === 0) return {};
 
     const { data: signed, error: signError } = await supabase.storage
@@ -338,7 +338,7 @@ export const listPatientEmpreintes = async (patientId: string): Promise<Record<s
 
     if (error) throw new Error(`Lecture des empreintes 3D impossible : ${error.message}`);
     
-    const empreinteRows: PatientPhoto[] = (data || []).filter(p => p.label?.startsWith('EMPREINTE::') || p.label?.startsWith('STL::'));
+    const empreinteRows: PatientPhoto[] = (data || []).filter((p: any) => p.label?.startsWith('EMPREINTE::') || p.label?.startsWith('STL::'));
     if (empreinteRows.length === 0) return {};
 
     const { data: signed, error: signError } = await supabase.storage
