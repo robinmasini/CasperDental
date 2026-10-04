@@ -255,15 +255,15 @@ export const SEED_TRAVAUX: TravauxItem[] = [
 
 export const getLocalTravaux = (): TravauxItem[] => {
     try {
-        const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (!stored) {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(SEED_TRAVAUX));
-            return SEED_TRAVAUX;
-        }
-        return JSON.parse(stored);
+        // Données réelles uniquement : plus de lignes de démonstration, et celles
+        // ajoutées auparavant (identifiants « travaux-seed-… ») sont retirées
+        const stored: TravauxItem[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+        const real = stored.filter(item => !String(item.id).startsWith('travaux-seed-'));
+        if (real.length !== stored.length) localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(real));
+        return real;
     } catch (e) {
         console.error('Error reading local travaux:', e);
-        return SEED_TRAVAUX;
+        return [];
     }
 };
 

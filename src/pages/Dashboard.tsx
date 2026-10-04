@@ -1033,14 +1033,6 @@ const Dashboard = () => {
                         Diagnostic
                     </button>
 
-                    <button 
-                        className={`sidebar-nav-btn ${activeTab === 'audio' ? 'active' : ''}`}
-                        onClick={() => handleTabClick('audio')}
-                    >
-                        <Icon name="calendar" size={18} style={{ color: activeTab === 'audio' ? 'var(--primary-cyan)' : 'inherit' }} />
-                        Planning
-                    </button>
-
                     {!isPatientAccount && (
                         <>
                             <button 
@@ -1054,6 +1046,14 @@ const Dashboard = () => {
                                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                                 </svg>
                                 Liste de patients
+                            </button>
+
+                            <button 
+                                className={`sidebar-nav-btn ${activeTab === 'audio' ? 'active' : ''}`}
+                                onClick={() => handleTabClick('audio')}
+                            >
+                                <Icon name="calendar" size={18} style={{ color: activeTab === 'audio' ? 'var(--primary-cyan)' : 'inherit' }} />
+                                Planning
                             </button>
 
                             <button 
