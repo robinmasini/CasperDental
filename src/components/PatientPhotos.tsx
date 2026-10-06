@@ -32,7 +32,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
     const galleryRef = useRef<HTMLInputElement>(null);
     const [transformingId, setTransformingId] = useState<string | null>(null);
 
-    // Miroir / rotation 180° : enregistrés automatiquement dans le dossier
+    // Miroir / rotation 90° ou 180° : enregistrés automatiquement dans le dossier
     const applyTransform = async (photo: PatientPhoto, transform: PhotoTransform) => {
         setTransformingId(photo.id);
         try {
@@ -56,6 +56,15 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                 title="Miroir horizontal (enregistré automatiquement)"
             >
                 <span aria-hidden="true">⇋</span> Miroir
+            </button>
+            <button
+                type="button"
+                className="om-btn om-btn--ghost om-btn--sm"
+                onClick={(e) => { e.stopPropagation(); applyTransform(photo, 'rotate90'); }}
+                disabled={transformingId !== null}
+                title="Rotation de 90° dans le sens horaire (enregistrée automatiquement)"
+            >
+                <span aria-hidden="true">↻</span> 90°
             </button>
             <button
                 type="button"

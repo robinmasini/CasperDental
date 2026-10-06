@@ -188,21 +188,25 @@ export const deletePatientPhoto = async (photo: PatientPhoto): Promise<void> => 
 export const isIntraOralPhoto = (photo: PatientPhoto) =>
     /^(intra-oral|intra-buccale|occlusale)/i.test(photo.label || '');
 
-export type PhotoTransform = 'flip' | 'rotate180';
+export type PhotoTransform = 'flip' | 'rotate90' | 'rotate180';
 
-// Applique un miroir horizontal ou une rotation de 180° à l'image stockée elle-même :
+// Applique un miroir horizontal ou une rotation (90° horaire ou 180°) à l'image stockée elle-même :
 // la fiche, la visionneuse et les téléchargements reflètent tous la correction.
 export const transformPatientPhoto = async (photo: PatientPhoto, transform: PhotoTransform): Promise<void> => {
     if (!photo.url) throw new Error('Photo indisponible.');
     const source = await (await fetch(photo.url)).blob();
     const bitmap = await createImageBitmap(source);
     const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+    const quarterTurn = transform === 'rotate90';
+    canvas.width = quarterTurn ? bitmap.height : bitmap.width;
+    canvas.height = quarterTurn ? bitmap.width : bitmap.height;
     const ctx = canvas.getContext('2d')!;
     if (transform === 'flip') {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
+    } else if (quarterTurn) {
+        ctx.translate(canvas.width, 0);
+        ctx.rotate(Math.PI / 2);
     } else {
         ctx.translate(canvas.width, canvas.height);
         ctx.rotate(Math.PI);
