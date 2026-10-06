@@ -165,7 +165,7 @@
     }
 }
 
-/* Miroir / rotation sous les vues intra-orales */
+/* Miroir / rotation sous les photos */
 .photo-tile-wrap {
     display: flex;
     flex-direction: column;
@@ -192,4 +192,36 @@
 .photo-viewer-actions .photo-transform-bar .om-btn {
     flex: none;
     color: #fff;
+}
+
+/* Mobile : boutons Miroir / 90° / 180° bien tappables, actions de la visionneuse à la ligne */
+@media (max-width: 768px) {
+    .photo-transform-bar .om-btn {
+        min-height: 38px;
+        padding: 0 6px;
+        touch-action: manipulation;
+    }
+
+    .photo-viewer-top > div:first-child {
+        flex-basis: 100%;
+    }
+
+    .photo-viewer-actions {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .photo-viewer-actions .photo-transform-bar {
+        flex-basis: 100%;
+    }
+
+    .photo-viewer-actions .photo-transform-bar .om-btn {
+        flex: 1;
+        min-height: 40px;
+    }
+
+    .photo-viewer-actions > .om-btn {
+        flex: 1;
+        min-height: 40px;
+    }
 }

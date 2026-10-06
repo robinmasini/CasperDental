@@ -183,14 +183,30 @@ export const deletePatientPhoto = async (photo: PatientPhoto): Promise<void> => 
     await supabase.storage.from(BUCKET).remove([photo.storage_path]);
 };
 
+// Décodage compatible tous navigateurs mobiles (createImageBitmap absent des anciens Safari iOS)
+const decodeImage = async (blob: Blob): Promise<{ source: CanvasImageSource; width: number; height: number; release: () => void }> => {
+    if (typeof createImageBitmap === 'function') {
+        try {
+            const bitmap = await createImageBitmap(blob);
+            return { source: bitmap, width: bitmap.width, height: bitmap.height, release: () => bitmap.close() };
+        } catch { /* repli sur <img> */ }
+    }
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return { source: img, width: img.naturalWidth, height: img.naturalHeight, release: () => URL.revokeObjectURL(url) };
+};
+
 export type PhotoTransform = 'flip' | 'rotate90' | 'rotate180';
 
 // Applique un miroir horizontal ou une rotation (90° horaire ou 180°) à l'image stockée elle-même :
 // la fiche, la visionneuse et les téléchargements reflètent tous la correction.
 export const transformPatientPhoto = async (photo: PatientPhoto, transform: PhotoTransform): Promise<void> => {
     if (!photo.url) throw new Error('Photo indisponible.');
-    const source = await (await fetch(photo.url)).blob();
-    const bitmap = await createImageBitmap(source);
+    const res = await fetch(photo.url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Téléchargement de la photo impossible.');
+    const bitmap = await decodeImage(await res.blob());
     const canvas = document.createElement('canvas');
     const quarterTurn = transform === 'rotate90';
     canvas.width = quarterTurn ? bitmap.height : bitmap.width;
@@ -206,8 +222,8 @@ export const transformPatientPhoto = async (photo: PatientPhoto, transform: Phot
         ctx.translate(canvas.width, canvas.height);
         ctx.rotate(Math.PI);
     }
-    ctx.drawImage(bitmap, 0, 0);
-    bitmap.close();
+    ctx.drawImage(bitmap.source, 0, 0);
+    bitmap.release();
     const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
     if (!blob) throw new Error("Transformation de l'image impossible.");
 

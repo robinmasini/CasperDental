@@ -1313,7 +1313,7 @@ const Dashboard = () => {
                                             <Icon name="mic" size={18} /> Enregistrer ma dictée
                                         </button>
                                         <button
-                                            className="om-btn om-btn--ghost dictation-bypass"
+                                            className="start-scan-btn dictation-bypass"
                                             onClick={handleStartAnalysis}
                                             disabled={isScanning || isProcessingFiles || imageFiles.length === 0}
                                         >
