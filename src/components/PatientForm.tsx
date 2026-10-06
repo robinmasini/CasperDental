@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient, createPatient, updatePatient } from '../services/patientService';
+import { extractPatientFromOrthoLeader } from '../services/geminiService';
 import './PatientForm.css';
 
 interface PatientFormProps {
@@ -52,6 +53,32 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
             ...prev,
             [name]: value
         }));
+    };
+
+    // Import d'une photo de la fiche OrthoLeader : pré-remplit nom, prénom, naissance et portable
+    const orthoLeaderInputRef = useRef<HTMLInputElement>(null);
+    const [isReadingOrthoLeader, setIsReadingOrthoLeader] = useState(false);
+    const [orthoLeaderStatus, setOrthoLeaderStatus] = useState('');
+
+    const handleOrthoLeaderFile = async (file?: File) => {
+        if (!file) return;
+        setError('');
+        setOrthoLeaderStatus('');
+        setIsReadingOrthoLeader(true);
+        try {
+            const fields = await extractPatientFromOrthoLeader(file);
+            const filled = Object.entries(fields).filter(([, v]) => v);
+            if (filled.length === 0) throw new Error("Aucune information lisible sur cette photo de la fiche OrthoLeader.");
+            setFormData(prev => ({ ...prev, ...Object.fromEntries(filled) }));
+            setOrthoLeaderStatus(filled.length === 4
+                ? 'Fiche OrthoLeader lue : vérifiez les champs avant d’enregistrer.'
+                : 'Fiche OrthoLeader lue en partie : complétez les champs restés vides.');
+        } catch (e: any) {
+            setError(e.message || 'Lecture de la fiche OrthoLeader impossible.');
+        } finally {
+            setIsReadingOrthoLeader(false);
+            if (orthoLeaderInputRef.current) orthoLeaderInputRef.current.value = '';
+        }
     };
 
     const handleSave = async (sendSms: boolean) => {
@@ -134,6 +161,31 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
 
                 {!showSmsSuccessModal ? (
                     <form onSubmit={(e) => { e.preventDefault(); handleSave(!initialPatient); }}>
+                        {!initialPatient && (
+                            <div
+                                className={`ortholeader-uploader ${isReadingOrthoLeader ? 'is-busy' : ''}`}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => !isReadingOrthoLeader && orthoLeaderInputRef.current?.click()}
+                                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isReadingOrthoLeader) orthoLeaderInputRef.current?.click(); }}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={(e) => { e.preventDefault(); handleOrthoLeaderFile(e.dataTransfer.files?.[0]); }}
+                            >
+                                <input
+                                    ref={orthoLeaderInputRef}
+                                    type="file"
+                                    accept="image/*,.heic,.HEIC,.heif,.HEIF"
+                                    hidden
+                                    onChange={(e) => handleOrthoLeaderFile(e.target.files?.[0])}
+                                />
+                                <div className="ortholeader-uploader-icon">🗂️</div>
+                                <div className="ortholeader-uploader-text">
+                                    <strong>{isReadingOrthoLeader ? 'Lecture de la fiche OrthoLeader…' : 'Importer la fiche OrthoLeader'}</strong>
+                                    <span>Photo ou capture de la fiche administrative : nom, prénom, date de naissance et portable sont remplis automatiquement.</span>
+                                </div>
+                            </div>
+                        )}
+                        {orthoLeaderStatus && <div className="ortholeader-status">{orthoLeaderStatus}</div>}
                         {error && <div className="form-error">{error}</div>}
 
                         {/* Vonage SMS Banner Info (seulement lors de la création) */}

@@ -587,6 +587,41 @@ export const executeGeminiCall = async (
 };
 
 // Traduit une erreur technique en cause compréhensible pour le praticien
+// Lecture d'une capture/photo de la fiche administrative OrthoLeader
+export interface OrthoLeaderPatientFields {
+    nom?: string;
+    prenom?: string;
+    date_naissance?: string; // AAAA-MM-JJ
+    portable?: string;
+}
+
+export const extractPatientFromOrthoLeader = async (file: File): Promise<OrthoLeaderPatientFields> => {
+    const apiKey = getGeminiApiKey();
+    if (!apiKey) throw new Error("L'IA n'est pas configurée pour le cabinet : la lecture de la fiche OrthoLeader est indisponible.");
+    const imagePart = await fileToGenerativePart(file, 1600);
+    const data = await executeGeminiCall('generateContent', {
+        contents: [{ parts: [imagePart, { text: `Cette image est une photo d'écran de la fiche administrative d'un patient dans le logiciel OrthoLeader.
+Relève UNIQUEMENT les champs suivants tels qu'ils sont écrits dans les cases « Nom », « Prénom », « Naissance » et « Portable » (à défaut de portable : « Téléphone »).
+N'invente rien : laisse une chaîne vide si un champ est illisible ou absent. Ne prends pas le nom du praticien.
+Réponds uniquement en JSON :
+{ "nom": "NOM", "prenom": "Prénom", "date_naissance": "JJ/MM/AAAA", "portable": "0X XX XX XX XX" }` }] }],
+        generationConfig: { temperature: 0, responseMimeType: 'application/json', maxOutputTokens: 1024 },
+    }, apiKey, undefined, 'fast', { thinking: 'minimal', timeoutMs: 30000 });
+
+    const fields = parseJsonResponse<Record<string, string>>(extractText(data));
+    if (!fields) throw new Error("La fiche OrthoLeader n'a pas pu être lue. Reprenez la photo plus nettement.");
+
+    const clean = (v?: string) => (typeof v === 'string' ? v.trim() : '');
+    const birth = clean(fields.date_naissance).match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})/);
+    const digits = clean(fields.portable).replace(/\D/g, '').replace(/^33(?=\d{9}$)/, '0');
+    return {
+        nom: clean(fields.nom).toUpperCase() || undefined,
+        prenom: clean(fields.prenom) || undefined,
+        date_naissance: birth ? `${birth[3]}-${birth[2].padStart(2, '0')}-${birth[1].padStart(2, '0')}` : undefined,
+        portable: digits.length === 10 ? digits.replace(/(\d{2})(?=\d)/g, '$1 ') : (clean(fields.portable) || undefined),
+    };
+};
+
 export const describeAiFailure = (err: unknown): string => {
     const msg = String((err as any)?.message || err || '');
     if (/OAuth 2 access token|ACCESS_TOKEN_TYPE_UNSUPPORTED/i.test(msg)) return 'Google refuse la clé au format « AQ. » (problème connu des nouvelles clés AI Studio) : créez une clé dans Google Cloud Console, restreinte à « Generative Language API ».';
