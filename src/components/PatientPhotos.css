@@ -225,3 +225,9 @@
         min-height: 40px;
     }
 }
+
+/* Téléchargement d'une seule section, aligné à droite du titre de section */
+.section-download-btn {
+    margin-left: auto;
+    gap: 6px;
+}

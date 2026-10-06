@@ -4,7 +4,7 @@ import Icon from './Icon';
 import CameraCapture from './CameraCapture';
 import PatientRadios from './PatientRadios';
 import PatientEmpreintes from './PatientEmpreintes';
-import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip, transformPatientPhoto, PhotoTransform } from '../services/photosService';
+import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip, transformPatientPhoto, PhotoTransform, DossierSection } from '../services/photosService';
 import './PatientPhotos.css';
 
 // Onglet Photos de la fiche patient : tous les clichés archivés (13 vues ordonnées),
@@ -78,6 +78,36 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
         </div>
     );
     const canUseCamera = !!navigator.mediaDevices?.getUserMedia && window.matchMedia('(pointer: coarse)').matches;
+
+    const [downloadingSection, setDownloadingSection] = useState<DossierSection | null>(null);
+    const handleDownloadSection = async (section: DossierSection) => {
+        setDownloadingSection(section);
+        try {
+            await downloadPatientDossierZip(patientId, patientName, [section]);
+        } catch (err: any) {
+            console.error('Error creating section ZIP download:', err);
+            setError(err.message || 'Erreur lors de la création du fichier ZIP');
+        } finally {
+            setDownloadingSection(null);
+        }
+    };
+
+    const sectionDownloadButton = (section: DossierSection) => (
+        <button
+            type="button"
+            className="om-btn om-btn--secondary om-btn--sm section-download-btn"
+            onClick={() => handleDownloadSection(section)}
+            disabled={downloadingSection !== null || isDownloadingAll}
+            title={`Télécharger uniquement le dossier ${section} (ZIP)`}
+        >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {downloadingSection === section ? 'Création du ZIP…' : `Dossier ${section} (ZIP)`}
+        </button>
+    );
 
     const handleDownloadAllPhotos = async () => {
         setIsDownloadingAll(true);
@@ -208,10 +238,11 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
             {error && <div className="om-notice om-notice--danger" role="alert"><p>{error}</p></div>}
 
             {/* SECTION 1 : PHOTOS ORTHODONTIQUES */}
-            <div style={{ marginTop: '16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ marginTop: '16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <span className="om-badge om-badge--accent" style={{ fontSize: '0.8rem', padding: '4px 12px', fontWeight: 700, letterSpacing: '0.5px' }}>
                     📷 SECTION PHOTOS (13 CLICHÉS ORTHODONTIQUES)
                 </span>
+                    {sectionDownloadButton('Photos')}
             </div>
 
             {loading ? (
@@ -266,20 +297,22 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
 
             {/* SECTION 2 : RADIOGRAPHIES & SCANS (BALISÉ ET VISIBLE DIRECTEMENT SANS DOSSIER MASQUÉ) */}
             <div style={{ marginTop: '36px', paddingTop: '24px', borderTop: '1px solid var(--om-border, rgba(255, 255, 255, 0.12))' }}>
-                <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span className="om-badge om-badge--warning" style={{ fontSize: '0.8rem', padding: '4px 12px', fontWeight: 700, letterSpacing: '0.5px' }}>
                         💀 SECTION RADIOGRAPHIES (4 SCANS)
                     </span>
+                    {sectionDownloadButton('Radiographies')}
                 </div>
                 <PatientRadios patientId={patientId} patientName={patientName} hideTitleBar={true} />
             </div>
 
             {/* SECTION 3 : EMPREINTES SCANS 3D (.STL) */}
             <div style={{ marginTop: '36px', paddingTop: '24px', borderTop: '1px solid var(--om-border, rgba(255, 255, 255, 0.12))' }}>
-                <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span className="om-badge om-badge--accent" style={{ fontSize: '0.8rem', padding: '4px 12px', fontWeight: 700, letterSpacing: '0.5px' }}>
                         🫆 SECTION EMPREINTES (4 SCANS 3D .STL)
                     </span>
+                    {sectionDownloadButton('Empreintes')}
                 </div>
                 <PatientEmpreintes patientId={patientId} patientName={patientName} hideTitleBar={true} />
             </div>

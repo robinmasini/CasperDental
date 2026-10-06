@@ -397,22 +397,26 @@ export const listPatientEmpreintes = async (patientId: string): Promise<Record<s
 // Téléchargement global structuré du dossier patient (Photos, Radiographies, Empreintes)
 // ============================================================================
 
+export type DossierSection = 'Photos' | 'Radiographies' | 'Empreintes';
+
+// Sans « sections » : dossier complet ; sinon uniquement les sous-dossiers demandés
 export const downloadPatientDossierZip = async (
     patientId: string,
-    patientName: string
+    patientName: string,
+    sections: DossierSection[] = ['Photos', 'Radiographies', 'Empreintes']
 ): Promise<void> => {
-    const photos = await listPatientPhotos(patientId);
-    const radiosMap = await listPatientRadios(patientId);
-    const empreintesMap = await listPatientEmpreintes(patientId);
+    const photos = sections.includes('Photos') ? await listPatientPhotos(patientId) : [];
+    const radiosMap = sections.includes('Radiographies') ? await listPatientRadios(patientId) : {};
+    const empreintesMap = sections.includes('Empreintes') ? await listPatientEmpreintes(patientId) : {};
 
     const safePatientName = (patientName || 'Patient').trim().replace(/[\/\\]/g, '-');
 
     const zip = new JSZip();
 
-    // 1. Structure propre des 3 sous-dossiers
-    const photosFolder = zip.folder('Photos');
-    const radiosFolder = zip.folder('Radiographies');
-    const empreintesFolder = zip.folder('Empreintes');
+    // 1. Structure propre des sous-dossiers demandés
+    const photosFolder = sections.includes('Photos') ? zip.folder('Photos') : null;
+    const radiosFolder = sections.includes('Radiographies') ? zip.folder('Radiographies') : null;
+    const empreintesFolder = sections.includes('Empreintes') ? zip.folder('Empreintes') : null;
 
     // 2. Photos orthodontiques (13 vues ordonnées)
     for (let i = 0; i < photos.length; i++) {
@@ -463,12 +467,12 @@ export const downloadPatientDossierZip = async (
         }
     }
 
-    // Générer et télécharger le dossier structuré "(Nom) (Prénom).zip" en 1 seul clic
+    // Générer et télécharger "(Nom) (Prénom).zip", ou "(Nom) (Prénom) - Photos.zip" pour une seule section
     const zipBlob = await zip.generateAsync({ type: 'blob' });
     const url = window.URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${safePatientName}.zip`;
+    a.download = sections.length === 1 ? `${safePatientName} - ${sections[0]}.zip` : `${safePatientName}.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
