@@ -142,6 +142,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
             await uploadPatientPhotos(patientId, files);
             await load();
         } catch (e: any) {
+            await load(); // les photos envoyées avant l'interruption restent affichées
             setError(e.message);
         } finally {
             setUploading(false);

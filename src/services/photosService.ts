@@ -95,42 +95,86 @@ const labelFromName = (name: string): string | null => {
     return match ? match[1] : null;
 };
 
+// Envoi interrompu (réseau coupé, iPhone verrouillé ou application mise en arrière-plan) :
+// les photos restantes sont conservées pour pouvoir relancer l'archivage sans doublon.
+export class PhotoUploadError extends Error {
+    constructor(message: string, public uploaded: number, public failed: { file: File; label: string }[]) {
+        super(message);
+    }
+}
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Attend le retour du réseau et de l'application au premier plan (au plus ~20 s)
+const waitUntilReachable = async () => {
+    for (let i = 0; i < 40 && (!navigator.onLine || document.visibilityState === 'hidden'); i++) await wait(500);
+};
+
+// Jusqu'à 4 tentatives par photo : Safari iOS coupe les envois en cours (« Load failed ») dès que l'écran se verrouille
+const withRetry = async <T>(attempt: () => Promise<T>): Promise<T> => {
+    let lastError: unknown;
+    for (let i = 0; i < 4; i++) {
+        try {
+            return await attempt();
+        } catch (err) {
+            lastError = err;
+            await waitUntilReachable();
+            await wait(1000 * (i + 1));
+        }
+    }
+    throw lastError;
+};
+
 export const uploadPatientPhotos = async (
     patientId: string,
     files: File[],
-    recordId?: string | null
+    recordId?: string | null,
+    labels?: string[]
 ): Promise<number> => {
     if (!isCloudMode() || !UUID_RE.test(patientId) || files.length === 0) return 0;
 
     let uploaded = 0;
+    const failed: { file: File; label: string }[] = [];
+    let lastMessage = '';
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const label = labels?.[i] || labelFromName(file.name) || DEFAULT_PHOTO_TITLES[i] || `cliche_${i + 1}`;
         const takenAt = new Date(file.lastModified || Date.now());
         const day = takenAt.toISOString().slice(0, 10);
         const path = `${patientId}/${day}/${crypto.randomUUID()}.jpg`;
 
-        const blob = await prepareForStorage(file);
-        const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, blob, {
-            contentType: 'image/jpeg',
-            upsert: false,
-        });
-        if (uploadError) throw new Error(`Envoi d'une photo impossible : ${uploadError.message}`);
-
-        const extractedLabel = labelFromName(file.name);
-        const label = extractedLabel || DEFAULT_PHOTO_TITLES[i] || `cliche_${i + 1}`;
-
-        const { error: rowError } = await supabase.from('patient_photos').insert({
-            patient_id: patientId,
-            record_id: recordId && UUID_RE.test(recordId) ? recordId : null,
-            storage_path: path,
-            taken_at: takenAt.toISOString(),
-            label: label,
-        });
-        if (rowError) {
-            await supabase.storage.from(BUCKET).remove([path]);
-            throw new Error(`Enregistrement d'une photo impossible : ${rowError.message}`);
+        try {
+            const blob = await prepareForStorage(file);
+            await withRetry(async () => {
+                const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+                if (error) throw new Error(`Envoi d'une photo impossible : ${error.message}`);
+            });
+            try {
+                await withRetry(async () => {
+                    const { error } = await supabase.from('patient_photos').insert({
+                        patient_id: patientId,
+                        record_id: recordId && UUID_RE.test(recordId) ? recordId : null,
+                        storage_path: path,
+                        taken_at: takenAt.toISOString(),
+                        label,
+                    });
+                    if (error) throw new Error(`Enregistrement d'une photo impossible : ${error.message}`);
+                });
+            } catch (rowErr) {
+                await supabase.storage.from(BUCKET).remove([path]).catch(() => undefined);
+                throw rowErr;
+            }
+            uploaded++;
+        } catch (err: any) {
+            const message = err?.message || String(err);
+            lastMessage = /load failed|failed to fetch|network/i.test(message)
+                ? 'connexion interrompue (réseau instable ou iPhone verrouillé pendant l\'envoi)'
+                : message;
+            failed.push({ file, label });
         }
-        uploaded++;
+    }
+    if (failed.length) {
+        throw new PhotoUploadError(`${failed.length} photo(s) sur ${files.length} non archivée(s) : ${lastMessage}`, uploaded, failed);
     }
     return uploaded;
 };

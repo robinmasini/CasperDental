@@ -6,7 +6,7 @@ import Logo from '../components/Logo';
 import { supabase } from '../lib/supabase';
 import { listRecords, saveRecord, updateRecordDep, migrateLocalDataToCloud, isCloudMode } from '../services/recordsService';
 import { saveCabinetGeminiKey, clearCabinetGeminiKey } from '../services/cabinetSettings';
-import { uploadPatientPhotos } from '../services/photosService';
+import { uploadPatientPhotos, PhotoUploadError } from '../services/photosService';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import ClinicalReport, { formatClinicalReport } from '../components/ClinicalReport';
 import { warmUpKnowledge } from '../services/knowledgeBase';
@@ -793,12 +793,26 @@ const Dashboard = () => {
                 // Archivage des clichés dans l'onglet Photos de la fiche patient
                 if (selectedPatientObj?.id) {
                     addLog('[SYSTEM] Archivage des clichés dans l\'onglet Photos du patient...');
-                    try {
-                        const count = await uploadPatientPhotos(selectedPatientObj.id, imageFiles, saved.id);
-                        addLog(count ? `[SUCCESS] ${count} cliché(s) archivé(s) dans la fiche patient.` : '[WARNING] Aucun cliché archivé (patient non enregistré dans la base du cabinet).');
-                    } catch (photoErr: any) {
-                        addLog(`[ERROR] ${photoErr.message}`);
-                        alert(`Le compte-rendu est enregistré, mais les photos n'ont pas pu être archivées : ${photoErr.message}`);
+                    let pendingFiles = imageFiles;
+                    let pendingLabels: string[] | undefined;
+                    let archived = 0;
+                    while (pendingFiles.length) {
+                        try {
+                            archived += await uploadPatientPhotos(selectedPatientObj.id, pendingFiles, saved.id, pendingLabels);
+                            addLog(archived ? `[SUCCESS] ${archived} cliché(s) archivé(s) dans la fiche patient.` : '[WARNING] Aucun cliché archivé (patient non enregistré dans la base du cabinet).');
+                            break;
+                        } catch (photoErr: any) {
+                            addLog(`[ERROR] ${photoErr.message}`);
+                            if (!(photoErr instanceof PhotoUploadError)) {
+                                alert(`Le compte-rendu est enregistré, mais les photos n'ont pas pu être archivées : ${photoErr.message}`);
+                                break;
+                            }
+                            archived += photoErr.uploaded;
+                            const retry = window.confirm(`Le compte-rendu est enregistré, mais ${photoErr.message}.\n\nGardez l'écran allumé et OrthoMind ouvert, puis touchez OK pour renvoyer les photos manquantes.`);
+                            if (!retry) break;
+                            pendingFiles = photoErr.failed.map(f => f.file);
+                            pendingLabels = photoErr.failed.map(f => f.label);
+                        }
                     }
                 }
                 addLog('[SUCCESS] Rapport et fiche DEP enregistrés dans le dossier du patient.');
