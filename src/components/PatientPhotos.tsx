@@ -4,7 +4,7 @@ import Icon from './Icon';
 import CameraCapture from './CameraCapture';
 import PatientRadios from './PatientRadios';
 import PatientEmpreintes from './PatientEmpreintes';
-import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip, downloadPatientPhotosDirect, isIntraOralPhoto, transformPatientPhoto, PhotoTransform } from '../services/photosService';
+import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip, downloadPatientPhotosDirect, transformPatientPhoto, PhotoTransform } from '../services/photosService';
 import './PatientPhotos.css';
 
 // Onglet Photos de la fiche patient : tous les clichés archivés (13 vues ordonnées),
@@ -285,7 +285,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                                         {photo.label && <span className="photo-label">{photo.label}</span>}
                                     </span>
                                 </button>
-                                {isIntraOralPhoto(photo) && transformButtons(photo)}
+                                {transformButtons(photo)}
                                 </div>
                             ))}
                         </div>
@@ -329,7 +329,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                             <span className="photo-viewer-label">{dayLabel(current.taken_at)} à {timeLabel(current.taken_at)}</span>
                         </div>
                         <div className="photo-viewer-actions">
-                            {isIntraOralPhoto(current) && transformButtons(current)}
+                            {transformButtons(current)}
                             <button className="om-btn om-btn--danger om-btn--sm" onClick={removeCurrent}>Supprimer</button>
                             <button className="om-btn om-btn--secondary om-btn--sm" onClick={() => setViewerIndex(null)}><Icon name="x" /> Fermer</button>
                         </div>

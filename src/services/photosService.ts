@@ -183,11 +183,6 @@ export const deletePatientPhoto = async (photo: PatientPhoto): Promise<void> => 
     await supabase.storage.from(BUCKET).remove([photo.storage_path]);
 };
 
-// Vues intra-orales (miroir / rotation proposés) : titres « Intra-oral — … »,
-// ou anciennes vues de la caméra (« Intra-buccale … », « Occlusale … »)
-export const isIntraOralPhoto = (photo: PatientPhoto) =>
-    /^(intra-oral|intra-buccale|occlusale)/i.test(photo.label || '');
-
 export type PhotoTransform = 'flip' | 'rotate90' | 'rotate180';
 
 // Applique un miroir horizontal ou une rotation (90° horaire ou 180°) à l'image stockée elle-même :
