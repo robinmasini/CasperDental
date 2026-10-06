@@ -476,44 +476,6 @@ export const downloadPatientDossierZip = async (
 };
 
 // ============================================================================
-// Téléchargement direct des 13 photos orthodontiques (Fichiers .JPG individuels)
-// Idéal pour l'import Windows (OnyxCeph, Carestream, Romexis...) via "Parcourir"
-// ============================================================================
-
-export const downloadPatientPhotosDirect = async (
-    patientId: string,
-    patientName: string
-): Promise<void> => {
-    const photos = await listPatientPhotos(patientId);
-    const safePatientName = (patientName || 'Patient').trim().replace(/[\/\\]/g, '-');
-
-    const triggerDirectDownload = (blob: Blob, fileName: string) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-    };
-
-    for (let i = 0; i < photos.length; i++) {
-        const photo = photos[i];
-        if (!photo.url) continue;
-        try {
-            const res = await fetch(photo.url);
-            const blob = await res.blob();
-            const fileName = formatPhotoFileName(i, photo.label);
-            triggerDirectDownload(blob, `${safePatientName}_${fileName}`);
-            await new Promise(r => setTimeout(r, 150));
-        } catch (err) {
-            console.error('Erreur téléchargement photo direct :', err);
-        }
-    }
-};
-
-// ============================================================================
 // Téléchargement du dossier patient structuré DÉZIPPÉ DIRECTEMENT SUR LE DISQUE
 // Crée le dossier "[Nom] [Prénom]" avec ses 3 sous-dossiers (Photos, Radiographies, Empreintes)
 // directement sans passer par un fichier ZIP.

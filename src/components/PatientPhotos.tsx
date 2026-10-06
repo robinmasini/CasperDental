@@ -4,7 +4,7 @@ import Icon from './Icon';
 import CameraCapture from './CameraCapture';
 import PatientRadios from './PatientRadios';
 import PatientEmpreintes from './PatientEmpreintes';
-import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip, downloadPatientPhotosDirect, transformPatientPhoto, PhotoTransform } from '../services/photosService';
+import { PatientPhoto, listPatientPhotos, uploadPatientPhotos, deletePatientPhoto, photosAvailable, downloadPatientDossierZip, transformPatientPhoto, PhotoTransform } from '../services/photosService';
 import './PatientPhotos.css';
 
 // Onglet Photos de la fiche patient : tous les clichés archivés (13 vues ordonnées),
@@ -28,7 +28,6 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
     const [viewerIndex, setViewerIndex] = useState<number | null>(null);
     const [showCamera, setShowCamera] = useState(false);
     const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-    const [isDownloadingDirect, setIsDownloadingDirect] = useState(false);
     const galleryRef = useRef<HTMLInputElement>(null);
     const [transformingId, setTransformingId] = useState<string | null>(null);
 
@@ -89,18 +88,6 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
             setError(err.message || 'Erreur lors de la création du fichier ZIP');
         } finally {
             setIsDownloadingAll(false);
-        }
-    };
-
-    const handleDownloadDirectPhotos = async () => {
-        setIsDownloadingDirect(true);
-        try {
-            await downloadPatientPhotosDirect(patientId, patientName);
-        } catch (err: any) {
-            console.error("Error downloading direct photos:", err);
-            setError(err.message || 'Erreur lors du téléchargement direct des clichés');
-        } finally {
-            setIsDownloadingDirect(false);
         }
     };
 
@@ -201,26 +188,10 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: '6px' }}>
                         <button
                             type="button"
-                            className="om-btn om-btn--ghost om-btn--sm"
-                            onClick={handleDownloadDirectPhotos}
-                            disabled={uploading || isDownloadingDirect || photos.length === 0}
-                            style={{ gap: '6px', color: 'var(--primary-cyan)', borderColor: 'rgba(0, 242, 254, 0.35)', background: 'rgba(0, 242, 254, 0.06)' }}
-                            title="Télécharger directement les 13 photos sous forme d'images .JPG individuelles non compressées (Idéal pour l'import Windows / OnyxCeph via Parcourir)"
-                        >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="7 10 12 15 17 10" />
-                                <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
-                            {isDownloadingDirect ? 'Téléchargement des clichés…' : '📥 13 photos directes (.JPG Windows / OnyxCeph)'}
-                        </button>
-
-                        <button
-                            type="button"
-                            className="om-btn om-btn--ghost om-btn--sm"
+                            className="om-btn om-btn--sm"
                             onClick={handleDownloadAllPhotos}
                             disabled={uploading || isDownloadingAll || photos.length === 0}
-                            style={{ gap: '6px', color: 'var(--text-secondary)', borderColor: 'rgba(255, 255, 255, 0.15)' }}
+                            style={{ gap: '6px', color: '#fff', background: '#2563eb', borderColor: '#2563eb' }}
                             title="Télécharger l'archive ZIP complète avec les 3 sous-dossiers (Photos, Radios, Empreintes)"
                         >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
