@@ -135,6 +135,25 @@ export const uploadPatientPhotos = async (
     return uploaded;
 };
 
+// Rang d'une photo dans le protocole de prise en rafale (Intra-oral face en premier)
+const protocolRank = (label: string | null): number => {
+    const index = DEFAULT_PHOTO_TITLES.indexOf((label || '') as typeof DEFAULT_PHOTO_TITLES[number]);
+    return index === -1 ? DEFAULT_PHOTO_TITLES.length : index;
+};
+
+const localDay = (iso: string): string => new Date(iso).toLocaleDateString('sv-SE');
+
+// Séances les plus récentes d'abord, puis l'ordre du protocole au sein d'une même journée
+const sortPhotosByProtocol = (photos: PatientPhoto[]): PatientPhoto[] =>
+    [...photos].sort((a, b) => {
+        const dayA = localDay(a.taken_at);
+        const dayB = localDay(b.taken_at);
+        if (dayA !== dayB) return dayA < dayB ? 1 : -1;
+        const rank = protocolRank(a.label) - protocolRank(b.label);
+        if (rank !== 0) return rank;
+        return a.taken_at.localeCompare(b.taken_at);
+    });
+
 export const listPatientPhotos = async (patientId: string): Promise<PatientPhoto[]> => {
     if (!isCloudMode() || !UUID_RE.test(patientId)) return [];
     const { data, error } = await supabase
@@ -155,7 +174,7 @@ export const listPatientPhotos = async (patientId: string): Promise<PatientPhoto
 
     if (signError) throw new Error(`Accès aux photos impossible : ${signError.message}`);
     const urls = new Map<string, string>((signed || []).map((s: any) => [s.path, s.signedUrl]));
-    return rawPhotos.map(p => ({ ...p, url: urls.get(p.storage_path) }));
+    return sortPhotosByProtocol(rawPhotos).map(p => ({ ...p, url: urls.get(p.storage_path) }));
 };
 
 export const deletePatientPhoto = async (photo: PatientPhoto): Promise<void> => {
