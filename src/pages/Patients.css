@@ -846,3 +846,15 @@
         min-height: 40px;
     }
 }
+
+/* Portail patient : boutons plutôt que l'adresse du lien */
+.fiche-portal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.fiche-portal-actions .om-btn {
+    text-decoration: none;
+}

@@ -658,9 +658,12 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             <span className="om-dl-icon" aria-hidden="true"><Icon name="link" size={16} /></span>
                             <div>
                                 <dt>Portail patient</dt>
-                                <dd>
-                                    <button className="fiche-inline-link" onClick={() => setShowLinkModal(true)}>
-                                        suivi-{selectedPatient.id.slice(-6)}
+                                <dd className="fiche-portal-actions">
+                                    <a className="om-btn om-btn--secondary om-btn--sm" href={patientLink} target="_blank" rel="noopener noreferrer">
+                                        <Icon name="externalLink" size={14} /> Ouvrir le portail
+                                    </a>
+                                    <button className="om-btn om-btn--ghost om-btn--sm" onClick={() => setShowLinkModal(true)}>
+                                        <Icon name="send" size={14} /> Envoyer par SMS
                                     </button>
                                 </dd>
                             </div>
