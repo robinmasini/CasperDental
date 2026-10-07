@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Patient, getPatients, updatePatient, deletePatient } from '../services/patientService';
 import { getLatestPhotoSession, PhotoSession } from '../services/photosService';
 import { useLiveRefresh } from '../services/liveSync';
+import logoSeul from '../assets/logo-seul.png';
 import { getAppointmentsByPatientId } from '../services/appointmentService';
 import PatientForm from '../components/PatientForm';
 import PatientPortal from './PatientPortal';
@@ -627,7 +628,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         <div className="fiche-actions">
                             {onSelectPatientForAnalysis && (
                                 <button className="om-btn om-btn--primary" onClick={() => startAnalysis()}>
-                                    <Icon name="sparkles" /> Lancer un diagnostic
+                                    <img src={logoSeul} alt="" className="om-btn-logo" /> Lancer un diagnostic
                                 </button>
                             )}
                             <button className="om-btn om-btn--ghost fiche-close" onClick={() => setSelectedPatient(null)} aria-label="Fermer la fiche" title="Fermer (Échap)">
@@ -642,7 +643,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 📸 <strong>{photoSession.photos.length} photo{photoSession.photos.length > 1 ? 's' : ''} du {new Date(`${photoSession.day}T12:00:00`).toLocaleDateString('fr-FR')}</strong> sans diagnostic : pensez à lancer le diagnostic pour remplir la fiche DEP.
                             </span>
                             <button className="om-btn om-btn--primary om-btn--sm" onClick={() => startAnalysis(true)}>
-                                <Icon name="sparkles" /> Lancer le diagnostic avec ces photos
+                                <img src={logoSeul} alt="" className="om-btn-logo" /> Lancer le diagnostic avec ces photos
                             </button>
                         </div>
                     )}
@@ -705,7 +706,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                     <p>Aucune analyse n'est encore rattachée à ce patient.</p>
                                     {onSelectPatientForAnalysis && (
                                         <button className="om-btn om-btn--primary" onClick={() => startAnalysis()}>
-                                            <Icon name="sparkles" /> Lancer une analyse
+                                            <img src={logoSeul} alt="" className="om-btn-logo" /> Lancer une analyse
                                         </button>
                                     )}
                                 </div>

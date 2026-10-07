@@ -858,3 +858,11 @@
 .fiche-portal-actions .om-btn {
     text-decoration: none;
 }
+
+/* Logo OrthoMind dans les boutons de diagnostic */
+.om-btn-logo {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
