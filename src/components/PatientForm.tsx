@@ -10,11 +10,37 @@ interface PatientFormProps {
     initialPatient?: Patient | null;
 }
 
+// Date tapée au clavier « JJ/MM/AAAA » (barres ajoutées automatiquement) <-> AAAA-MM-JJ enregistré
+const isoToFrenchDate = (iso?: string | null) => {
+    const m = (iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+};
+const maskFrenchDate = (raw: string) => {
+    const d = raw.replace(/\D/g, '').slice(0, 8);
+    return [d.slice(0, 2), d.slice(2, 4), d.slice(4, 8)].filter(Boolean).join('/');
+};
+const frenchDateToIso = (text: string): string => {
+    const m = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return '';
+    const [, dd, mm, yyyy] = m;
+    const date = new Date(`${yyyy}-${mm}-${dd}T12:00:00`);
+    const valid = date.getDate() === Number(dd) && date.getMonth() + 1 === Number(mm) && Number(yyyy) >= 1900 && date <= new Date();
+    return valid ? `${yyyy}-${mm}-${dd}` : '';
+};
+
+// Portable saisi après « +33 » : le 0 initial est retiré à l'affichage, enregistré au format 06 12 34 56 78
+const phoneDigitsAfter33 = (raw?: string | null) => {
+    let d = (raw || '').replace(/\D/g, '');
+    if (d.startsWith('0033')) d = d.slice(4);
+    else if (d.startsWith('33') && d.length > 9) d = d.slice(2);
+    return d.replace(/^0+/, '').slice(0, 9);
+};
+const groupPhone = (digits: string) => digits.replace(/^(\d)(\d{0,2})(\d{0,2})(\d{0,2})(\d{0,2}).*$/, (_, a, b, c, d, e) => [a, b, c, d, e].filter(Boolean).join(' '));
+const storedPhone = (digits: string) => (digits ? `0${groupPhone(digits)}` : '');
+
 const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-    const [showSmsSuccessModal, setShowSmsSuccessModal] = useState(false);
-    const [createdPatientData, setCreatedPatientData] = useState<Patient | null>(null);
 
     const [formData, setFormData] = useState<Partial<Patient>>(() => {
         if (initialPatient) {
@@ -46,6 +72,31 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
             suivi_exclusif: false
         };
     });
+
+    // Champs saisis « à la française » : affichage local, valeur enregistrée normalisée
+    const [birthText, setBirthText] = useState(() => isoToFrenchDate(formData.date_naissance));
+    const [phoneText, setPhoneText] = useState(() => groupPhone(phoneDigitsAfter33(formData.portable)));
+    // Remplissage externe (import OrthoLeader) : les champs affichés suivent
+    useEffect(() => {
+        if (formData.date_naissance && frenchDateToIso(birthText) !== formData.date_naissance) setBirthText(isoToFrenchDate(formData.date_naissance));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.date_naissance]);
+    useEffect(() => {
+        const digits = phoneDigitsAfter33(formData.portable);
+        if (digits !== phoneDigitsAfter33(phoneText)) setPhoneText(groupPhone(digits));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.portable]);
+
+    const handleBirthChange = (value: string) => {
+        const masked = maskFrenchDate(value);
+        setBirthText(masked);
+        setFormData(prev => ({ ...prev, date_naissance: frenchDateToIso(masked) }));
+    };
+    const handlePhoneChange = (value: string) => {
+        const digits = phoneDigitsAfter33(value);
+        setPhoneText(groupPhone(digits));
+        setFormData(prev => ({ ...prev, portable: storedPhone(digits) }));
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -111,7 +162,7 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
     useEffect(() => { setDuplicateAcknowledged(false); }, [duplicateIds]);
     const needsDuplicateConfirmation = duplicates.length > 0 && !duplicateAcknowledged;
 
-    const handleSave = async (sendSms: boolean) => {
+    const handleSave = async () => {
         setError('');
         if (needsDuplicateConfirmation) {
             setDuplicateAcknowledged(true);
@@ -120,6 +171,16 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
         }
         setIsLoading(true);
 
+        if (birthText && !formData.date_naissance) {
+            setError('Date de naissance invalide : tapez-la sous la forme JJ/MM/AAAA (ex. 05/03/2014).');
+            setIsLoading(false);
+            return;
+        }
+        if (!initialPatient && phoneDigitsAfter33(formData.portable).length !== 9) {
+            setError('Numéro de portable incomplet : 9 chiffres après +33 (ex. 6 12 34 56 78).');
+            setIsLoading(false);
+            return;
+        }
         if (!formData.nom || !formData.prenom || !formData.date_naissance || !formData.portable) {
             setError('Veuillez remplir les champs obligatoires : Nom, Prénom, Date de naissance et Téléphone Portable.');
             setIsLoading(false);
@@ -157,12 +218,7 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
             setIsLoading(false);
 
             if (resData) {
-                if (sendSms && !initialPatient) {
-                    setCreatedPatientData(resData);
-                    setShowSmsSuccessModal(true);
-                } else {
-                    onSuccess(resData, false);
-                }
+                onSuccess(resData, false);
             } else {
                 setError(apiErr?.message || 'Erreur lors de l\'enregistrement de la fiche patient.');
             }
@@ -170,13 +226,6 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
             setIsLoading(false);
             setError(`Erreur inattendue : ${err.message || String(err)}`);
         }
-    };
-
-    const handleConfirmSmsSent = () => {
-        if (createdPatientData) {
-            onSuccess(createdPatientData, true);
-        }
-        setShowSmsSuccessModal(false);
     };
 
     return createPortal(
@@ -194,8 +243,7 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
                     <button className="close-btn" onClick={onClose}>×</button>
                 </div>
 
-                {!showSmsSuccessModal ? (
-                    <form onSubmit={(e) => { e.preventDefault(); handleSave(!initialPatient); }}>
+                    <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                         {!initialPatient && (
                             <div
                                 className={`ortholeader-uploader ${isReadingOrthoLeader ? 'is-busy' : ''}`}
@@ -222,17 +270,6 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
                         )}
                         {orthoLeaderStatus && <div className="ortholeader-status">{orthoLeaderStatus}</div>}
                         {error && <div className="form-error">{error}</div>}
-
-                        {/* Vonage SMS Banner Info (seulement lors de la création) */}
-                        {!initialPatient && (
-                            <div className="vonage-sms-notice-banner">
-                                <div className="vonage-sms-icon">📲</div>
-                                <div className="vonage-sms-text">
-                                    <strong>Envoi automatique du lien personnel par SMS (Vonage Sender ID "OrthoMind")</strong>
-                                    <span>Le patient recevra son lien sécurisé personnel pour compléter sa fiche et suivre son traitement.</span>
-                                </div>
-                            </div>
-                        )}
 
                         <div className="simplified-form-grid">
                             {/* Nom */}
@@ -265,10 +302,14 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
                             <div className="form-group">
                                 <label>Date de naissance *</label>
                                 <input
-                                    type="date"
+                                    type="text"
+                                    inputMode="numeric"
+                                    autoComplete="off"
                                     name="date_naissance"
-                                    value={formData.date_naissance}
-                                    onChange={handleChange}
+                                    value={birthText}
+                                    onChange={(e) => handleBirthChange(e.target.value)}
+                                    placeholder="JJ/MM/AAAA"
+                                    maxLength={10}
                                     required
                                 />
                             </div>
@@ -300,14 +341,19 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
                             {/* Téléphone Portable */}
                             <div className="form-group">
                                 <label>Téléphone Portable *</label>
-                                <input
-                                    type="tel"
-                                    name="portable"
-                                    value={formData.portable}
-                                    onChange={handleChange}
-                                    placeholder="06 12 34 56 78"
-                                    required
-                                />
+                                <div className="phone-input">
+                                    <span className="phone-prefix">+33</span>
+                                    <input
+                                        type="tel"
+                                        inputMode="numeric"
+                                        autoComplete="tel-national"
+                                        name="portable"
+                                        value={phoneText}
+                                        onChange={(e) => handlePhoneChange(e.target.value)}
+                                        placeholder="6 12 34 56 78"
+                                        required
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -345,63 +391,23 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
                                 <button
                                     type="button"
                                     className="btn-sms-submit"
-                                    onClick={() => handleSave(false)}
+                                    onClick={() => handleSave()}
                                     disabled={isLoading}
                                 >
                                     {isLoading ? 'Enregistrement…' : 'Enregistrer les modifications ✓'}
                                 </button>
                             ) : (
-                                <>
-                                    <button
-                                        type="button"
-                                        className="btn-secondary-save"
-                                        onClick={() => handleSave(false)}
-                                        disabled={isLoading}
-                                    >
-                                        {duplicateAcknowledged && duplicates.length > 0 ? 'Créer quand même' : 'Enregistrer uniquement'}
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        className="btn-sms-submit"
-                                        onClick={() => handleSave(true)}
-                                        disabled={isLoading}
-                                    >
-                                        {isLoading ? (
-                                            'Création en cours...'
-                                        ) : (
-                                            <>
-                                                📲 Enregistrer & Envoyer le lien par SMS (Vonage)
-                                            </>
-                                        )}
-                                    </button>
-                                </>
+                                <button
+                                    type="button"
+                                    className="btn-sms-submit"
+                                    onClick={() => handleSave()}
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? 'Enregistrement…' : duplicateAcknowledged && duplicates.length > 0 ? 'Créer quand même' : 'Enregistrer'}
+                                </button>
                             )}
                         </div>
-                    </form>
-                ) : (
-                    /* Vonage SMS Confirmation Modal View */
-                    <div className="sms-sent-confirmation-card">
-                        <div className="sms-sent-icon">💬</div>
-                        <h3>SMS d'Invitation Envoyé via Vonage (Sender ID "OrthoMind")</h3>
-                        <p>
-                            Le lien d'accès personnel et sécurisé a été généré et transmis au <strong>{createdPatientData?.portable}</strong> pour le patient <strong>{createdPatientData?.nom} {createdPatientData?.prenom}</strong>.
-                        </p>
-
-                        <div className="patient-link-preview-box">
-                            <span className="link-label">Lien unique généré pour le patient :</span>
-                            <code className="generated-url">
-                                https://orthomind.app/patient/suivi-{createdPatientData?.id?.slice(-8) || '7f89a2b1'}
-                            </code>
-                        </div>
-
-                        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
-                            <button className="btn-sms-submit" onClick={handleConfirmSmsSent}>
-                                Accéder à la Fiche Patient ✓
-                            </button>
-                        </div>
-                    </div>
-                )}
+                </form>
             </div>
         </div>
     , document.body);

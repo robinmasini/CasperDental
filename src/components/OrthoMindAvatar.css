@@ -404,8 +404,20 @@
     display: block;
 }
 
-/* Une fois la 3D prête, l'image de secours s'efface */
+/* Une fois la 3D prête, l'image de secours s'efface mais le cadre reste,
+   au-dessus du robot 3D, pour le rayon de scan pendant l'analyse */
 .orthomind-avatar-container.is-3d .avatar-image-wrapper {
+    z-index: 4;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    animation: none;
+    pointer-events: none;
+}
+
+.orthomind-avatar-container.is-3d .orthomind-robot-image {
     opacity: 0;
     transition: opacity 0.6s ease;
 }

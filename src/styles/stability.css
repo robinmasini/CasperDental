@@ -83,6 +83,13 @@ textarea {
     html {
         scroll-behavior: auto;
     }
+
+    /* iPhone zoome toute la page sur un champ écrit en moins de 16 px : on l'en empêche */
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
 }
 
 /* Réglage système « Réduire les animations » respecté */

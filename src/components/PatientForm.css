@@ -329,7 +329,8 @@
 
 .simplified-form-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    /* Un champ par ligne : plus confortable à remplir */
+    grid-template-columns: minmax(0, 1fr);
     gap: 18px;
     padding: 24px;
 }
@@ -513,4 +514,35 @@
 .patient-duplicate-warning > span {
     color: var(--text-muted);
     font-size: 0.8rem;
+}
+
+/* Portable : indicatif +33 fixe, le 0 initial n'est pas affiché */
+.phone-input {
+    display: flex;
+    align-items: stretch;
+}
+
+.phone-input .phone-prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-right: none;
+    border-radius: var(--radius-lg, 12px) 0 0 var(--radius-lg, 12px);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.phone-input input {
+    flex: 1;
+    min-width: 0;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+/* Un seul bouton d'enregistrement, blanc, bien visible */
+.simplified-form-actions .btn-sms-submit {
+    justify-content: center;
+    min-width: 160px;
 }
