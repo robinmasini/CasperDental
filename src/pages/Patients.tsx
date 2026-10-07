@@ -625,12 +625,6 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             </div>
                         </div>
                         <div className="fiche-actions">
-                            <button className="om-btn om-btn--ghost" onClick={() => setShowImmersionModal(true)}>
-                                <Icon name="eye" /> Vision patient
-                            </button>
-                            <button className="om-btn om-btn--secondary" onClick={() => setShowLinkModal(true)}>
-                                <Icon name="send" /> SMS Vonage
-                            </button>
                             {onSelectPatientForAnalysis && (
                                 <button className="om-btn om-btn--primary" onClick={() => startAnalysis()}>
                                     <Icon name="sparkles" /> Lancer un diagnostic
