@@ -1327,11 +1327,12 @@ const Dashboard = () => {
 
                                 <div className="patient-input-group">
                                     <label>Clichés dentaires (jusqu'à {MAX_ANALYSIS_PHOTOS} photos)</label>
-                                    {selectedPatientObj && ficheSession && imageFiles.length === 0 && (
-                                        <div className={`fiche-photos-card ${ficheSession.analysed ? '' : 'is-pending'}`}>
+                                    {/* Uniquement quand la dernière séance de photos de la fiche n'a jamais été analysée */}
+                                    {selectedPatientObj && ficheSession && !ficheSession.analysed && imageFiles.length === 0 && (
+                                        <div className="fiche-photos-card is-pending">
                                             <div>
-                                                <strong>📁 {ficheSession.photos.length} photo{ficheSession.photos.length > 1 ? 's' : ''} du {new Date(`${ficheSession.day}T12:00:00`).toLocaleDateString('fr-FR')} déjà dans la fiche</strong>
-                                                <span>{ficheSession.analysed ? 'Un diagnostic a déjà été fait avec ces photos.' : 'Aucun diagnostic n’a encore été lancé avec ces photos.'}</span>
+                                                <strong>📸 {ficheSession.photos.length} photo{ficheSession.photos.length > 1 ? 's' : ''} du {new Date(`${ficheSession.day}T12:00:00`).toLocaleDateString('fr-FR')} sans diagnostic</strong>
+                                                <span>Ces photos sont dans la fiche mais n’ont jamais été analysées.</span>
                                             </div>
                                             <button
                                                 type="button"
