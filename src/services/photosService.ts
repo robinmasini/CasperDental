@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { isCloudMode } from './recordsService';
 import JSZip from 'jszip';
+import { withLiveNotify } from './liveSync';
 
 // ============================================================================
 // Photos & Radiographies des patients : conservées dans l'espace de stockage
@@ -72,6 +73,32 @@ export const formatRadioFileName = (index: number, title: string): string => {
 
 export const photosAvailable = () => isCloudMode();
 
+// Liens d'accès signés (1 h) réutilisés tant qu'il leur reste plus de 10 min :
+// les rafraîchissements en direct ne rechargent pas les images (pas de clignotement)
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+const signStoragePaths = async (paths: string[], what: string): Promise<Map<string, string>> => {
+    const now = Date.now();
+    const urls = new Map<string, string>();
+    const missing = paths.filter(path => {
+        const cached = signedUrlCache.get(path);
+        if (cached && cached.expiresAt - now > 10 * 60_000) {
+            urls.set(path, cached.url);
+            return false;
+        }
+        return true;
+    });
+    if (missing.length) {
+        const { data, error } = await supabase.storage.from(BUCKET).createSignedUrls(missing, 3600);
+        if (error) throw new Error(`Accès aux ${what} impossible : ${error.message}`);
+        (data || []).forEach((signed: any) => {
+            if (!signed.signedUrl) return;
+            signedUrlCache.set(signed.path, { url: signed.signedUrl, expiresAt: now + 3600_000 });
+            urls.set(signed.path, signed.signedUrl);
+        });
+    }
+    return urls;
+};
+
 // Qualité clinique préservée (2048 px, JPEG 0,9) pour un stockage raisonnable
 const prepareForStorage = async (file: File): Promise<Blob> => {
     try {
@@ -125,7 +152,7 @@ const withRetry = async <T>(attempt: () => Promise<T>): Promise<T> => {
     throw lastError;
 };
 
-export const uploadPatientPhotos = async (
+const uploadPatientPhotosWrite = async (
     patientId: string,
     files: File[],
     recordId?: string | null,
@@ -212,12 +239,7 @@ export const listPatientPhotos = async (patientId: string): Promise<PatientPhoto
     const rawPhotos: PatientPhoto[] = (data || []).filter((p: any) => !/^(RADIO|EMPREINTE|STL)::/.test(p.label || ''));
     if (rawPhotos.length === 0) return [];
 
-    const { data: signed, error: signError } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(rawPhotos.map(p => p.storage_path), 3600);
-
-    if (signError) throw new Error(`Accès aux photos impossible : ${signError.message}`);
-    const urls = new Map<string, string>((signed || []).map((s: any) => [s.path, s.signedUrl]));
+    const urls = await signStoragePaths(rawPhotos.map(p => p.storage_path), 'photos');
     return sortPhotosByProtocol(rawPhotos).map(p => ({ ...p, url: urls.get(p.storage_path) }));
 };
 
@@ -258,13 +280,13 @@ export const photosToFiles = async (photos: PatientPhoto[]): Promise<{ file: Fil
 };
 
 // Rattache des photos déjà archivées au compte-rendu produit à partir d'elles
-export const linkPhotosToRecord = async (photoIds: string[], recordId: string): Promise<void> => {
+const linkPhotosToRecordWrite = async (photoIds: string[], recordId: string): Promise<void> => {
     if (!isCloudMode() || photoIds.length === 0 || !UUID_RE.test(recordId)) return;
     const { error } = await supabase.from('patient_photos').update({ record_id: recordId }).in('id', photoIds);
     if (error) throw new Error(`Rattachement des photos au compte-rendu impossible : ${error.message}`);
 };
 
-export const deletePatientPhoto = async (photo: PatientPhoto): Promise<void> => {
+const deletePatientPhotoWrite = async (photo: PatientPhoto): Promise<void> => {
     const { error } = await supabase.from('patient_photos').delete().eq('id', photo.id);
     if (error) throw new Error(`Suppression impossible : ${error.message}`);
     await supabase.storage.from(BUCKET).remove([photo.storage_path]);
@@ -289,7 +311,7 @@ export type PhotoTransform = 'flip' | 'rotate90' | 'rotate180';
 
 // Applique un miroir horizontal ou une rotation (90° horaire ou 180°) à l'image stockée elle-même :
 // la fiche, la visionneuse et les téléchargements reflètent tous la correction.
-export const transformPatientPhoto = async (photo: PatientPhoto, transform: PhotoTransform): Promise<void> => {
+const transformPatientPhotoWrite = async (photo: PatientPhoto, transform: PhotoTransform): Promise<void> => {
     if (!photo.url) throw new Error('Photo indisponible.');
     const res = await fetch(photo.url, { cache: 'no-store' });
     if (!res.ok) throw new Error('Téléchargement de la photo impossible.');
@@ -331,7 +353,7 @@ export const transformPatientPhoto = async (photo: PatientPhoto, transform: Phot
 // Radiographies (Panoramique, Téléradiographies, Poignet)
 // ============================================================================
 
-export const uploadPatientRadio = async (
+const uploadPatientRadioWrite = async (
     patientId: string,
     file: File,
     radioTitle: string
@@ -377,12 +399,7 @@ export const listPatientRadios = async (patientId: string): Promise<Record<strin
     const radioRows: PatientPhoto[] = (data || []).filter((p: any) => p.label?.startsWith('RADIO::'));
     if (radioRows.length === 0) return {};
 
-    const { data: signed, error: signError } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(radioRows.map(p => p.storage_path), 3600);
-
-    if (signError) throw new Error(`Accès aux radiographies impossible : ${signError.message}`);
-    const urls = new Map<string, string>((signed || []).map((s: any) => [s.path, s.signedUrl]));
+    const urls = await signStoragePaths(radioRows.map(p => p.storage_path), 'radiographies');
 
     // Associer la plus récente par titre de radio
     const radiosMap: Record<string, PatientPhoto> = {};
@@ -417,7 +434,7 @@ export const formatEmpreinteFileName = (index: number, title: string, originalFi
     return `${num}-Empreinte-${cleaned}${ext}`;
 };
 
-export const uploadPatientEmpreinte = async (
+const uploadPatientEmpreinteWrite = async (
     patientId: string,
     file: File,
     empreinteTitle: string
@@ -462,12 +479,7 @@ export const listPatientEmpreintes = async (patientId: string): Promise<Record<s
     const empreinteRows: PatientPhoto[] = (data || []).filter((p: any) => p.label?.startsWith('EMPREINTE::') || p.label?.startsWith('STL::'));
     if (empreinteRows.length === 0) return {};
 
-    const { data: signed, error: signError } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(empreinteRows.map(p => p.storage_path), 3600);
-
-    if (signError) throw new Error(`Accès aux empreintes 3D impossible : ${signError.message}`);
-    const urls = new Map<string, string>((signed || []).map((s: any) => [s.path, s.signedUrl]));
+    const urls = await signStoragePaths(empreinteRows.map(p => p.storage_path), 'empreintes 3D');
 
     const empreintesMap: Record<string, PatientPhoto> = {};
     for (const r of empreinteRows) {
@@ -675,3 +687,11 @@ export const downloadPatientDossierFolderUncompressed = async (
 };
 
 export const downloadPatientDossierDirectFiles = downloadPatientDossierFolderUncompressed;
+
+// Écritures : les autres écrans ouverts (et les autres postes, via le temps réel) se mettent à jour aussitôt
+export const uploadPatientPhotos = withLiveNotify(uploadPatientPhotosWrite, 'patient_photos');
+export const linkPhotosToRecord = withLiveNotify(linkPhotosToRecordWrite, 'patient_photos');
+export const deletePatientPhoto = withLiveNotify(deletePatientPhotoWrite, 'patient_photos');
+export const transformPatientPhoto = withLiveNotify(transformPatientPhotoWrite, 'patient_photos');
+export const uploadPatientRadio = withLiveNotify(uploadPatientRadioWrite, 'patient_photos');
+export const uploadPatientEmpreinte = withLiveNotify(uploadPatientEmpreinteWrite, 'patient_photos');

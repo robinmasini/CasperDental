@@ -2403,3 +2403,22 @@
         min-height: 44px;
     }
 }
+
+/* Complément du compte-rendu par la dictée audio */
+.dictation-complement-cta {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid rgba(37, 99, 235, 0.5);
+    border-radius: 14px;
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.dictation-complement-cta p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    text-align: center;
+}

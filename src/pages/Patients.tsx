@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient, getPatients, updatePatient, deletePatient } from '../services/patientService';
 import { getLatestPhotoSession, PhotoSession } from '../services/photosService';
+import { useLiveRefresh } from '../services/liveSync';
 import { getAppointmentsByPatientId } from '../services/appointmentService';
 import PatientForm from '../components/PatientForm';
 import PatientPortal from './PatientPortal';
@@ -11,7 +12,7 @@ import Icon, { IconName } from '../components/Icon';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
 import OnyxCephTravauxTable from '../components/OnyxCephTravauxTable';
-import { listRecords, saveRecord, updateRecordDep, ClinicalRecord, getOnyxCephUrlRecord, saveOnyxCephUrlRecord } from '../services/recordsService';
+import { listRecords, listRecordSummaries, saveRecord, updateRecordDep, ClinicalRecord, getOnyxCephUrlRecord, saveOnyxCephUrlRecord } from '../services/recordsService';
 import PatientPhotos from '../components/PatientPhotos';
 import PatientRadios from '../components/PatientRadios';
 import PatientOnyxCeph from '../components/PatientOnyxCeph';
@@ -66,6 +67,19 @@ const formatDate = (iso?: string) => {
 };
 
 // Convert Supabase patient to display format
+const toAppointmentRow = (apt: { id: string; date: string; type: string; notes?: string | null; status: string }, praticien: string): Appointment => {
+    const aptDate = new Date(apt.date);
+    return {
+        id: apt.id,
+        date: aptDate.toLocaleDateString('fr-FR'),
+        heure: aptDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        type: apt.type,
+        commentaire: apt.notes || '',
+        etat: apt.status,
+        praticien,
+    };
+};
+
 const convertToDisplayPatient = (patient: Patient): DisplayPatient => ({
     id: patient.id || '',
     nom: patient.nom.toUpperCase(),
@@ -124,26 +138,33 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const [statusFilter, setStatusFilter] = useState<PatientFilterStatus>('tous');
     const [allRecords, setAllRecords] = useState<ClinicalRecord[]>([]);
 
-    // Fetch patients and all records
-    useEffect(() => {
-        const fetchPatientsAndRecords = async () => {
-            setLoading(true);
-            try {
-                const [patientsData, recordsData] = await Promise.all([
-                    getPatients(),
-                    listRecords().catch(() => [])
-                ]);
-                setPatients(patientsData.map(convertToDisplayPatient));
-                setAllRecords(recordsData);
-                setDataError(null);
-            } catch (err: any) {
-                setDataError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchPatientsAndRecords();
+    // Liste des patients et statuts ; silent : rafraîchissement en direct (autre poste, autre écran)
+    const fetchPatientsAndRecords = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
+        try {
+            const [patientsData, recordsData] = await Promise.all([
+                getPatients(),
+                listRecordSummaries().catch(() => null)
+            ]);
+            const display = patientsData.map(convertToDisplayPatient);
+            setPatients(display);
+            if (recordsData) setAllRecords(recordsData);
+            setDataError(null);
+            // La fiche ouverte reprend les coordonnées à jour (le lien OnyxCeph synchronisé à part est conservé)
+            setSelectedPatient(prev => {
+                if (!prev) return prev;
+                const fresh = display.find(p => p.id === prev.id);
+                return fresh ? { ...fresh, raw: { ...fresh.raw, onyxceph_url: fresh.raw.onyxceph_url || prev.raw.onyxceph_url } } : prev;
+            });
+        } catch (err: any) {
+            if (!silent) setDataError(err.message);
+        } finally {
+            if (!silent) setLoading(false);
+        }
     }, []);
+
+    useEffect(() => { fetchPatientsAndRecords(); }, [fetchPatientsAndRecords]);
+    useLiveRefresh(() => { fetchPatientsAndRecords(true); }, ['patients', 'clinical_records']);
 
     const depFromSession = (session: any, patient: DisplayPatient): OrthoMindDepData =>
         session.dep_data || extractDepDataFromAnalysis(
@@ -168,6 +189,20 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     const countAValider = patients.filter(p => getPatientValidationStatus(p.id, `${p.nom} ${p.prenom}`) === 'a_valider').length;
     const countTermines = patients.filter(p => getPatientValidationStatus(p.id, `${p.nom} ${p.prenom}`) === 'termines').length;
 
+    // Fiche ouverte : rendez-vous et liste des comptes-rendus rafraîchis en direct.
+    // La fiche DEP en cours d'édition n'est jamais écrasée.
+    const selectedId = selectedPatient?.id;
+    const selectedPraticien = selectedPatient?.praticien || '';
+    useLiveRefresh(() => {
+        if (!selectedId) return;
+        getAppointmentsByPatientId(selectedId)
+            .then(data => setPatientAppointments(data.map(apt => toAppointmentRow(apt, selectedPraticien))))
+            .catch(() => undefined);
+        listRecords(selectedId)
+            .then(matched => setPatientAnalyses(matched.filter(ana => !ana.diagnostic_text?.startsWith('ONYXCEPH_LINK::') && ana.type !== ('onyxceph' as any))))
+            .catch(() => undefined);
+    }, ['appointments', 'clinical_records'], { enabled: !!selectedId });
+
     // Fetch appointments & diagnostics when selected patient changes
     useEffect(() => {
         if (!selectedPatient) return;
@@ -176,18 +211,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
             setLoadingAppointments(true);
             try {
                 const data = await getAppointmentsByPatientId(selectedPatient.id);
-                setPatientAppointments(data.map(apt => {
-                    const aptDate = new Date(apt.date);
-                    return {
-                        id: apt.id,
-                        date: aptDate.toLocaleDateString('fr-FR'),
-                        heure: aptDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-                        type: apt.type,
-                        commentaire: apt.notes || '',
-                        etat: apt.status,
-                        praticien: selectedPatient.praticien
-                    };
-                }));
+                setPatientAppointments(data.map(apt => toAppointmentRow(apt, selectedPatient.praticien)));
             } catch (error) {
                 console.error('Failed to fetch patient appointments:', error);
             } finally {
@@ -318,7 +342,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                 setDepSessionId(saved.id);
             }
             setPatientAnalyses(await listRecords(selectedPatient.id));
-            setAllRecords(await listRecords().catch(() => []));
+            setAllRecords(await listRecordSummaries().catch(() => []));
             setDataError(null);
         } catch (err: any) {
             setDataError(err.message);
@@ -354,12 +378,13 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
     // Rappel : dernière séance de photos encore sans diagnostic
     const [photoSession, setPhotoSession] = useState<PhotoSession | null>(null);
     const refreshPhotoSession = useCallback(() => {
-        if (!selectedPatient) { setPhotoSession(null); return; }
-        getLatestPhotoSession(selectedPatient.id)
+        if (!selectedId) { setPhotoSession(null); return; }
+        getLatestPhotoSession(selectedId)
             .then(setPhotoSession)
-            .catch(() => setPhotoSession(null));
-    }, [selectedPatient]);
+            .catch(() => undefined);
+    }, [selectedId]);
     useEffect(() => { refreshPhotoSession(); }, [refreshPhotoSession, activeTab]);
+    useLiveRefresh(refreshPhotoSession, ['patient_photos', 'clinical_records'], { enabled: !!selectedId });
 
     const handleSaveOnyxCephUrl = async (newUrl: string) => {
         if (!selectedPatient) return;

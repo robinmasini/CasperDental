@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLiveRefresh } from '../services/liveSync';
 import Icon from './Icon';
 import {
     PatientPhoto,
@@ -51,17 +52,19 @@ const PatientEmpreintes = ({ patientId, patientName, hideTitleBar = false }: Pat
         }
     };
 
-    const loadEmpreintes = useCallback(async () => {
-        setLoading(true);
+    // silent : rafraîchissement en direct, sans écran de chargement ni message sur une coupure passagère
+    const loadEmpreintes = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             setEmpreintesMap(await listPatientEmpreintes(patientId));
             setError(null);
         } catch (e: any) {
-            setError(e.message);
+            if (!silent) setError(e.message);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [patientId]);
+    useLiveRefresh(() => { loadEmpreintes(true); }, ['patient_photos']);
 
     useEffect(() => {
         loadEmpreintes();

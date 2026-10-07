@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { OrthoMindDepData } from '../types/dep';
+import { withLiveNotify } from './liveSync';
 
 // ============================================================================
 // Comptes-rendus cliniques (analyses photo, consultations audio, fiches DEP)
@@ -69,7 +70,18 @@ export const listRecords = async (patientId?: string): Promise<ClinicalRecord[]>
     return data || [];
 };
 
-export const saveRecord = async (record: NewClinicalRecord): Promise<ClinicalRecord> => {
+// Version légère (sans les miniatures) pour les statuts de la liste des patients, relue souvent
+export const listRecordSummaries = async (): Promise<ClinicalRecord[]> => {
+    if (!isCloudMode()) return readLocal();
+    const { data, error } = await supabase
+        .from('clinical_records')
+        .select('id, patient_id, patient_name, type, dep_data, meta, created_at')
+        .order('created_at', { ascending: false });
+    if (error) throw cloudError('Lecture des comptes-rendus', error);
+    return (data || []) as ClinicalRecord[];
+};
+
+const saveRecordWrite = async (record: NewClinicalRecord): Promise<ClinicalRecord> => {
     if (!isCloudMode()) {
         const saved: ClinicalRecord = { ...record, id: `local-${record.type}-${Date.now()}`, created_at: new Date().toISOString() };
         writeLocal([saved, ...readLocal()]);
@@ -84,13 +96,26 @@ export const saveRecord = async (record: NewClinicalRecord): Promise<ClinicalRec
     return data;
 };
 
-export const updateRecordDep = async (recordId: string, depData: OrthoMindDepData): Promise<void> => {
+const updateRecordDepWrite = async (recordId: string, depData: OrthoMindDepData): Promise<void> => {
     if (!isCloudMode() || !UUID_RE.test(recordId)) {
         writeLocal(readLocal().map(r => (r.id === recordId ? { ...r, dep_data: depData } : r)));
         return;
     }
     const { error } = await supabase.from('clinical_records').update({ dep_data: depData }).eq('id', recordId);
     if (error) throw cloudError('Enregistrement de la fiche DEP', error);
+};
+
+// Compte-rendu complété après coup (dictée audio du praticien)
+const updateRecordReportWrite = async (
+    recordId: string,
+    fields: { diagnostic_text: string; traitement_text: string; dep_data: OrthoMindDepData; transcript: string | null }
+): Promise<void> => {
+    if (!isCloudMode() || !UUID_RE.test(recordId)) {
+        writeLocal(readLocal().map(r => (r.id === recordId ? { ...r, ...fields } : r)));
+        return;
+    }
+    const { error } = await supabase.from('clinical_records').update(fields).eq('id', recordId);
+    if (error) throw cloudError('Mise à jour du compte-rendu', error);
 };
 
 // ----------------------------------------------------------------------------
@@ -153,7 +178,7 @@ export const getOnyxCephUrlRecord = async (patientId: string, patientName?: stri
     return localStorage.getItem(localKey);
 };
 
-export const saveOnyxCephUrlRecord = async (patientId: string, patientName: string, url: string): Promise<void> => {
+const saveOnyxCephUrlRecordWrite = async (patientId: string, patientName: string, url: string): Promise<void> => {
     if (!patientId && !patientName) return;
     const localKey = `casper_onyxceph_link_${patientId}`;
     const formattedText = url ? `ONYXCEPH_LINK::${url}` : '';
@@ -308,3 +333,9 @@ export const migrateLocalDataToCloud = async (): Promise<{ patients: number; rec
     localStorage.removeItem(LOCAL_KEY);
     return { patients: createdPatients, records: createdRecords };
 };
+
+// Écritures : les autres écrans ouverts (et les autres postes, via le temps réel) se mettent à jour aussitôt
+export const saveRecord = withLiveNotify(saveRecordWrite, 'clinical_records');
+export const updateRecordDep = withLiveNotify(updateRecordDepWrite, 'clinical_records');
+export const updateRecordReport = withLiveNotify(updateRecordReportWrite, 'clinical_records');
+export const saveOnyxCephUrlRecord = withLiveNotify(saveOnyxCephUrlRecordWrite, 'clinical_records');

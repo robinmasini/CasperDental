@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useLiveRefresh } from '../services/liveSync';
 import Icon from './Icon';
 import OnyxCephTravauxTable from './OnyxCephTravauxTable';
 import { Appointment, getAppointments, createAppointment, updateAppointment } from '../services/appointmentService';
@@ -41,19 +42,21 @@ const CabinetPlanning = () => {
         notes: '',
     });
 
-    const load = useCallback(async () => {
-        setLoading(true);
+    // silent : rafraîchissement en direct, sans écran de chargement ni message sur une coupure passagère
+    const load = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             const [appts, pts] = await Promise.all([getAppointments(), getPatients()]);
             setAppointments(appts);
             setPatients(pts);
             setError(null);
         } catch (e: any) {
-            setError(e.message);
+            if (!silent) setError(e.message);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, []);
+    useLiveRefresh(() => { load(true); }, ['appointments', 'patients']);
 
     useEffect(() => { load(); }, [load]);
 

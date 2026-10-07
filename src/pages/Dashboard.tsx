@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 import { supabase } from '../lib/supabase';
-import { listRecords, saveRecord, updateRecordDep, migrateLocalDataToCloud, isCloudMode } from '../services/recordsService';
+import { listRecords, saveRecord, updateRecordDep, updateRecordReport, migrateLocalDataToCloud, isCloudMode } from '../services/recordsService';
 import { saveCabinetGeminiKey, clearCabinetGeminiKey } from '../services/cabinetSettings';
+import { useLiveRefresh } from '../services/liveSync';
 import { uploadPatientPhotos, PhotoUploadError, getLatestPhotoSession, photosToFiles, linkPhotosToRecord, PhotoSession } from '../services/photosService';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import ClinicalReport, { formatClinicalReport } from '../components/ClinicalReport';
@@ -16,7 +17,7 @@ import { AiMissingBanner, AiReportMeta } from '../components/AiStatus';
 import Icon from '../components/Icon';
 
 const MAX_ANALYSIS_PHOTOS = 13;
-import { analyzeDentition, getGeminiApiKey, testGeminiKey, describeAiFailure, AnalysisResult, getAnalysisMode, setAnalysisMode, AnalysisMode, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext } from '../services/geminiService';
+import { analyzeDentition, getGeminiApiKey, testGeminiKey, describeAiFailure, AnalysisResult, getAnalysisMode, setAnalysisMode, AnalysisMode, askOrthoMind, loadLocalCompiledKnowledge, generateSmileSimulationWithGemini, buildPatientContext, complementReportWithDictation } from '../services/geminiService';
 import { OrthoMindAvatar, OrthoMindState } from '../components/OrthoMindAvatar';
 import { AudioConsultation } from '../components/AudioConsultation';
 import defaultBookData from '../assets/cgs_volume_61.json';
@@ -243,6 +244,9 @@ const Dashboard = () => {
     const [streamingReport, setStreamingReport] = useState('');
     // Dictée du praticien pendant l'examen (consultation audio), croisée avec les clichés
     const [practitionerDictation, setPractitionerDictation] = useState('');
+    // Dictée déjà prise en compte dans le compte-rendu affiché (pour proposer le complément audio)
+    const [dictationInReport, setDictationInReport] = useState('');
+    const [isComplementing, setIsComplementing] = useState(false);
 
     // Avertit avant de quitter la page pendant une analyse en cours
     useEffect(() => {
@@ -260,6 +264,11 @@ const Dashboard = () => {
             .catch(() => undefined);
         return () => { cancelled = true; };
     }, [selectedPatientObj?.id]);
+
+    useLiveRefresh(() => {
+        if (!selectedPatientObj?.id) return;
+        getLatestPhotoSession(selectedPatientObj.id).then(setFicheSession).catch(() => undefined);
+    }, ['patient_photos', 'clinical_records'], { enabled: !!selectedPatientObj?.id });
 
     const loadFichePhotos = async (session: PhotoSession) => {
         setIsLoadingFichePhotos(true);
@@ -428,6 +437,9 @@ const Dashboard = () => {
             setSyncNotice({ tone: 'danger', text: e.message });
         }
     };
+
+    // Historique relu à chaque nouveau compte-rendu (ce poste ou un autre) ; pas de relecture périodique : liste lourde
+    useLiveRefresh(() => { loadHistory(); }, ['clinical_records'], { poll: false });
 
     // Transfert unique des données saisies auparavant sur cet appareil
     useEffect(() => {
@@ -762,6 +774,43 @@ const Dashboard = () => {
     };
 
     // Launch optical scanning and orthodontics analysis
+    // Complément du compte-rendu par la dictée : l'analyse initiale reste la base, la dictée la consolide
+    const canComplementWithDictation = !!analysisResult && !isScanning
+        && !!practitionerDictation.trim() && practitionerDictation.trim() !== dictationInReport;
+
+    const handleComplementWithDictation = async () => {
+        if (!analysisResult) return;
+        const dictation = practitionerDictation.trim();
+        setIsComplementing(true);
+        addLog('[SYSTEM] Complément du compte-rendu grâce à la dictée du praticien...');
+        try {
+            const completed = await complementReportWithDictation(analysisResult, dictation, buildPatientContext(selectedPatientObj), (text) => {
+                setStreamingReport(text.replace(/<\/?(diagnostic|traitement|dep)>/gi, ''));
+            });
+            setStreamingReport('');
+            setAnalysisResult(completed);
+            setDictationInReport(dictation);
+            addLog('[SUCCESS] Compte-rendu complété par la dictée.');
+            if (lastSavedRecordId) {
+                await updateRecordReport(lastSavedRecordId, {
+                    diagnostic_text: completed.diagnostic,
+                    traitement_text: completed.traitement,
+                    dep_data: extractDepDataFromAnalysis(completed.diagnostic, completed.traitement, patientName, selectedPatientObj?.id, completed.dep),
+                    transcript: dictation,
+                });
+                addLog('[SUCCESS] Dossier du patient mis à jour (compte-rendu et fiche DEP).');
+                loadHistory();
+            }
+            setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+        } catch (err: any) {
+            setStreamingReport('');
+            addLog(`[ERROR] ${err.message || err}`);
+            alert(`Le complément audio n'a pas abouti : ${err.message || err}\n\nLe compte-rendu initial est conservé.`);
+        } finally {
+            setIsComplementing(false);
+        }
+    };
+
     const handleStartAnalysis = async () => {
         const currentPatient = (patientName || '').trim();
         if (!currentPatient) {
@@ -796,6 +845,7 @@ const Dashboard = () => {
             addLog('[SUCCESS] Rapport de diagnostic clinique approfondi finalisé avec succès.');
             
             setAnalysisResult(result);
+            setDictationInReport(practitionerDictation.trim());
             setIsScanning(false);
             setAnalysisAvatarState('speaking');
 
@@ -1379,7 +1429,7 @@ const Dashboard = () => {
                                     disabled={isScanning || isProcessingFiles || imageFiles.length === 0}
                                 >
                                     <img src={logoSeul} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-                                    Lancer l'analyse
+                                    {practitionerDictation.trim() ? "Lancer l'analyse (photos + dictée)" : 'Demander le compte-rendu (photos seules)'}
                                 </button>
                             </div>
 
@@ -1395,6 +1445,21 @@ const Dashboard = () => {
                                     onSendToOrthoMind={handleAudioTranscriptToOrthoMind} 
                                     onViewPatientFile={() => handleTabClick('patients')}
                                 />
+                                {canComplementWithDictation && (
+                                    <div className="dictation-complement-cta">
+                                        <p>
+                                            Votre dictée peut <strong>consolider</strong> le compte-rendu : elle le précise et l'enrichit, l'analyse initiale reste la base.
+                                        </p>
+                                        <button
+                                            className="glass-btn glass-btn-primary start-scan-btn launch-analysis-btn"
+                                            onClick={handleComplementWithDictation}
+                                            disabled={isComplementing}
+                                        >
+                                            <img src={logoSeul} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                                            {isComplementing ? 'Complément en cours…' : "Compléter le compte-rendu grâce à l'analyse audio"}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

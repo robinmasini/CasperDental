@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { withLiveNotify } from './liveSync';
 
 export interface Appointment {
     id: string;
@@ -28,7 +29,7 @@ export const getAppointments = async (): Promise<Appointment[]> => {
     return data || [];
 };
 
-export const createAppointment = async (appointment: Partial<Appointment>): Promise<Appointment | null> => {
+const createAppointmentWrite = async (appointment: Partial<Appointment>): Promise<Appointment | null> => {
     const { data, error } = await supabase
         .from('appointments')
         .insert([appointment])
@@ -73,7 +74,7 @@ export const getAppointmentsByPatientId = async (patientId: string): Promise<App
 };
 
 // Mise à jour d'un rendez-vous (statut, notes…) depuis le planning du cabinet
-export const updateAppointment = async (id: string, changes: Partial<Appointment>): Promise<boolean> => {
+const updateAppointmentWrite = async (id: string, changes: Partial<Appointment>): Promise<boolean> => {
     const { error } = await supabase.from('appointments').update(changes).eq('id', id);
     if (error) {
         console.error('Error updating appointment:', error);
@@ -81,3 +82,7 @@ export const updateAppointment = async (id: string, changes: Partial<Appointment
     }
     return true;
 };
+
+// Écritures : les autres écrans ouverts (et les autres postes, via le temps réel) se mettent à jour aussitôt
+export const createAppointment = withLiveNotify(createAppointmentWrite, 'appointments');
+export const updateAppointment = withLiveNotify(updateAppointmentWrite, 'appointments');

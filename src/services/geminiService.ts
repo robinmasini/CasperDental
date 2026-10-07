@@ -980,6 +980,66 @@ const getFallbackChatResponse = (passages: RetrievedPassage[], failure = 'la ré
         : base;
 };
 
+// ============================================================================
+// Complément du compte-rendu par la dictée audio du praticien
+// Le compte-rendu initial reste la base : la dictée le consolide, le précise et l'enrichit.
+// ============================================================================
+export const complementReportWithDictation = async (
+    report: AnalysisResult,
+    dictation: string,
+    patientContext?: PatientClinicalContext,
+    onStream?: (textSoFar: string) => void
+): Promise<AnalysisResult> => {
+    const apiKey = getGeminiApiKey();
+    if (!apiKey) throw new Error("L'IA n'est pas configurée pour le cabinet : le complément audio est indisponible.");
+    const patientLine = patientContext
+        ? `Patient : ${[patientContext.age !== undefined ? `${patientContext.age} ans` : '', patientContext.sexe, patientContext.typePatient].filter(Boolean).join(' · ')}`
+        : '';
+
+    const prompt = `${EXPERT_PERSONA}
+
+Tu as déjà rédigé le compte-rendu ci-dessous à partir des photographies du patient. Il est fiable et reste la BASE du rapport.
+Le praticien a ensuite examiné le patient et dicté ses constats (retranscription ci-dessous).
+${patientLine}
+
+### COMPTE-RENDU INITIAL
+<diagnostic>
+${report.diagnostic.slice(0, 12000)}
+</diagnostic>
+<traitement>
+${report.traitement.slice(0, 8000)}
+</traitement>
+
+### DICTÉE DU PRATICIEN (retranscription automatique, peut contenir des erreurs de reconnaissance vocale)
+${dictation.slice(0, 12000)}
+
+Ta mission : COMPLÉTER et CONSOLIDER le compte-rendu grâce à la dictée, sans le réécrire.
+Règles :
+1. Conserve intégralement la structure, les rubriques et le contenu du compte-rendu initial.
+2. Ajoute les éléments apportés par la dictée (fonctions, examen clinique, ATM, habitudes, antécédents, décisions thérapeutiques…) à leur place, suivis de « (constaté par le praticien) ».
+3. Ne modifie un constat initial que si la dictée le contredit explicitement : le praticien prime ; indique alors « (précisé par le praticien) ».
+4. Si la dictée confirme un constat qui était « probable » ou « à confirmer », retire l'incertitude et indique « (confirmé par le praticien) ».
+5. N'invente rien : ignore ce qui est inaudible, ambigu ou sans rapport avec l'orthodontie.
+6. Mets à jour la fiche DEP en conséquence.
+
+Réponds en français en respectant STRICTEMENT ce format, sans aucun texte hors des balises :
+
+${DIAGNOSTIC_TEMPLATE}
+
+${TREATMENT_TEMPLATE}
+
+${DEP_TEMPLATE}`;
+
+    const data = await executeGeminiCall('generateContent', {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 16384 },
+    }, apiKey, undefined, 'expert', { thinking: 'balanced', onStream, timeoutMs: 120000 });
+    const completed = parseReportSections(extractText(data));
+    if (!completed || !completed.diagnostic.trim()) throw new Error("Le complément audio n'a pas pu être rédigé. Réessayez.");
+    // La provenance du rapport initial (modèle, extraits de la bibliothèque) est conservée
+    return extractDepFields({ ...completed, meta: report.meta }, apiKey);
+};
+
 export const askOrthoMind = async (
     messageHistory: { role: 'user' | 'assistant'; content: string }[]
 ): Promise<string> => {

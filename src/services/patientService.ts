@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { isCloudMode } from './recordsService';
+import { withLiveNotify } from './liveSync';
 
 export interface Patient {
     id?: string;
@@ -138,7 +139,7 @@ const sanitizePatient = <T extends Partial<Patient>>(patient: T): T => {
 // Création d'un patient. Mode cabinet : enregistré dans Supabase (visible sur
 // tous les appareils) ; en cas d'échec, l'erreur est renvoyée à l'interface.
 // Mode démo : stockage local du navigateur.
-export const createPatient = async (patient: Patient): Promise<{ data: Patient | null; error: any }> => {
+const createPatientWrite = async (patient: Patient): Promise<{ data: Patient | null; error: any }> => {
     const { id: _ignored, ...sanitized } = sanitizePatient(patient);
     if (!isCloudMode()) {
         return { data: saveLocalPatient(sanitized as Patient), error: null };
@@ -190,7 +191,7 @@ export const getPatientById = async (id: string): Promise<Patient | null> => {
 };
 
 // Update patient
-export const updatePatient = async (id: string, patient: Partial<Patient>): Promise<Patient | null> => {
+const updatePatientWrite = async (id: string, patient: Partial<Patient>): Promise<Patient | null> => {
     const sanitized = sanitizePatient(patient);
     
     if (id.startsWith('local-patient-') || id.startsWith('patient-seed-')) {
@@ -231,7 +232,7 @@ export const updatePatient = async (id: string, patient: Partial<Patient>): Prom
 };
 
 // Delete patient
-export const deletePatient = async (id: string): Promise<boolean> => {
+const deletePatientWrite = async (id: string): Promise<boolean> => {
     if (id.startsWith('local-patient-') || id.startsWith('patient-seed-')) {
         const localList = getLocalPatients().filter(p => p.id !== id);
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(localList));
@@ -251,3 +252,8 @@ export const deletePatient = async (id: string): Promise<boolean> => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(localList));
     return true;
 };
+
+// Écritures : les autres écrans ouverts (et les autres postes, via le temps réel) se mettent à jour aussitôt
+export const createPatient = withLiveNotify(createPatientWrite, 'patients');
+export const updatePatient = withLiveNotify(updatePatientWrite, 'patients');
+export const deletePatient = withLiveNotify(deletePatientWrite, 'patients');
