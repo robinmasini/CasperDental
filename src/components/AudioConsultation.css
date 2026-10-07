@@ -11,8 +11,8 @@
 }
 
 @keyframes fadeInAudio {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* Header Banner */
@@ -137,7 +137,7 @@
     border-radius: 30px;
     font-size: 0.85rem;
     font-weight: 600;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
 }
 
 .status-badge-recording.idle {
@@ -241,7 +241,7 @@
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, opacity 0.25s ease, box-shadow 0.25s ease;
     border: none;
     outline: none;
 }
@@ -257,7 +257,6 @@
 .btn-audio-primary.start-btn:hover {
     background: #ffffff;
     color: #000000;
-    transform: translateY(-2px);
     box-shadow: 0 6px 30px rgba(255, 255, 255, 0.5), 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
@@ -268,7 +267,6 @@
 }
 
 .btn-audio-primary.stop-btn:hover {
-    transform: translateY(-2px) scale(1.02);
     box-shadow: 0 6px 25px rgba(239, 68, 68, 0.6);
 }
 
@@ -284,7 +282,7 @@
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: #ffffff;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-audio-secondary:hover {
@@ -362,7 +360,7 @@
     font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 
 .transcript-action-btn:hover {
@@ -434,14 +432,13 @@
     font-weight: 800;
     font-size: 0.88rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 4px 15px rgba(255, 255, 255, 0.25);
 }
 
 .btn-generate-ai:hover {
     background: #ffffff;
     color: #000000;
-    transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(255, 255, 255, 0.4);
 }
 
@@ -530,7 +527,6 @@
 .btn-synthesis-launch:hover:not(:disabled) {
     background: #ffffff;
     color: #000000;
-    transform: translateY(-2px);
     box-shadow: 0 6px 35px rgba(255, 255, 255, 0.5), 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
@@ -643,7 +639,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     padding: 14px;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -779,7 +775,7 @@
     border: 1px solid rgba(0, 242, 254, 0.2);
     border-radius: 14px;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
 }
 
 .reflection-journal-toggle-btn {
@@ -901,7 +897,7 @@
     text-align: center;
     position: relative;
     overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
 }
 
 .audio-recorder-subcard.is-recording {
@@ -996,7 +992,7 @@
     padding: 20px 14px;
     background: rgba(0, 0, 0, 0.2);
     cursor: pointer;
-    transition: all 0.25s ease;
+    transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, opacity 0.25s ease, box-shadow 0.25s ease;
     width: 100%;
     flex: 1;
     min-height: 130px;
@@ -1022,7 +1018,6 @@
 }
 
 .audio-dropzone:hover .dropzone-cloud-icon {
-    transform: translateY(-2px) scale(1.08);
 }
 
 .dropzone-inner strong {
@@ -1073,7 +1068,7 @@
     font-weight: 600;
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
     flex-shrink: 0;
     white-space: nowrap;
 }

@@ -106,7 +106,7 @@
   font-weight: 700;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 
 .ap-pill.active {
@@ -122,7 +122,6 @@
 }
 
 .ap-pill:hover {
-  transform: translateY(-1px);
 }
 
 /* Section Boxes */
@@ -236,7 +235,7 @@
   font-size: 0.8rem;
   width: 100%;
   box-sizing: border-box;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dep-text-input:focus {
@@ -258,7 +257,7 @@
   box-sizing: border-box;
   resize: vertical;
   font-family: inherit;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dep-textarea:focus {
@@ -349,12 +348,10 @@
 .btn-orthomind-cta:hover {
   background: #ffffff !important;
   color: #060913 !important;
-  transform: translateY(-2px);
   box-shadow: 0 6px 25px rgba(255, 255, 255, 0.35), 0 0 15px rgba(255, 255, 255, 0.2);
 }
 
 .btn-orthomind-cta:active {
-  transform: translateY(0);
 }
 
 .btn-orthomind-secondary {
@@ -377,7 +374,6 @@
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.3);
   color: #ffffff;
-  transform: translateY(-1px);
 }
 
 .btn-orthomind-danger {
@@ -389,7 +385,7 @@
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-orthomind-danger:hover {

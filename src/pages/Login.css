@@ -1,6 +1,7 @@
 /* ===== LOGIN PAGE ===== */
 .login-page {
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -211,12 +212,10 @@
 }
 
 .login-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(30, 136, 229, 0.45);
 }
 
 .login-btn:active:not(:disabled) {
-    transform: translateY(0);
 }
 
 .login-btn:disabled {

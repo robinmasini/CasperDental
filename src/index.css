@@ -61,6 +61,7 @@ body {
   color: var(--text-primary);
   background-color: var(--bg-deep);
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -221,7 +222,6 @@ body {
 .glass-btn-primary:hover {
   background: #ffffff;
   color: #060913;
-  transform: translateY(-2px);
   box-shadow: 0 6px 25px rgba(255, 255, 255, 0.35), 0 0 15px rgba(255, 255, 255, 0.2);
   border-color: #ffffff;
 }
@@ -235,7 +235,6 @@ body {
 .glass-btn-secondary:hover {
   background: rgba(255, 255, 255, 0.12);
   border-color: var(--border-glass-bright);
-  transform: translateY(-1px);
 }
 
 .glass-btn-danger {
@@ -246,7 +245,6 @@ body {
 }
 
 .glass-btn-danger:hover {
-  transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(255, 59, 107, 0.4);
 }
 
@@ -292,6 +290,7 @@ h1, h2, h3, h4, h5, h6 {
 /* App container */
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }

@@ -1,0 +1,64 @@
+/* ============================================================================
+   Interface stable : aucun effet élastique (« chewing-gum »)
+   Chargée en dernier : s'applique à toute l'application.
+   ============================================================================ */
+
+/* Plus de rebond de la page ni des zones qui défilent (iOS / trackpad) */
+html,
+body {
+    overscroll-behavior: none;
+}
+
+body {
+    min-height: 100dvh;
+}
+
+* {
+    overscroll-behavior: none;
+}
+
+/* Pas de délai ni de zoom au double-tap sur les boutons et liens */
+a,
+button,
+[role='button'],
+label,
+input,
+select,
+textarea {
+    touch-action: manipulation;
+}
+
+/* Écrans tactiles : pas d'effet de flou (il « gondole » pendant le défilement)
+   ni de fond animé ; les panneaux deviennent opaques pour rester lisibles */
+@media (hover: none) and (pointer: coarse) {
+    :root {
+        --bg-panel: rgba(15, 22, 42, 0.94);
+    }
+
+    *,
+    *::before,
+    *::after {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    [class*='blob'] {
+        animation: none !important;
+    }
+
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+/* Réglage système « Réduire les animations » respecté */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

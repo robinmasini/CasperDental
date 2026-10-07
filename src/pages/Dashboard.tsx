@@ -6,7 +6,7 @@ import Logo from '../components/Logo';
 import { supabase } from '../lib/supabase';
 import { listRecords, saveRecord, updateRecordDep, migrateLocalDataToCloud, isCloudMode } from '../services/recordsService';
 import { saveCabinetGeminiKey, clearCabinetGeminiKey } from '../services/cabinetSettings';
-import { uploadPatientPhotos, PhotoUploadError } from '../services/photosService';
+import { uploadPatientPhotos, PhotoUploadError, getLatestPhotoSession, photosToFiles, linkPhotosToRecord, PhotoSession } from '../services/photosService';
 import { extractTextFromPdf, chunkParsedPages } from '../services/pdfParser';
 import ClinicalReport, { formatClinicalReport } from '../components/ClinicalReport';
 import { warmUpKnowledge } from '../services/knowledgeBase';
@@ -227,6 +227,12 @@ const Dashboard = () => {
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+
+    // Diagnostic en différé : photos déjà archivées dans la fiche du patient
+    const [ficheSession, setFicheSession] = useState<PhotoSession | null>(null);
+    const [isLoadingFichePhotos, setIsLoadingFichePhotos] = useState(false);
+    const fichePhotoIds = useRef(new Map<File, string>()); // fichier rechargé -> photo déjà archivée (pas de doublon)
+    const autoLoadFichePhotos = useRef(false);
     
     // Scanner HUD simulation & API call states
     const [isScanning, setIsScanning] = useState(false);
@@ -245,6 +251,41 @@ const Dashboard = () => {
         window.addEventListener('beforeunload', onBeforeUnload);
         return () => window.removeEventListener('beforeunload', onBeforeUnload);
     }, [isScanning]);
+    useEffect(() => {
+        setFicheSession(null);
+        if (!selectedPatientObj?.id) return;
+        let cancelled = false;
+        getLatestPhotoSession(selectedPatientObj.id)
+            .then(session => { if (!cancelled) setFicheSession(session); })
+            .catch(() => undefined);
+        return () => { cancelled = true; };
+    }, [selectedPatientObj?.id]);
+
+    const loadFichePhotos = async (session: PhotoSession) => {
+        setIsLoadingFichePhotos(true);
+        try {
+            const items = await photosToFiles(session.photos);
+            previewUrls.forEach(url => URL.revokeObjectURL(url));
+            fichePhotoIds.current = new Map(items.map(({ file, photoId }) => [file, photoId]));
+            const files = items.map(i => i.file).slice(0, MAX_ANALYSIS_PHOTOS);
+            setImageFiles(files);
+            setPreviewUrls(files.map(f => URL.createObjectURL(f)));
+        } catch (err: any) {
+            alert(err.message || 'Récupération des photos de la fiche impossible.');
+        } finally {
+            setIsLoadingFichePhotos(false);
+        }
+    };
+
+    // Arrivée depuis le rappel de la fiche patient : les photos sont chargées d'office
+    useEffect(() => {
+        if (ficheSession && autoLoadFichePhotos.current && imageFiles.length === 0) {
+            autoLoadFichePhotos.current = false;
+            loadFichePhotos(ficheSession);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ficheSession]);
+
     const [analysisMode, setAnalysisModeState] = useState<AnalysisMode>(getAnalysisMode());
     const [activeResultTab, setActiveResultTab] = useState<'diag' | 'treat' | 'dep'>('diag');
 
@@ -793,9 +834,19 @@ const Dashboard = () => {
                 // Archivage des clichés dans l'onglet Photos de la fiche patient
                 if (selectedPatientObj?.id) {
                     addLog('[SYSTEM] Archivage des clichés dans l\'onglet Photos du patient...');
-                    let pendingFiles = imageFiles;
+                    // Photos venant de la fiche : déjà archivées, simplement rattachées à ce compte-rendu
+                    const alreadyArchived = imageFiles.map(f => fichePhotoIds.current.get(f)).filter((id): id is string => !!id);
+                    if (alreadyArchived.length) {
+                        try {
+                            await linkPhotosToRecord(alreadyArchived, saved.id);
+                            addLog(`[SUCCESS] ${alreadyArchived.length} cliché(s) de la fiche rattaché(s) au compte-rendu.`);
+                        } catch (linkErr: any) {
+                            addLog(`[WARNING] ${linkErr.message}`);
+                        }
+                    }
+                    let pendingFiles = imageFiles.filter(f => !fichePhotoIds.current.has(f));
                     let pendingLabels: string[] | undefined;
-                    let archived = 0;
+                    let archived = alreadyArchived.length;
                     while (pendingFiles.length) {
                         try {
                             archived += await uploadPatientPhotos(selectedPatientObj.id, pendingFiles, saved.id, pendingLabels);
@@ -1040,7 +1091,7 @@ const Dashboard = () => {
                                 height: '18px', 
                                 objectFit: 'contain', 
                                 filter: activeTab === 'analyse' ? 'none' : 'grayscale(1) opacity(0.7)', 
-                                transition: 'all 0.2s ease',
+                                transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease',
                                 borderRadius: '3px'
                             }} 
                         />
@@ -1194,6 +1245,7 @@ const Dashboard = () => {
                                         onClick={() => {
                                             setSelectedPatientObj(null);
                                             setPatientName('');
+                                            fichePhotoIds.current = new Map();
                                             previewUrls.forEach(url => URL.revokeObjectURL(url));
                                             setImageFiles([]);
                                             setPreviewUrls([]);
@@ -1225,6 +1277,22 @@ const Dashboard = () => {
 
                                 <div className="patient-input-group">
                                     <label>Clichés dentaires (jusqu'à {MAX_ANALYSIS_PHOTOS} photos)</label>
+                                    {selectedPatientObj && ficheSession && imageFiles.length === 0 && (
+                                        <div className={`fiche-photos-card ${ficheSession.analysed ? '' : 'is-pending'}`}>
+                                            <div>
+                                                <strong>📁 {ficheSession.photos.length} photo{ficheSession.photos.length > 1 ? 's' : ''} du {new Date(`${ficheSession.day}T12:00:00`).toLocaleDateString('fr-FR')} déjà dans la fiche</strong>
+                                                <span>{ficheSession.analysed ? 'Un diagnostic a déjà été fait avec ces photos.' : 'Aucun diagnostic n’a encore été lancé avec ces photos.'}</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="om-btn om-btn--primary"
+                                                onClick={() => loadFichePhotos(ficheSession)}
+                                                disabled={isScanning || isProcessingFiles || isLoadingFichePhotos}
+                                            >
+                                                {isLoadingFichePhotos ? 'Chargement des photos…' : 'Utiliser ces photos pour le diagnostic'}
+                                            </button>
+                                        </div>
+                                    )}
                                     {canUseCamera && (
                                         <button
                                             type="button"
@@ -1305,36 +1373,14 @@ const Dashboard = () => {
                                     </div>
                                 )}
 
-                                {practitionerDictation.trim() ? (
-                                    <button
-                                        className="glass-btn glass-btn-primary start-scan-btn"
-                                        onClick={handleStartAnalysis}
-                                        disabled={isScanning || isProcessingFiles || imageFiles.length === 0}
-                                    >
-                                        <img src={logoSeul} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-                                        Lancer le compte-rendu (photos + dictée)
-                                    </button>
-                                ) : (
-                                    <div className="dictation-gate">
-                                        <p className="om-muted">
-                                            Le compte-rendu s'appuie sur votre <strong>dictée d'examen</strong> : enregistrez-la dans la consultation audio, puis lancez le compte-rendu.
-                                        </p>
-                                        <button
-                                            className="glass-btn glass-btn-primary start-scan-btn"
-                                            onClick={() => document.getElementById('dictation-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                                            disabled={isScanning}
-                                        >
-                                            <Icon name="mic" size={18} /> Enregistrer ma dictée
-                                        </button>
-                                        <button
-                                            className="start-scan-btn dictation-bypass"
-                                            onClick={handleStartAnalysis}
-                                            disabled={isScanning || isProcessingFiles || imageFiles.length === 0}
-                                        >
-                                            Demander le compte-rendu quand même (photos seules)
-                                        </button>
-                                    </div>
-                                )}
+                                <button
+                                    className="glass-btn glass-btn-primary start-scan-btn launch-analysis-btn"
+                                    onClick={handleStartAnalysis}
+                                    disabled={isScanning || isProcessingFiles || imageFiles.length === 0}
+                                >
+                                    <img src={logoSeul} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                                    Lancer l'analyse
+                                </button>
                             </div>
 
                             {/* Section Droite : Consultation Audio (Occupe la partie droite sur bureau, bas de page sur mobile) */}
@@ -1464,8 +1510,20 @@ const Dashboard = () => {
 
                 {activeTab === 'patients' && (
                     <Patients 
-                        onSelectPatientForAnalysis={(name) => {
-                            setPatientName(name);
+                        onSelectPatientForAnalysis={(patient, options) => {
+                            if (patient.id !== selectedPatientObj?.id) {
+                                previewUrls.forEach(url => URL.revokeObjectURL(url));
+                                setImageFiles([]);
+                                setPreviewUrls([]);
+                                fichePhotoIds.current = new Map();
+                            }
+                            autoLoadFichePhotos.current = !!options?.useFichePhotos;
+                            if (patient.id === selectedPatientObj?.id && options?.useFichePhotos && ficheSession && imageFiles.length === 0) {
+                                autoLoadFichePhotos.current = false;
+                                loadFichePhotos(ficheSession);
+                            }
+                            setSelectedPatientObj(patient);
+                            setPatientName(`${patient.nom.toUpperCase()} ${patient.prenom}`);
                             handleTabClick('analyse');
                         }}
                     />

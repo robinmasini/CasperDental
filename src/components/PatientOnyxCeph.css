@@ -76,8 +76,8 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-6px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* Form Card — compact dark surface card with vibrant accent title */
@@ -146,7 +146,7 @@
     border: 1px solid var(--om-border, rgba(255, 255, 255, 0.15));
     background: var(--om-surface, #0b1120);
     color: var(--om-text, #ffffff);
-    transition: all 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 
 .onyxceph-url-input:focus {
@@ -254,7 +254,7 @@
     color: var(--om-accent, #00f2fe) !important;
     border-color: rgba(0, 242, 254, 0.3) !important;
     background: rgba(0, 242, 254, 0.06) !important;
-    transition: all 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 
 .onyxceph-empreintes-cta-btn:hover {

@@ -61,7 +61,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.15s ease;
+    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
 .camera-zoom-btn.is-active {
@@ -195,8 +195,8 @@
 }
 
 @keyframes camera-thumb-in {
-    from { transform: scale(0.6); opacity: 0; }
-    to { transform: none; opacity: 1; }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .camera-thumb img {
@@ -264,7 +264,6 @@
 }
 
 .camera-shutter:active:not(:disabled) {
-    transform: scale(0.9);
 }
 
 .camera-shutter:disabled {

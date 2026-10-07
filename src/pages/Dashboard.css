@@ -2,6 +2,7 @@
 .dashboard-container {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   background: url('../assets/bg.png') no-repeat center center fixed;
   background-size: cover;
   position: relative;
@@ -12,6 +13,7 @@
 .sidebar-glass {
   width: 280px;
   height: 100vh;
+  height: 100dvh;
   position: fixed;
   top: 0;
   left: 0;
@@ -44,7 +46,7 @@
   box-shadow: none;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
 }
 
 .sidebar-logo-container::before {
@@ -92,7 +94,6 @@
 }
 
 .sidebar-logo-container:hover {
-  transform: scale(1.04);
   background: transparent;
   border: none;
   box-shadow: none;
@@ -220,6 +221,7 @@
   flex: 1;
   padding: 40px;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-y: auto;
   position: relative;
   z-index: 10;
@@ -290,7 +292,6 @@
 
 .dropzone-container:hover svg {
   color: var(--primary-cyan);
-  transform: translateY(-5px);
 }
 
 .dropzone-title {
@@ -347,7 +348,6 @@
 
 .preview-remove-btn:hover {
   background: var(--danger-rose);
-  transform: scale(1.1);
 }
 
 .start-scan-btn {
@@ -418,8 +418,8 @@
 }
 
 @keyframes pulse-glowing {
-  0% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.15)); }
-  100% { transform: scale(1.04); filter: drop-shadow(0 0 20px rgba(0, 242, 254, 0.4)); }
+  0% { filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.15)); }
+  100% { filter: drop-shadow(0 0 20px rgba(0, 242, 254, 0.4)); }
 }
 
 /* Scanning lasers on previews */
@@ -674,7 +674,6 @@
 
 .pdf-upload-zone:hover svg {
   color: var(--primary-cyan);
-  transform: scale(1.1);
 }
 
 /* Progress bar */
@@ -772,7 +771,6 @@
 
 .delete-table-btn:hover {
   color: var(--danger-rose);
-  transform: scale(1.1);
 }
 
 /* ===== TAB 3: HISTORY ===== */
@@ -840,8 +838,8 @@
 }
 
 @keyframes slide-up-modal {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-close-btn {
@@ -857,7 +855,6 @@
 
 .modal-close-btn:hover {
   color: var(--text-primary);
-  transform: scale(1.1);
 }
 
 /* ===== TAB 4: SETTINGS ===== */
@@ -955,6 +952,7 @@
   flex-direction: column;
   gap: 25px;
   height: calc(100vh - 120px);
+  height: calc(100dvh - 120px);
 }
 
 .orthomind-grid {
@@ -1268,8 +1266,7 @@
   transition: transform 0.5s ease;
 }
 
-.welcome-banner-container:hover .welcome-banner::before {
-  transform: scale(1.02); /* Subtle zoom on hover */
+.welcome-banner-container:hover .welcome-banner::before { /* Subtle zoom on hover */
 }
 
 .banner-overlay {
@@ -1384,7 +1381,6 @@
 .clinical-action-btn:hover {
   background: var(--bg-panel-hover);
   border-color: var(--border-glass-bright);
-  transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 242, 254, 0.1);
 }
 
@@ -1459,7 +1455,6 @@
   }
 
   .mobile-navbar-tab:active {
-    transform: scale(0.92);
   }
 
   /* Active tab icon illumination */
@@ -1496,7 +1491,7 @@
     background-color: #ffffff;
     border-radius: 50%;
     box-shadow: 0 0 6px rgba(255, 255, 255, 0.9), 0 0 10px rgba(255, 255, 255, 0.6);
-    animation: pop-dot 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: pop-dot 0.2s ease-out;
   }
 
   @keyframes pop-dot {
@@ -1521,13 +1516,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, opacity 0.25s ease, box-shadow 0.25s ease;
     box-shadow: 0 0 16px rgba(0, 242, 254, 0.25);
   }
 
   .mobile-navbar-logo-center:hover .center-logo-badge,
   .mobile-navbar-logo-center:active .center-logo-badge {
-    transform: scale(1.1);
     background: linear-gradient(135deg, rgba(0, 242, 254, 0.3), rgba(79, 172, 254, 0.3));
     border-color: rgba(255, 255, 255, 0.6);
     box-shadow: 0 0 22px rgba(0, 242, 254, 0.5);
@@ -1644,13 +1638,11 @@
 
 .simulation-cta-banner:hover,
 .simulation-cta-banner:focus {
-  transform: translateY(-3px);
   filter: brightness(1.05);
   box-shadow: none;
 }
 
 .simulation-cta-banner:active {
-  transform: translateY(0);
 }
 
 .simulation-cta-img {
@@ -1720,7 +1712,7 @@
   padding: 56px 30px;
   cursor: pointer;
   background: rgba(255, 255, 255, 0.01);
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
   margin-bottom: 24px;
 }
 
@@ -1733,13 +1725,12 @@
 
 .sim-dropzone-icon {
   color: var(--text-secondary);
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
 }
 
 .sim-dropzone:hover .sim-dropzone-icon,
 .sim-dropzone.drag-over .sim-dropzone-icon {
   color: var(--primary-cyan);
-  transform: translateY(-6px) scale(1.1);
   filter: drop-shadow(0 0 12px rgba(0, 242, 254, 0.5));
 }
 
@@ -1873,8 +1864,8 @@
 }
 
 @keyframes reveal-result {
-  0% { opacity: 0; transform: scale(0.95); }
-  100% { opacity: 1; transform: scale(1); }
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 .sim-comparison-label {
@@ -2365,40 +2356,50 @@
 }
 
 /* Compte-rendu après la dictée d'examen */
-.dictation-gate {
-    display: flex;
-    flex-direction: column;
-    gap: var(--om-space-3);
-    align-items: stretch;
-}
-
-.dictation-gate > p {
-    margin: 0;
-    text-align: center;
-}
-
-.dictation-bypass {
+.launch-analysis-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    border: none;
-    border-radius: var(--om-radius);
-    background: #fff;
-    color: #0b0f17;
-    font-family: inherit;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    transition: background 0.15s ease, transform 0.15s ease;
+    gap: 10px;
+    min-height: 56px;
+    font-size: 1.15rem;
+    font-weight: 700;
 }
 
-.dictation-bypass:hover:not(:disabled) {
-    background: #eef1f6;
-    transform: translateY(-1px);
+/* Diagnostic en différé : photos déjà archivées dans la fiche */
+.fiche-photos-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--om-border-strong, rgba(255, 255, 255, 0.18));
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
 }
 
-.dictation-bypass:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+.fiche-photos-card.is-pending {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.fiche-photos-card > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.88rem;
+}
+
+.fiche-photos-card > div span {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+    .fiche-photos-card .om-btn {
+        flex-basis: 100%;
+        min-height: 44px;
+    }
 }
