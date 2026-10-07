@@ -556,7 +556,7 @@
     }
 
     .tag-picker-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         max-height: 55vh;
         gap: 8px;
     }

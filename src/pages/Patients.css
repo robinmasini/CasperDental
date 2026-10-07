@@ -671,7 +671,7 @@
 
     .om-dl.fiche-summary {
         padding: 0 var(--om-space-4) var(--om-space-4);
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: var(--om-space-3) var(--om-space-4);
     }
 

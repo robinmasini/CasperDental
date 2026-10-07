@@ -425,7 +425,7 @@
 /* Scanning lasers on previews */
 .hud-images-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
   max-width: 320px;
@@ -578,7 +578,7 @@
 
 .results-split-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 30px;
 }
 
@@ -2361,9 +2361,10 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    min-height: 56px;
-    font-size: 1.15rem;
-    font-weight: 700;
+    min-height: 48px;
+    font-size: var(--om-text-sm) !important;
+    font-weight: 600;
+    letter-spacing: normal;
 }
 
 /* Diagnostic en différé : photos déjà archivées dans la fiche */

@@ -17,6 +17,40 @@ body {
     overscroll-behavior: none;
 }
 
+/* Rien ne doit dépasser la largeur de l'écran : pas de glissement latéral de la page ni de la fiche */
+html,
+body,
+#root {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+.fiche-scroll-body,
+.fiche-tab-content,
+.patient-photos,
+.photos-grid,
+.photo-tile-wrap {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.fiche-scroll-body {
+    overflow-x: hidden;
+}
+
+img,
+video {
+    max-width: 100%;
+}
+
+/* Titres de section et badges longs : retour à la ligne plutôt que débordement */
+.patient-photos .om-badge {
+    height: auto;
+    min-height: 22px;
+    white-space: normal;
+    max-width: 100%;
+}
+
 /* Pas de délai ni de zoom au double-tap sur les boutons et liens */
 a,
 button,

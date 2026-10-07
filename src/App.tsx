@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import PatientPortal from './pages/PatientPortal';
+import UpdateBanner from './components/UpdateBanner';
 
 function App() {
   console.log('App function executing');
@@ -21,6 +22,7 @@ function App() {
           } />
         </Routes>
       </BrowserRouter>
+      <UpdateBanner />
     </AuthProvider>
   );
 }
