@@ -208,8 +208,8 @@ export const listPatientPhotos = async (patientId: string): Promise<PatientPhoto
 
     if (error) throw new Error(`Lecture des photos impossible : ${error.message}`);
     
-    // Filtrer pour ne conserver que les photos (et pas les radios identifiées RADIO::)
-    const rawPhotos: PatientPhoto[] = (data || []).filter((p: any) => !p.label?.startsWith('RADIO::'));
+    // Ne conserver que les photos (ni radios RADIO::, ni empreintes 3D EMPREINTE:: / STL::)
+    const rawPhotos: PatientPhoto[] = (data || []).filter((p: any) => !/^(RADIO|EMPREINTE|STL)::/.test(p.label || ''));
     if (rawPhotos.length === 0) return [];
 
     const { data: signed, error: signError } = await supabase.storage
@@ -219,6 +219,49 @@ export const listPatientPhotos = async (patientId: string): Promise<PatientPhoto
     if (signError) throw new Error(`Accès aux photos impossible : ${signError.message}`);
     const urls = new Map<string, string>((signed || []).map((s: any) => [s.path, s.signedUrl]));
     return sortPhotosByProtocol(rawPhotos).map(p => ({ ...p, url: urls.get(p.storage_path) }));
+};
+
+// ============================================================================
+// Dernière séance de photos (même jour) et diagnostic en différé
+// ============================================================================
+
+export interface PhotoSession {
+    day: string;            // AAAA-MM-JJ (heure locale)
+    photos: PatientPhoto[]; // ordre du protocole
+    analysed: boolean;      // au moins une photo rattachée à un compte-rendu
+}
+
+export const getLatestPhotoSession = async (patientId: string): Promise<PhotoSession | null> => {
+    const photos = await listPatientPhotos(patientId);
+    if (photos.length === 0) return null;
+    const day = localDay(photos[0].taken_at);
+    const session = photos.filter(p => localDay(p.taken_at) === day);
+    return { day, photos: session, analysed: session.some(p => !!p.record_id) };
+};
+
+// Recharge les photos archivées sous forme de fichiers, nommés comme ceux de la caméra (« cliche-01__Intra-oral — face.jpg »)
+export const photosToFiles = async (photos: PatientPhoto[]): Promise<{ file: File; photoId: string }[]> => {
+    const files: { file: File; photoId: string }[] = [];
+    for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        if (!photo.url) continue;
+        const res = await fetch(photo.url);
+        if (!res.ok) throw new Error('Récupération des photos de la fiche impossible.');
+        const label = photo.label && !/^cliche[_-]/.test(photo.label) ? photo.label : DEFAULT_PHOTO_TITLES[i] || `Cliché ${i + 1}`;
+        const file = new File([await res.blob()], `cliche-${String(i + 1).padStart(2, '0')}__${label}.jpg`, {
+            type: 'image/jpeg',
+            lastModified: new Date(photo.taken_at).getTime(),
+        });
+        files.push({ file, photoId: photo.id });
+    }
+    return files;
+};
+
+// Rattache des photos déjà archivées au compte-rendu produit à partir d'elles
+export const linkPhotosToRecord = async (photoIds: string[], recordId: string): Promise<void> => {
+    if (!isCloudMode() || photoIds.length === 0 || !UUID_RE.test(recordId)) return;
+    const { error } = await supabase.from('patient_photos').update({ record_id: recordId }).in('id', photoIds);
+    if (error) throw new Error(`Rattachement des photos au compte-rendu impossible : ${error.message}`);
 };
 
 export const deletePatientPhoto = async (photo: PatientPhoto): Promise<void> => {

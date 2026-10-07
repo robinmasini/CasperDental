@@ -13,6 +13,8 @@ import './PatientPhotos.css';
 interface PatientPhotosProps {
     patientId: string;
     patientName: string;
+    /** Prévenu après chaque ajout de photos (rappel « diagnostic à lancer » dans la fiche) */
+    onPhotosUploaded?: () => void;
 }
 
 const dayLabel = (iso: string) =>
@@ -20,7 +22,7 @@ const dayLabel = (iso: string) =>
 const timeLabel = (iso: string) =>
     new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
+const PatientPhotos = ({ patientId, patientName, onPhotosUploaded }: PatientPhotosProps) => {
     const [photos, setPhotos] = useState<PatientPhoto[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -146,6 +148,7 @@ const PatientPhotos = ({ patientId, patientName }: PatientPhotosProps) => {
             setError(e.message);
         } finally {
             setUploading(false);
+            onPhotosUploaded?.();
             if (galleryRef.current) galleryRef.current.value = '';
         }
     };

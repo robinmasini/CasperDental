@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient, getPatients, updatePatient, deletePatient } from '../services/patientService';
+import { getLatestPhotoSession, PhotoSession } from '../services/photosService';
 import { getAppointmentsByPatientId } from '../services/appointmentService';
 import PatientForm from '../components/PatientForm';
 import PatientPortal from './PatientPortal';
@@ -97,7 +98,7 @@ const Field = ({ label, value, icon }: { label: string; value?: string | null; i
 );
 
 interface PatientsProps {
-    onSelectPatientForAnalysis?: (patientName: string) => void;
+    onSelectPatientForAnalysis?: (patient: Patient, options?: { useFichePhotos?: boolean }) => void;
 }
 
 const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
@@ -344,11 +345,21 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
         }
     };
 
-    const startAnalysis = () => {
+    const startAnalysis = (useFichePhotos = false) => {
         if (selectedPatient && onSelectPatientForAnalysis) {
-            onSelectPatientForAnalysis(`${selectedPatient.nom} ${selectedPatient.prenom}`);
+            onSelectPatientForAnalysis(selectedPatient.raw, { useFichePhotos });
         }
     };
+
+    // Rappel : dernière séance de photos encore sans diagnostic
+    const [photoSession, setPhotoSession] = useState<PhotoSession | null>(null);
+    const refreshPhotoSession = useCallback(() => {
+        if (!selectedPatient) { setPhotoSession(null); return; }
+        getLatestPhotoSession(selectedPatient.id)
+            .then(setPhotoSession)
+            .catch(() => setPhotoSession(null));
+    }, [selectedPatient]);
+    useEffect(() => { refreshPhotoSession(); }, [refreshPhotoSession, activeTab]);
 
     const handleSaveOnyxCephUrl = async (newUrl: string) => {
         if (!selectedPatient) return;
@@ -596,7 +607,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 <Icon name="send" /> SMS Vonage
                             </button>
                             {onSelectPatientForAnalysis && (
-                                <button className="om-btn om-btn--primary" onClick={startAnalysis}>
+                                <button className="om-btn om-btn--primary" onClick={() => startAnalysis()}>
                                     <Icon name="sparkles" /> Lancer un diagnostic
                                 </button>
                             )}
@@ -605,6 +616,17 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             </button>
                         </div>
                     </header>
+
+                    {photoSession && !photoSession.analysed && onSelectPatientForAnalysis && (
+                        <div className="fiche-diagnostic-reminder" role="alert">
+                            <span>
+                                📸 <strong>{photoSession.photos.length} photo{photoSession.photos.length > 1 ? 's' : ''} du {new Date(`${photoSession.day}T12:00:00`).toLocaleDateString('fr-FR')}</strong> sans diagnostic : pensez à lancer le diagnostic pour remplir la fiche DEP.
+                            </span>
+                            <button className="om-btn om-btn--primary om-btn--sm" onClick={() => startAnalysis(true)}>
+                                <Icon name="sparkles" /> Lancer le diagnostic avec ces photos
+                            </button>
+                        </div>
+                    )}
 
                     {/* Résumé */}
                     <dl className="om-dl fiche-summary">
@@ -660,7 +682,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 <div className="om-empty">
                                     <p>Aucune analyse n'est encore rattachée à ce patient.</p>
                                     {onSelectPatientForAnalysis && (
-                                        <button className="om-btn om-btn--primary" onClick={startAnalysis}>
+                                        <button className="om-btn om-btn--primary" onClick={() => startAnalysis()}>
                                             <Icon name="sparkles" /> Lancer une analyse
                                         </button>
                                     )}
@@ -748,7 +770,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                         )}
 
                         {activeTab === 'photos' && (
-                            <PatientPhotos patientId={selectedPatient.id} patientName={`${selectedPatient.prenom} ${selectedPatient.nom}`} />
+                            <PatientPhotos patientId={selectedPatient.id} patientName={`${selectedPatient.prenom} ${selectedPatient.nom}`} onPhotosUploaded={refreshPhotoSession} />
                         )}
 
                         {activeTab === 'onyxceph' && (
