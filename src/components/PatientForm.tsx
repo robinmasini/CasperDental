@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Patient, createPatient, updatePatient } from '../services/patientService';
+import { Patient, createPatient, updatePatient, getPatients } from '../services/patientService';
 import { extractPatientFromOrthoLeader } from '../services/geminiService';
 import './PatientForm.css';
 
@@ -81,8 +81,43 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
         }
     };
 
+    // Création : détection d'un patient déjà enregistré (même portable, ou même nom + prénom + naissance)
+    const [existingPatients, setExistingPatients] = useState<Patient[]>([]);
+    const [duplicateAcknowledged, setDuplicateAcknowledged] = useState(false);
+    useEffect(() => {
+        if (initialPatient) return;
+        getPatients().then(setExistingPatients).catch(() => undefined);
+    }, [initialPatient]);
+
+    const phoneKey = (phone?: string | null) => (phone || '').replace(/\D/g, '').slice(-9);
+    const textKey = (value?: string | null) => (value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const duplicates = useMemo(() => {
+        if (initialPatient) return [];
+        const phone = phoneKey(formData.portable);
+        const nom = textKey(formData.nom);
+        const prenom = textKey(formData.prenom);
+        return existingPatients
+            .map(p => {
+                const samePhone = phone.length === 9 && [p.portable, p.telephone].some(t => phoneKey(t) === phone);
+                const sameIdentity = !!nom && !!prenom && !!formData.date_naissance
+                    && textKey(p.nom) === nom && textKey(p.prenom) === prenom && p.date_naissance === formData.date_naissance;
+                return { patient: p, samePhone, sameIdentity };
+            })
+            .filter(d => d.samePhone || d.sameIdentity);
+    }, [existingPatients, formData.portable, formData.nom, formData.prenom, formData.date_naissance, initialPatient]);
+
+    // Une nouvelle correspondance demande une nouvelle confirmation
+    const duplicateIds = duplicates.map(d => d.patient.id).join(',');
+    useEffect(() => { setDuplicateAcknowledged(false); }, [duplicateIds]);
+    const needsDuplicateConfirmation = duplicates.length > 0 && !duplicateAcknowledged;
+
     const handleSave = async (sendSms: boolean) => {
         setError('');
+        if (needsDuplicateConfirmation) {
+            setDuplicateAcknowledged(true);
+            setError('Ce patient semble déjà exister sur OrthoMind (voir ci-dessus). Vérifiez, puis cliquez à nouveau pour le créer quand même.');
+            return;
+        }
         setIsLoading(true);
 
         if (!formData.nom || !formData.prenom || !formData.date_naissance || !formData.portable) {
@@ -276,6 +311,25 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
                             </div>
                         </div>
 
+                        {duplicates.length > 0 && (
+                            <div className="patient-duplicate-warning" role="alert">
+                                <strong>⚠️ Ce patient existe déjà sur OrthoMind</strong>
+                                <ul>
+                                    {duplicates.map(({ patient, samePhone, sameIdentity }) => (
+                                        <li key={patient.id}>
+                                            <b>{patient.nom?.toUpperCase()} {patient.prenom}</b>
+                                            {patient.date_naissance && <> · né(e) le {new Date(`${patient.date_naissance}T12:00:00`).toLocaleDateString('fr-FR')}</>}
+                                            {' — '}
+                                            {sameIdentity && samePhone ? 'même identité et même portable'
+                                                : sameIdentity ? 'même nom, prénom et date de naissance'
+                                                : 'même numéro de portable (frère, sœur ou parent ?)'}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <span>Retrouvez-le dans la liste des patients. Pour un frère ou une sœur qui partage le même portable, vous pouvez créer la fiche quand même.</span>
+                            </div>
+                        )}
+
                         {/* Form Action Buttons */}
                         <div className="simplified-form-actions">
                             <button
@@ -304,7 +358,7 @@ const PatientForm = ({ onClose, onSuccess, initialPatient }: PatientFormProps) =
                                         onClick={() => handleSave(false)}
                                         disabled={isLoading}
                                     >
-                                        Enregistrer uniquement
+                                        {duplicateAcknowledged && duplicates.length > 0 ? 'Créer quand même' : 'Enregistrer uniquement'}
                                     </button>
 
                                     <button
