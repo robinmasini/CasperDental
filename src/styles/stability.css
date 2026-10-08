@@ -13,7 +13,15 @@ body {
     min-height: 100dvh;
 }
 
-* {
+/* Pas de règle « * { overscroll-behavior: none } » : sur ordinateur, un bloc qui défile
+   sur le côté (tableau, fiche DEP) bloquerait alors la molette de toute la fiche.
+   Le rebond est coupé sur les zones de défilement principales uniquement. */
+.fiche-overlay,
+.fiche-scroll-body,
+.patient-details-panel,
+.photo-viewer,
+.patient-form-overlay,
+.patient-form-modal {
     overscroll-behavior: none;
 }
 
