@@ -12,6 +12,8 @@ interface Practitioner {
     profession: string;
     specialty: string;
     photo?: string;
+    /** « secretariat » : Espace Secrétariat (catégories en plus) */
+    role?: 'praticien' | 'secretariat';
 }
 
 interface AuthContextType {

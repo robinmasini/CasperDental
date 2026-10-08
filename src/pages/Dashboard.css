@@ -2423,3 +2423,13 @@
     color: var(--text-secondary);
     text-align: center;
 }
+
+/* Menu latéral : intitulé de l'Espace Secrétariat */
+.sidebar-section-label {
+    margin: 14px 14px 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}

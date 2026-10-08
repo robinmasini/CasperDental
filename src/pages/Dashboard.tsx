@@ -13,6 +13,7 @@ import ClinicalReport, { formatClinicalReport } from '../components/ClinicalRepo
 import { warmUpKnowledge } from '../services/knowledgeBase';
 import CameraCapture from '../components/CameraCapture';
 import CabinetPlanning from '../components/CabinetPlanning';
+import SecretariatSection, { SECRETARIAT_TABS, SecretariatTab } from '../components/SecretariatSection';
 import { AiMissingBanner, AiReportMeta } from '../components/AiStatus';
 import Icon from '../components/Icon';
 
@@ -112,7 +113,8 @@ const Dashboard = () => {
     const currentDate = currentDateRaw.charAt(0).toUpperCase() + currentDateRaw.slice(1);
     
     // Tabs state
-    const [activeTab, setActiveTab] = useState<'analyse' | 'audio' | 'patients' | 'config'>(() => {
+    type DashboardTab = 'analyse' | 'audio' | 'patients' | 'config' | SecretariatTab;
+    const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
         const saved = localStorage.getItem('casper_active_tab');
         if (saved === 'orthomind' || saved === 'history' || saved === 'knowledge') return 'analyse';
         return (saved as any) || 'analyse';
@@ -120,7 +122,11 @@ const Dashboard = () => {
 
     const isPatientAccount = (user?.email || '').toLowerCase().trim() === 'test@patient.com' || user?.profession === 'Patient OrthoMind' || user?.specialty === 'Espace Patient';
 
-    const handleTabClick = (tab: 'analyse' | 'audio' | 'patients' | 'config') => {
+    // Espace Secrétariat : catégories en plus, sur ordinateur uniquement (menu latéral)
+    const isSecretariat = user?.role === 'secretariat';
+    const isSecretariatTab = (tab: string): tab is SecretariatTab => SECRETARIAT_TABS.some(t => t.id === tab);
+
+    const handleTabClick = (tab: DashboardTab) => {
         if (isPatientAccount && tab !== 'analyse') {
             alert('Fonctionnalité à venir...');
             return;
@@ -134,8 +140,14 @@ const Dashboard = () => {
             setActiveTab('analyse');
             return;
         }
+        // Catégorie secrétariat hors compte secrétariat ou sur petit écran (pas de menu latéral)
+        if (isSecretariatTab(activeTab) && ((user && !isSecretariat) || window.matchMedia('(max-width: 1024px)').matches)) {
+            setActiveTab('analyse');
+            return;
+        }
         localStorage.setItem('casper_active_tab', activeTab);
-    }, [activeTab, isPatientAccount]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, isPatientAccount, isSecretariat, user]);
 
     // Ref for smooth scrolling to results on mobile
     const resultsRef = useRef<HTMLDivElement>(null);
@@ -1182,6 +1194,22 @@ const Dashboard = () => {
                                 Historique des Scans
                             </button>
 
+                            {isSecretariat && (
+                                <>
+                                    <div className="sidebar-section-label">Secrétariat</div>
+                                    {SECRETARIAT_TABS.map(tab => (
+                                        <button
+                                            key={tab.id}
+                                            className={`sidebar-nav-btn ${activeTab === tab.id ? 'active' : ''}`}
+                                            onClick={() => handleTabClick(tab.id)}
+                                        >
+                                            <Icon name={tab.icon} size={18} style={{ color: activeTab === tab.id ? 'var(--primary-cyan)' : 'inherit' }} />
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </>
+                            )}
+
                             <button 
                                 className={`sidebar-nav-btn ${activeTab === 'config' ? 'active' : ''}`}
                                 onClick={() => handleTabClick('config')}
@@ -1573,6 +1601,8 @@ const Dashboard = () => {
 
                 {/* TAB: PLANNING DU CABINET (rendez-vous + étiquettes Monday) — l'audio est dans Diagnostic */}
                 {activeTab === 'audio' && <CabinetPlanning />}
+
+                {isSecretariat && isSecretariatTab(activeTab) && <SecretariatSection tab={activeTab} />}
 
                 {activeTab === 'patients' && (
                     <Patients 
