@@ -32,6 +32,7 @@ import { extractDepDataFromAnalysis } from '../services/depParser';
 import orthomindNavIcon from '../assets/Orthomind.png';
 import welcomeCardImg from '../assets/welcomecard.png';
 import drPhoto from '../assets/photo.png';
+import emelinePhoto from '../assets/emeline.png';
 import casperLogoWelcome from '../assets/casper-logo-welcome.png';
 import './Dashboard.css';
 
@@ -1226,8 +1227,8 @@ const Dashboard = () => {
 
                 <div className="sidebar-profile">
                     <img 
-                        src={drPhoto} 
-                        alt="Dr. Renaud Desouches" 
+                        src={isSecretariat ? emelinePhoto : drPhoto} 
+                        alt={isSecretariat ? 'Emeline SOLER' : 'Dr. Renaud Desouches'} 
                         style={{ 
                             width: '40px', 
                             height: '40px', 
@@ -1238,7 +1239,7 @@ const Dashboard = () => {
                         }} 
                     />
                     <div className="profile-info">
-                        <h4>Dr. Renaud Desouches</h4>
+                        <h4>{isSecretariat ? 'Emeline SOLER' : 'Dr. Renaud Desouches'}</h4>
                         <p>{user?.specialty || 'Chirurgien Orthodontiste'}</p>
                     </div>
                 </div>
