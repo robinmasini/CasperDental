@@ -1,4 +1,5 @@
 import Icon from './Icon';
+import ccvIcon from '../assets/ccv.png';
 import SecretariatReglements from './SecretariatReglements';
 import './SecretariatSection.css';
 
@@ -8,9 +9,9 @@ import './SecretariatSection.css';
 
 export type SecretariatTab = 'reglements' | 'vitale' | 'messagerie';
 
-export const SECRETARIAT_TABS: { id: SecretariatTab; label: string; icon: 'chart' | 'file' | 'mail' }[] = [
+export const SECRETARIAT_TABS: { id: SecretariatTab; label: string; icon: 'chart' | 'file' | 'mail'; image?: string }[] = [
     { id: 'reglements', label: 'Règlements', icon: 'chart' },
-    { id: 'vitale', label: 'CC Vitale', icon: 'file' },
+    { id: 'vitale', label: 'CC Vitale', icon: 'file', image: ccvIcon },
     { id: 'messagerie', label: 'Messagerie', icon: 'mail' },
 ];
 

@@ -1204,7 +1204,9 @@ const Dashboard = () => {
                                             className={`sidebar-nav-btn ${activeTab === tab.id ? 'active' : ''}`}
                                             onClick={() => handleTabClick(tab.id)}
                                         >
-                                            <Icon name={tab.icon} size={18} style={{ color: activeTab === tab.id ? 'var(--primary-cyan)' : 'inherit' }} />
+                                            {tab.image
+                                                ? <img src={tab.image} alt="" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain' }} />
+                                                : <Icon name={tab.icon} size={18} style={{ color: activeTab === tab.id ? 'var(--primary-cyan)' : 'inherit' }} />}
                                             {tab.label}
                                         </button>
                                     ))}
