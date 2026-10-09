@@ -7,11 +7,11 @@ import { supabase } from '../lib/supabase';
 // - Filet de sécurité : relecture toutes les 30 s (onglet visible) et au retour sur l'onglet
 // ============================================================================
 
-export type LiveTable = 'patients' | 'clinical_records' | 'patient_photos' | 'appointments';
+export type LiveTable = 'patients' | 'clinical_records' | 'patient_photos' | 'appointments' | 'reglements';
 export type LiveReason = 'realtime' | 'poll' | 'focus' | 'local';
 type Listener = (tables: Set<LiveTable> | 'all', reason: LiveReason) => void;
 
-const TABLES: LiveTable[] = ['patients', 'clinical_records', 'patient_photos', 'appointments'];
+const TABLES: LiveTable[] = ['patients', 'clinical_records', 'patient_photos', 'appointments', 'reglements'];
 const POLL_MS = 30_000;
 const listeners = new Set<Listener>();
 let started = false;

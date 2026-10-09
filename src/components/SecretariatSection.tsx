@@ -1,4 +1,5 @@
 import Icon from './Icon';
+import SecretariatReglements from './SecretariatReglements';
 import './SecretariatSection.css';
 
 // ============================================================================
@@ -16,7 +17,7 @@ export const SECRETARIAT_TABS: { id: SecretariatTab; label: string; icon: 'chart
 const CONTENT: Record<SecretariatTab, { title: string; subtitle: string }> = {
     reglements: {
         title: 'Règlements',
-        subtitle: 'Comptabilité du cabinet : encaissements, échéanciers de traitement et impayés.',
+        subtitle: 'Échéanciers des traitements (TO90, TO75, TO20), encaissements et retards de paiement.',
     },
     vitale: {
         title: 'CC Vitale',
@@ -37,10 +38,14 @@ const SecretariatSection = ({ tab }: { tab: SecretariatTab }) => {
                 <h1 className="om-title">{title}</h1>
                 <p className="om-muted">{subtitle}</p>
             </header>
-            <div className="om-empty">
-                <Icon name={icon} size={28} />
-                <p>Cette catégorie de l'Espace Secrétariat est en cours de préparation.</p>
-            </div>
+            {tab === 'reglements' ? (
+                <SecretariatReglements />
+            ) : (
+                <div className="om-empty">
+                    <Icon name={icon} size={28} />
+                    <p>Cette catégorie de l'Espace Secrétariat est en cours de préparation.</p>
+                </div>
+            )}
         </div>
     );
 };
