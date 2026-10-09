@@ -24,9 +24,10 @@ const parseEuros = (v: string) => {
 };
 
 // Champ montant en euros, modifiable librement (cabinet libéral)
+const formatEuros = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2)).replace('.', ',');
 const EuroInput = ({ value, onChange, ariaLabel }: { value: number; onChange: (n: number) => void; ariaLabel: string }) => {
-    const [text, setText] = useState(String(value).replace('.', ','));
-    useEffect(() => { if (parseEuros(text) !== value) setText(String(value).replace('.', ',')); }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+    const [text, setText] = useState(formatEuros(value));
+    useEffect(() => { if (parseEuros(text) !== value) setText(formatEuros(value)); }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
     return (
         <span className="reglements-euro">
             <input
