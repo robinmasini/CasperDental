@@ -230,7 +230,7 @@ const SecretariatReglements = () => {
                                 <span className="reglements-acte-code">{a.code}</span>
                                 <span className="reglements-acte-name">{a.libelle}</span>
                                 <span className="reglements-acte-price">{a.tarifs.map(eur).join(' ou ')}{a.parEcheance ? ` / ${a.unite}` : ''}</span>
-                                <span className="reglements-acte-meta">{a.description} · Sécu {eur(a.remboursementSecu)}</span>
+                                <span className="reglements-acte-meta">{a.description} · Remboursement Sécurité sociale {eur(a.remboursementSecu)}</span>
                             </button>
                         ))}
                     </div>
@@ -275,7 +275,7 @@ const SecretariatReglements = () => {
                     {/* Échéancier proposé : chaque date et chaque montant restent modifiables */}
                     <table className="reglements-preview">
                         <thead>
-                            <tr><th>Échéance</th><th>Date</th><th>Montant</th><th>Sécu</th></tr>
+                            <tr><th>Échéance</th><th>Date</th><th>Montant</th><th>Sécurité sociale</th></tr>
                         </thead>
                         <tbody>
                             {lignes.map((l, i) => (
@@ -283,7 +283,7 @@ const SecretariatReglements = () => {
                                     <td>{lignes.length > 1 ? `${catalogue.unite} ${i + 1}` : catalogue.code}</td>
                                     <td><input type="date" value={l.echeance} onChange={e => e.target.value && setLigne(i, { echeance: e.target.value })} /></td>
                                     <td><EuroInput value={l.montant} ariaLabel={`Montant échéance ${i + 1}`} onChange={n => setLigne(i, { montant: n })} /></td>
-                                    <td><EuroInput value={l.remboursement_secu} ariaLabel={`Remboursement Sécu échéance ${i + 1}`} onChange={n => setLigne(i, { remboursement_secu: n })} /></td>
+                                    <td><EuroInput value={l.remboursement_secu} ariaLabel={`Remboursement Sécurité sociale échéance ${i + 1}`} onChange={n => setLigne(i, { remboursement_secu: n })} /></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -333,8 +333,8 @@ const SecretariatReglements = () => {
                                             <div className="reglements-item-edit">
                                                 <input type="date" value={editing.echeance} onChange={e => e.target.value && setEditing({ ...editing, echeance: e.target.value })} />
                                                 <EuroInput value={editing.montant} ariaLabel="Montant" onChange={n => setEditing({ ...editing, montant: n })} />
-                                                <span className="om-muted">Sécu</span>
-                                                <EuroInput value={editing.remboursement_secu} ariaLabel="Remboursement Sécu" onChange={n => setEditing({ ...editing, remboursement_secu: n })} />
+                                                <span className="om-muted">Sécurité sociale</span>
+                                                <EuroInput value={editing.remboursement_secu} ariaLabel="Remboursement Sécurité sociale" onChange={n => setEditing({ ...editing, remboursement_secu: n })} />
                                                 <button type="button" className="om-btn om-btn--primary om-btn--sm" disabled={busyId === r.id}
                                                     onClick={() => act(r.id, async () => {
                                                         await updateEcheance(r.id, { echeance: editing.echeance, montant: editing.montant, remboursement_secu: editing.remboursement_secu });
@@ -353,7 +353,7 @@ const SecretariatReglements = () => {
                                         </div>
                                         <div className="reglements-item-amount">
                                             <strong>{eur(r.montant)}</strong>
-                                            <small>Sécu {eur(r.remboursement_secu)}</small>
+                                            <small>Sécurité sociale {eur(r.remboursement_secu)}</small>
                                         </div>
                                         <div className="reglements-item-actions">
                                             {r.paye_le ? (
