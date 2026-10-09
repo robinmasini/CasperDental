@@ -12,12 +12,13 @@ import ClinicalReport from '../components/ClinicalReport';
 import Icon, { IconName } from '../components/Icon';
 import { extractDepDataFromAnalysis } from '../services/depParser';
 import { OrthoMindDepData, createDefaultDepData } from '../types/dep';
-import OnyxCephTravauxTable from '../components/OnyxCephTravauxTable';
+import WeekPlanning from '../components/WeekPlanning';
+import PatientReglements, { PatientReglementBadge } from '../components/PatientReglements';
+import { useAuth } from '../context/AuthContext';
 import { listRecords, listRecordSummaries, saveRecord, updateRecordDep, ClinicalRecord, getOnyxCephUrlRecord, saveOnyxCephUrlRecord } from '../services/recordsService';
 import PatientPhotos from '../components/PatientPhotos';
 import PatientRadios from '../components/PatientRadios';
 import PatientOnyxCeph from '../components/PatientOnyxCeph';
-import logoMonday from '../assets/logo-monday.png';
 import logoOnyxceph from '../assets/logo-onyxceph.png';
 import './Patients.css';
 
@@ -44,7 +45,7 @@ interface Appointment {
     praticien: string;
 }
 
-type FicheTab = 'dep' | 'dossier' | 'photos' | 'onyxceph' | 'synthese' | 'rdv' | 'admin' | 'travaux';
+type FicheTab = 'dep' | 'dossier' | 'photos' | 'onyxceph' | 'synthese' | 'rdv' | 'admin' | 'planning' | 'reglements';
 
 // Calculate age from date of birth
 const calculateAge = (dateNaissance: string): string => {
@@ -117,6 +118,9 @@ interface PatientsProps {
 }
 
 const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
+    // Règlements : visibles uniquement dans l'Espace Secrétariat
+    const { user } = useAuth();
+    const isSecretariat = user?.role === 'secretariat';
     const [patients, setPatients] = useState<DisplayPatient[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -594,6 +598,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             <div>
                                 <div className="fiche-identity-name-row">
                                     <h1 className="fiche-name">{selectedPatient.prenom} {selectedPatient.nom}</h1>
+                                    {isSecretariat && <PatientReglementBadge patientId={selectedPatient.id} />}
                                     <div className="patient-name-actions">
                                         <button
                                             type="button"
@@ -677,11 +682,12 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             ['dep', 'Fiche DEP', null, 'clipboard'],
                             ['dossier', 'Diagnostics', patientAnalyses.length, 'stethoscope'],
                             ['photos', 'Photos/Radios/Empreintes', null, 'camera'],
-                            ['travaux', 'Monday', null, null],
+                            ['planning', 'Planning', null, 'calendar'],
                             ['onyxceph', 'OnyxCeph', null, 'link'],
                             ['synthese', 'Synthèse', null, 'chart'],
                             ['rdv', 'RDV / suivi', patientAppointments.length, 'calendar'],
                             ['admin', 'Administratif', null, 'folder'],
+                            ...(isSecretariat ? [['reglements', 'Règlements', null, 'chart']] : []),
                         ] as [FicheTab, string, number | null, IconName | null][]).map(([key, label, count, icon]) => (
                             <button
                                 key={key}
@@ -691,8 +697,7 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                                 onClick={() => setActiveTab(key)}
                             >
                                 {key === 'onyxceph' && <img src={logoOnyxceph} alt="" className="om-tab-logo" />}
-                                {key === 'travaux' && <img src={logoMonday} alt="" className="om-tab-logo" />}
-                                {key !== 'onyxceph' && key !== 'travaux' && icon && <Icon name={icon} size={16} />}
+                                {key !== 'onyxceph' && icon && <Icon name={icon} size={16} />}
                                 {label}
                                 {count !== null && count > 0 && <span className="om-tab-count">{count}</span>}
                             </button>
@@ -876,12 +881,15 @@ const Patients = ({ onSelectPatientForAnalysis }: PatientsProps = {}) => {
                             </div>
                         )}
 
-                        {activeTab === 'travaux' && (
-                            <OnyxCephTravauxTable
-                                patientName={`${selectedPatient.nom} ${selectedPatient.prenom}`}
-                                patientId={selectedPatient.id}
-                                filterCurrentPatientOnly={true}
+                        {activeTab === 'planning' && (
+                            <WeekPlanning
+                                focusPatient={{ id: selectedPatient.id, label: `${selectedPatient.prenom} ${selectedPatient.nom}` }}
+                                canCollect={isSecretariat}
                             />
+                        )}
+
+                        {isSecretariat && activeTab === 'reglements' && (
+                            <PatientReglements patientId={selectedPatient.id} />
                         )}
 
                         {activeTab === 'admin' && (

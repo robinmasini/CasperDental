@@ -1,0 +1,390 @@
+/* Agenda classique du cabinet (semaine / jour) */
+.week-planning {
+    display: flex;
+    flex-direction: column;
+    gap: var(--om-space-3);
+    min-width: 0;
+}
+
+.wp-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--om-space-3);
+    flex-wrap: wrap;
+}
+
+.wp-nav,
+.wp-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wp-nav h2 {
+    margin: 0 0 0 6px;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.wp-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--om-border-strong);
+    border-radius: var(--om-radius-sm);
+    background: var(--om-surface-raised);
+    color: var(--om-text);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.wp-view {
+    display: flex;
+    padding: 3px;
+    border: 1px solid var(--om-border);
+    border-radius: var(--om-radius-sm);
+    background: var(--om-surface);
+}
+
+.wp-view button {
+    padding: 4px 12px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: var(--om-text-2);
+    font-family: var(--om-font);
+    font-size: var(--om-text-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.wp-view button.is-selected { background: #f8fafc; color: #0b1120; }
+
+.wp-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    color: var(--om-text-2);
+    font-size: var(--om-text-xs);
+}
+
+.wp-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.wp-legend i { width: 10px; height: 10px; border-radius: 50%; }
+.wp-legend i.is-retard { background: #f87171; }
+.wp-legend i.is-a_regler { background: #fbbf24; }
+.wp-legend i.is-a_jour { background: #4ade80; }
+.wp-legend-focus { color: var(--om-accent); }
+
+/* Calendrier */
+.wp-calendar {
+    border: 1px solid var(--om-border);
+    border-radius: var(--om-radius-lg);
+    background: var(--om-surface);
+    overflow: hidden;
+}
+
+.wp-scroll {
+    max-height: min(70vh, 760px);
+    overflow-y: auto;
+    overscroll-behavior: none;
+}
+
+.wp-heads {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: grid;
+    border-bottom: 1px solid var(--om-border);
+    background: var(--om-surface-solid);
+}
+
+.wp-dayhead {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 4px;
+    border: none;
+    border-left: 1px solid var(--om-border);
+    background: none;
+    color: var(--om-text-2);
+    font-family: var(--om-font);
+    cursor: pointer;
+}
+
+.wp-dayhead span { font-size: var(--om-text-xs); text-transform: capitalize; }
+.wp-dayhead strong { font-size: 1.05rem; color: var(--om-text); }
+.wp-dayhead.is-today strong {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--om-accent);
+    color: #0b1120;
+}
+
+.wp-grid {
+    position: relative;
+    display: grid;
+}
+
+.wp-hours { position: relative; }
+.wp-hours span {
+    position: absolute;
+    right: 8px;
+    transform: translateY(-50%);
+    color: var(--om-text-2);
+    font-size: 0.7rem;
+}
+.wp-hours span:first-child { transform: none; }
+
+.wp-day {
+    position: relative;
+    border-left: 1px solid var(--om-border);
+}
+
+.wp-day.is-today { background: rgba(56, 189, 248, 0.04); }
+
+.wp-slot {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    border-top: 1px dashed rgba(255, 255, 255, 0.04);
+    background: none;
+    cursor: pointer;
+}
+
+.wp-slot.is-hour { border-top: 1px solid var(--om-border); }
+.wp-slot:hover { background: rgba(56, 189, 248, 0.08); }
+
+.wp-now {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    height: 2px;
+    background: #f87171;
+    pointer-events: none;
+}
+
+/* Rendez-vous */
+.wp-appt {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 6px;
+    overflow: hidden;
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    border-left: 4px solid var(--om-border-strong);
+    border-radius: 6px;
+    background: #12304a;
+    color: #f8fafc;
+    font-family: var(--om-font);
+    font-size: 0.74rem;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+}
+
+.wp-appt:hover { border-color: var(--om-accent); }
+.wp-appt.pay-retard { border-left-color: #f87171; }
+.wp-appt.pay-a_regler { border-left-color: #fbbf24; }
+.wp-appt.pay-a_jour { border-left-color: #4ade80; }
+.wp-appt.status-confirmé { background: #154063; }
+.wp-appt.status-terminé { background: #1b2433; color: var(--om-text-2); }
+.wp-appt.status-annulé { background: #1b2433; color: var(--om-text-2); text-decoration: line-through; opacity: 0.7; }
+.wp-appt.is-dimmed { opacity: 0.35; }
+
+.wp-appt-line {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.wp-appt-meta { color: rgba(248, 250, 252, 0.7); }
+
+.wp-pay {
+    align-self: flex-start;
+    max-width: 100%;
+    padding: 1px 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-decoration: none;
+}
+
+.wp-pay.is-retard { background: rgba(248, 113, 113, 0.22); color: #fca5a5; }
+.wp-pay.is-a_regler { background: rgba(251, 191, 36, 0.2); color: #fcd34d; }
+.wp-pay.is-a_jour { background: rgba(74, 222, 128, 0.18); color: #86efac; }
+
+.wp-appt.is-compact { flex-direction: row; align-items: center; gap: 6px; padding-top: 2px; padding-bottom: 2px; }
+.wp-appt.is-compact .wp-appt-meta,
+.wp-appt.is-compact .wp-pay { display: none; }
+
+/* Fenêtre de rendez-vous */
+.wp-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(3, 6, 12, 0.7);
+}
+
+.wp-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(520px, 100%);
+    max-height: calc(100dvh - 32px);
+    padding: 20px;
+    overflow-y: auto;
+    border: 1px solid var(--om-border-strong);
+    border-radius: var(--om-radius-lg);
+    background: var(--om-surface-solid);
+    color: var(--om-text);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+.wp-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.wp-modal-head h3 { margin: 0; font-size: 1.1rem; }
+
+.wp-label {
+    margin-top: 6px;
+    color: var(--om-text-2);
+    font-size: var(--om-text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.wp-input,
+.wp-patient-search input {
+    width: 100%;
+    min-height: 38px;
+    padding: 0 10px;
+    border: 1px solid var(--om-border-strong);
+    border-radius: var(--om-radius-sm);
+    background: var(--om-surface-raised);
+    color: var(--om-text);
+    font-family: var(--om-font);
+    font-size: var(--om-text-sm);
+}
+
+.wp-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 12px;
+}
+
+.wp-modal-grid > div { display: flex; flex-direction: column; gap: 6px; }
+
+.wp-patient-search { position: relative; display: flex; align-items: center; }
+.wp-patient-search > svg { position: absolute; left: 10px; color: var(--om-text-2); pointer-events: none; }
+.wp-patient-search input { padding-left: 32px; }
+.wp-patient-search ul {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 10;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    border: 1px solid var(--om-border-strong);
+    border-radius: var(--om-radius-sm);
+    background: var(--om-surface-solid);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+.wp-patient-search li button {
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: var(--om-text);
+    font-family: var(--om-font);
+    font-size: var(--om-text-sm);
+    text-align: left;
+    cursor: pointer;
+}
+.wp-patient-search li button:hover { background: var(--om-surface-hover); }
+
+.wp-patient-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 38px;
+    padding: 0 6px 0 12px;
+    border: 1px solid var(--om-accent);
+    border-radius: var(--om-radius-sm);
+    background: var(--om-accent-soft);
+    font-weight: 600;
+}
+.wp-patient-chip button { display: flex; padding: 6px; border: none; background: none; color: var(--om-text); cursor: pointer; }
+
+.wp-payment-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 10px 12px;
+    border-radius: var(--om-radius-sm);
+    font-size: var(--om-text-sm);
+}
+
+.wp-payment-box.is-retard { background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.4); }
+.wp-payment-box.is-a_regler { background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.4); }
+.wp-payment-box.is-a_jour { background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.35); }
+
+.wp-payment-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--om-text-2);
+    font-size: var(--om-text-xs);
+}
+
+.wp-payment-row > span { min-width: 0; }
+.wp-payment-row select { min-height: 28px; border: 1px solid var(--om-border-strong); border-radius: 6px; background: var(--om-surface-raised); color: var(--om-text); font-family: var(--om-font); font-size: var(--om-text-xs); }
+.wp-payment-pay { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+.wp-status { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.wp-status button {
+    min-height: 32px;
+    border: 1px solid var(--om-border-strong);
+    border-radius: var(--om-radius-sm);
+    background: var(--om-surface-raised);
+    color: var(--om-text);
+    font-family: var(--om-font);
+    font-size: var(--om-text-xs);
+    font-weight: 600;
+    cursor: pointer;
+}
+.wp-status button.is-selected { border-color: #f8fafc; background: #f8fafc; color: #0b1120; }
+
+.wp-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+}

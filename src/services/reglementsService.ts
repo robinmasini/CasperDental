@@ -207,3 +207,30 @@ export const markPaid = withLiveNotify(markPaidWrite, 'reglements');
 export const markUnpaid = withLiveNotify(markUnpaidWrite, 'reglements');
 export const deletePlan = withLiveNotify(deletePlanWrite, 'reglements');
 export const updateEcheance = withLiveNotify(updateEcheanceWrite, 'reglements');
+
+// ---------------------------------------------------------------------------
+// Statut de règlement d'un patient (affiché dans le planning)
+// ---------------------------------------------------------------------------
+export type NiveauReglement = 'retard' | 'a_regler' | 'a_jour' | 'aucun';
+
+export interface StatutReglement {
+    niveau: NiveauReglement;
+    /** Échéances non payées en retard, ou dues d'ici la date de référence (+ 30 jours) */
+    echeances: Reglement[];
+    montant: number;
+}
+
+/** `reference` : jour du rendez-vous (AAAA-MM-JJ) — une échéance due d'ici là ou dans les 30 jours suivants est « à régler » */
+export const statutReglementPatient = (reglements: Reglement[], patientId: string, reference = todayIso()): StatutReglement => {
+    const duPatient = reglements.filter(r => r.patient_id === patientId);
+    if (duPatient.length === 0) return { niveau: 'aucun', echeances: [], montant: 0 };
+    const today = todayIso();
+    const impayees = duPatient.filter(r => !r.paye_le);
+    const retard = impayees.filter(r => r.echeance < today);
+    const sum = (list: Reglement[]) => euros(list.reduce((t, r) => t + r.montant, 0));
+    if (retard.length) return { niveau: 'retard', echeances: retard, montant: sum(retard) };
+    const limite = addMonthsIso(reference > today ? reference : today, 1);
+    const aRegler = impayees.filter(r => r.echeance <= limite);
+    if (aRegler.length) return { niveau: 'a_regler', echeances: aRegler, montant: sum(aRegler) };
+    return { niveau: 'a_jour', echeances: [], montant: 0 };
+};

@@ -1,0 +1,78 @@
+/* Fiche patient › Règlements (Espace Secrétariat) */
+.patient-reglements {
+    display: flex;
+    flex-direction: column;
+    gap: var(--om-space-3);
+}
+
+.patient-reglements-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 16px;
+    border: 1px solid var(--om-border);
+    border-radius: var(--om-radius);
+    background: var(--om-surface-raised);
+}
+
+.patient-reglements-summary span { color: var(--om-text-2); font-size: var(--om-text-sm); }
+.patient-reglements-summary.is-retard { border-color: rgba(248, 113, 113, 0.5); background: rgba(248, 113, 113, 0.1); }
+.patient-reglements-summary.is-a_regler { border-color: rgba(251, 191, 36, 0.5); background: rgba(251, 191, 36, 0.08); }
+.patient-reglements-summary.is-a_jour { border-color: rgba(74, 222, 128, 0.45); background: rgba(74, 222, 128, 0.08); }
+
+.patient-reglements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.patient-reglements-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--om-border);
+    border-left: 3px solid var(--om-accent);
+    border-radius: var(--om-radius);
+    background: var(--om-surface-raised);
+}
+
+.patient-reglements-list li.is-retard { border-left-color: #f87171; }
+.patient-reglements-list li.is-payee { border-left-color: #4ade80; }
+
+.pr-main,
+.pr-amount { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pr-main span,
+.pr-amount span { color: var(--om-text-2); font-size: var(--om-text-xs); }
+.pr-amount { align-items: flex-end; }
+
+.pr-actions { display: flex; align-items: center; gap: 8px; }
+.pr-actions select {
+    min-height: 30px;
+    border: 1px solid var(--om-border-strong);
+    border-radius: 6px;
+    background: var(--om-surface);
+    color: var(--om-text);
+    font-family: var(--om-font);
+    font-size: var(--om-text-xs);
+}
+
+/* Pastille dans l'en-tête de la fiche */
+.patient-reglement-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: var(--om-text-xs);
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.patient-reglement-badge.is-retard { background: rgba(248, 113, 113, 0.18); color: #fca5a5; }
+.patient-reglement-badge.is-a_regler { background: rgba(251, 191, 36, 0.18); color: #fcd34d; }
+.patient-reglement-badge.is-a_jour { background: rgba(74, 222, 128, 0.15); color: #86efac; }

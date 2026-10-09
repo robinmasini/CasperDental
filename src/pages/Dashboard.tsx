@@ -1602,7 +1602,7 @@ const Dashboard = () => {
                     </>
                 )}
 
-                {/* TAB: PLANNING DU CABINET (rendez-vous + étiquettes Monday) — l'audio est dans Diagnostic */}
+                {/* TAB: PLANNING DU CABINET (agenda des rendez-vous + statuts de règlement) — l'audio est dans Diagnostic */}
                 {activeTab === 'audio' && <CabinetPlanning />}
 
                 {isSecretariat && isSecretariatTab(activeTab) && <SecretariatSection tab={activeTab} />}
